@@ -1,5 +1,6 @@
 "use client";
 
+import { Controller, type Control, type FieldErrors } from "react-hook-form";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,148 +11,224 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { FormFieldError } from "@/components/form-field-error";
 import { SESSION_TYPES } from "@/lib/constants";
+import type { AppointmentFormValues } from "@/lib/schemas/appointment-form";
 import type { AppointmentStatus } from "@/lib/types";
-
-export type AppointmentFormState = {
-  patientId: string;
-  date: string;
-  time: string;
-  duration: string;
-  type: string;
-  status: AppointmentStatus;
-  notes: string;
-};
+import { cn } from "@/lib/utils";
 
 type PatientOption = { id: number; name: string };
 
 type Props = {
-  formData: AppointmentFormState;
-  onChange: (next: AppointmentFormState) => void;
+  control: Control<AppointmentFormValues>;
+  errors: FieldErrors<AppointmentFormValues>;
   patients: PatientOption[];
   idPrefix?: string;
 };
 
+function rowClass(hasError: boolean) {
+  return cn(hasError && "text-destructive");
+}
+
 export function AppointmentFormFields({
-  formData,
-  onChange,
+  control,
+  errors,
   patients,
   idPrefix = "",
 }: Props) {
-  const set = (patch: Partial<AppointmentFormState>) =>
-    onChange({ ...formData, ...patch });
-
   return (
-    <div className="grid gap-4 py-4">
-      <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor={`${idPrefix}patient`} className="text-right">
+    <div className="grid gap-2 py-4">
+      <div className="grid grid-cols-4 items-start gap-4">
+        <Label htmlFor={`${idPrefix}patient`} className={cn("text-right pt-2", rowClass(!!errors.patientId))}>
           Paciente
         </Label>
-        <Select
-          value={formData.patientId}
-          onValueChange={(value) => set({ patientId: value })}
-        >
-          <SelectTrigger className="col-span-3">
-            <SelectValue placeholder="Selecione um paciente" />
-          </SelectTrigger>
-          <SelectContent>
-            {patients.map((patient) => (
-              <SelectItem key={patient.id} value={patient.id.toString()}>
-                {patient.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="col-span-3 space-y-1">
+          <Controller
+            name="patientId"
+            control={control}
+            render={({ field }) => (
+              <Select value={field.value} onValueChange={field.onChange}>
+                <SelectTrigger
+                  id={`${idPrefix}patient`}
+                  className={cn(errors.patientId && "border-destructive")}
+                  aria-invalid={!!errors.patientId}
+                  aria-describedby={errors.patientId ? `${idPrefix}patient-error` : undefined}
+                >
+                  <SelectValue placeholder="Selecione um paciente" />
+                </SelectTrigger>
+                <SelectContent>
+                  {patients.map((patient) => (
+                    <SelectItem key={patient.id} value={patient.id.toString()}>
+                      {patient.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
+          <FormFieldError message={errors.patientId?.message} id={`${idPrefix}patient-error`} />
+        </div>
       </div>
-      <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor={`${idPrefix}date`} className="text-right">
+
+      <div className="grid grid-cols-4 items-start gap-4">
+        <Label htmlFor={`${idPrefix}date`} className={cn("text-right pt-2", rowClass(!!errors.date))}>
           Data
         </Label>
-        <Input
-          id={`${idPrefix}date`}
-          type="date"
-          value={formData.date}
-          onChange={(e) => set({ date: e.target.value })}
-          className="col-span-3"
-        />
+        <div className="col-span-3 space-y-1">
+          <Controller
+            name="date"
+            control={control}
+            render={({ field }) => (
+              <Input
+                id={`${idPrefix}date`}
+                type="date"
+                className={cn(errors.date && "border-destructive")}
+                aria-invalid={!!errors.date}
+                aria-describedby={errors.date ? `${idPrefix}date-error` : undefined}
+                {...field}
+              />
+            )}
+          />
+          <FormFieldError message={errors.date?.message} id={`${idPrefix}date-error`} />
+        </div>
       </div>
-      <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor={`${idPrefix}time`} className="text-right">
+
+      <div className="grid grid-cols-4 items-start gap-4">
+        <Label htmlFor={`${idPrefix}time`} className={cn("text-right pt-2", rowClass(!!errors.time))}>
           Horário
         </Label>
-        <Input
-          id={`${idPrefix}time`}
-          type="time"
-          value={formData.time}
-          onChange={(e) => set({ time: e.target.value })}
-          className="col-span-3"
-        />
+        <div className="col-span-3 space-y-1">
+          <Controller
+            name="time"
+            control={control}
+            render={({ field }) => (
+              <Input
+                id={`${idPrefix}time`}
+                type="time"
+                className={cn(errors.time && "border-destructive")}
+                aria-invalid={!!errors.time}
+                aria-describedby={errors.time ? `${idPrefix}time-error` : undefined}
+                {...field}
+              />
+            )}
+          />
+          <FormFieldError message={errors.time?.message} id={`${idPrefix}time-error`} />
+        </div>
       </div>
-      <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor={`${idPrefix}duration`} className="text-right">
+
+      <div className="grid grid-cols-4 items-start gap-4">
+        <Label htmlFor={`${idPrefix}duration`} className={cn("text-right pt-2", rowClass(!!errors.duration))}>
           Duração
         </Label>
-        <Select
-          value={formData.duration}
-          onValueChange={(value) => set({ duration: value })}
-        >
-          <SelectTrigger className="col-span-3">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="30">30 minutos</SelectItem>
-            <SelectItem value="50">50 minutos</SelectItem>
-            <SelectItem value="60">1 hora</SelectItem>
-            <SelectItem value="90">1h 30min</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="col-span-3 space-y-1">
+          <Controller
+            name="duration"
+            control={control}
+            render={({ field }) => (
+              <Select value={field.value} onValueChange={field.onChange}>
+                <SelectTrigger
+                  id={`${idPrefix}duration`}
+                  className={cn(errors.duration && "border-destructive")}
+                  aria-invalid={!!errors.duration}
+                  aria-describedby={errors.duration ? `${idPrefix}duration-error` : undefined}
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="30">30 minutos</SelectItem>
+                  <SelectItem value="50">50 minutos</SelectItem>
+                  <SelectItem value="60">1 hora</SelectItem>
+                  <SelectItem value="90">1h 30min</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+          />
+          <FormFieldError message={errors.duration?.message} id={`${idPrefix}duration-error`} />
+        </div>
       </div>
-      <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor={`${idPrefix}type`} className="text-right">
+
+      <div className="grid grid-cols-4 items-start gap-4">
+        <Label htmlFor={`${idPrefix}type`} className={cn("text-right pt-2", rowClass(!!errors.type))}>
           Tipo
         </Label>
-        <Select value={formData.type} onValueChange={(value) => set({ type: value })}>
-          <SelectTrigger className="col-span-3">
-            <SelectValue placeholder="Tipo de sessão" />
-          </SelectTrigger>
-          <SelectContent>
-            {SESSION_TYPES.map((t) => (
-              <SelectItem key={t} value={t}>
-                {t}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="col-span-3 space-y-1">
+          <Controller
+            name="type"
+            control={control}
+            render={({ field }) => (
+              <Select value={field.value} onValueChange={field.onChange}>
+                <SelectTrigger
+                  id={`${idPrefix}type`}
+                  className={cn(errors.type && "border-destructive")}
+                  aria-invalid={!!errors.type}
+                  aria-describedby={errors.type ? `${idPrefix}type-error` : undefined}
+                >
+                  <SelectValue placeholder="Tipo de sessão" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SESSION_TYPES.map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {t}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
+          <FormFieldError message={errors.type?.message} id={`${idPrefix}type-error`} />
+        </div>
       </div>
-      <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor={`${idPrefix}status`} className="text-right">
+
+      <div className="grid grid-cols-4 items-start gap-4">
+        <Label htmlFor={`${idPrefix}status`} className={cn("text-right pt-2", rowClass(!!errors.status))}>
           Status
         </Label>
-        <Select
-          value={formData.status}
-          onValueChange={(value: AppointmentStatus) => set({ status: value })}
-        >
-          <SelectTrigger className="col-span-3">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="confirmed">Confirmado</SelectItem>
-            <SelectItem value="pending">Pendente</SelectItem>
-            <SelectItem value="cancelled">Cancelado</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="col-span-3 space-y-1">
+          <Controller
+            name="status"
+            control={control}
+            render={({ field }) => (
+              <Select
+                value={field.value}
+                onValueChange={(value: AppointmentStatus) => field.onChange(value)}
+              >
+                <SelectTrigger
+                  id={`${idPrefix}status`}
+                  className={cn(errors.status && "border-destructive")}
+                  aria-invalid={!!errors.status}
+                  aria-describedby={errors.status ? `${idPrefix}status-error` : undefined}
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="confirmed">Confirmado</SelectItem>
+                  <SelectItem value="pending">Pendente</SelectItem>
+                  <SelectItem value="cancelled">Cancelado</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+          />
+          <FormFieldError message={errors.status?.message} id={`${idPrefix}status-error`} />
+        </div>
       </div>
-      <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor={`${idPrefix}notes`} className="text-right">
+
+      <div className="grid grid-cols-4 items-start gap-4">
+        <Label htmlFor={`${idPrefix}notes`} className="text-right pt-2">
           Observações
         </Label>
-        <Textarea
-          id={`${idPrefix}notes`}
-          value={formData.notes}
-          onChange={(e) => set({ notes: e.target.value })}
-          className="col-span-3"
-          placeholder="Observações adicionais..."
-        />
+        <div className="col-span-3 space-y-1">
+          <Controller
+            name="notes"
+            control={control}
+            render={({ field }) => (
+              <Textarea
+                id={`${idPrefix}notes`}
+                placeholder="Observações adicionais..."
+                {...field}
+              />
+            )}
+          />
+        </div>
       </div>
     </div>
   );

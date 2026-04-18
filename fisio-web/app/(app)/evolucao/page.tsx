@@ -4,6 +4,8 @@ import * as React from "react";
 import { Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -16,9 +18,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { FormFieldError } from "@/components/form-field-error";
 import { useMockData } from "@/components/mock-data-provider";
 import { EVOLUCAO_TIPOS_SESSAO } from "@/lib/constants";
+import {
+  evolucaoFormSchema,
+  emptyEvolucaoForm,
+  type EvolucaoFormValues,
+} from "@/lib/schemas/evolucao-form";
 import type { Evolucao } from "@/lib/types";
+import { cn } from "@/lib/utils";
 import { TrendingUp, Save, Calendar, User } from "lucide-react";
 
 function EvolucaoPageContent() {
@@ -27,26 +36,27 @@ function EvolucaoPageContent() {
 
   const { patients, evolucoes, addEvolucao, updateEvolucao } = useMockData();
 
-  const [selectedPatient, setSelectedPatient] = React.useState("");
   const [isCreating, setIsCreating] = React.useState(false);
   const [editingEvolucao, setEditingEvolucao] = React.useState<Evolucao | null>(null);
 
-  const [formData, setFormData] = React.useState<Partial<Evolucao>>({
-    tipoSessao: "",
-    objetivosSessao: "",
-    atividadesRealizadas: "",
-    respostaPaciente: "",
-    dorPre: 0,
-    dorPos: 0,
-    observacoes: "",
-    planoProximaSessao: "",
+  const form = useForm<EvolucaoFormValues>({
+    resolver: zodResolver(evolucaoFormSchema),
+    defaultValues: emptyEvolucaoForm(pacienteIdParam),
   });
 
+  const {
+    register,
+    control,
+    handleSubmit,
+    reset,
+    setValue,
+    formState: { errors },
+  } = form;
+
   React.useEffect(() => {
-    if (pacienteIdParam) {
-      setSelectedPatient(pacienteIdParam);
-    }
-  }, [pacienteIdParam]);
+    if (editingEvolucao || !isCreating) return;
+    setValue("patientId", pacienteIdParam ?? "");
+  }, [pacienteIdParam, editingEvolucao, isCreating, setValue]);
 
   const filteredEvolucoes = React.useMemo(() => {
     if (!pacienteIdParam) return evolucoes;
@@ -54,26 +64,18 @@ function EvolucaoPageContent() {
     return evolucoes.filter((e) => e.patientId === pid);
   }, [evolucoes, pacienteIdParam]);
 
-  const handleSave = () => {
-    if (!selectedPatient) return;
-
-    const patient = patients.find((p) => p.id.toString() === selectedPatient);
+  const onSubmit = (values: EvolucaoFormValues) => {
+    const patient = patients.find((p) => p.id.toString() === values.patientId);
     if (!patient) return;
 
+    const { patientId: _pid, ...rest } = values;
     const base: Omit<Evolucao, "id"> = {
       patientId: patient.id,
       patientName: patient.name,
       dataSessao: editingEvolucao
         ? editingEvolucao.dataSessao
         : new Date().toLocaleDateString("pt-BR"),
-      tipoSessao: formData.tipoSessao || "",
-      objetivosSessao: formData.objetivosSessao || "",
-      atividadesRealizadas: formData.atividadesRealizadas || "",
-      respostaPaciente: formData.respostaPaciente || "",
-      dorPre: Number(formData.dorPre) || 0,
-      dorPos: Number(formData.dorPos) || 0,
-      observacoes: formData.observacoes || "",
-      planoProximaSessao: formData.planoProximaSessao || "",
+      ...rest,
     };
 
     if (editingEvolucao) {
@@ -84,23 +86,13 @@ function EvolucaoPageContent() {
     }
 
     setIsCreating(false);
-    setFormData({
-      tipoSessao: "",
-      objetivosSessao: "",
-      atividadesRealizadas: "",
-      respostaPaciente: "",
-      dorPre: 0,
-      dorPos: 0,
-      observacoes: "",
-      planoProximaSessao: "",
-    });
-    if (!pacienteIdParam) setSelectedPatient("");
+    reset(emptyEvolucaoForm(pacienteIdParam));
   };
 
   const handleEdit = (evolucao: Evolucao) => {
     setEditingEvolucao(evolucao);
-    setSelectedPatient(evolucao.patientId.toString());
-    setFormData({
+    reset({
+      patientId: evolucao.patientId.toString(),
       tipoSessao: evolucao.tipoSessao,
       objetivosSessao: evolucao.objetivosSessao,
       atividadesRealizadas: evolucao.atividadesRealizadas,
@@ -112,6 +104,24 @@ function EvolucaoPageContent() {
     });
     setIsCreating(true);
   };
+
+  const closeForm = () => {
+    setIsCreating(false);
+    setEditingEvolucao(null);
+    reset(emptyEvolucaoForm(pacienteIdParam));
+  };
+
+  const toggleCreate = () => {
+    if (isCreating) {
+      closeForm();
+    } else {
+      setEditingEvolucao(null);
+      reset(emptyEvolucaoForm(pacienteIdParam));
+      setIsCreating(true);
+    }
+  };
+
+  const fieldClass = (hasError: boolean) => cn(hasError && "border-destructive");
 
   return (
     <div className="p-8 space-y-8">
@@ -128,16 +138,7 @@ function EvolucaoPageContent() {
             </p>
           )}
         </div>
-        <Button
-          onClick={() => {
-            setIsCreating(!isCreating);
-            if (isCreating) {
-              setEditingEvolucao(null);
-              setFormData({});
-              if (!pacienteIdParam) setSelectedPatient("");
-            }
-          }}
-        >
+        <Button type="button" onClick={toggleCreate}>
           <TrendingUp className="h-4 w-4 mr-2" />
           {isCreating ? "Cancelar" : "Novo registro"}
         </Button>
@@ -150,152 +151,214 @@ function EvolucaoPageContent() {
               {editingEvolucao ? "Editar evolução" : "Novo registro de evolução"}
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="patient">Paciente</Label>
-                <Select
-                  value={selectedPatient}
-                  onValueChange={setSelectedPatient}
-                  disabled={!!pacienteIdParam}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o paciente" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {patients.map((p) => (
-                      <SelectItem key={p.id} value={p.id.toString()}>
-                        {p.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+          <CardContent>
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label htmlFor="evo-patient">Paciente</Label>
+                  <Controller
+                    name="patientId"
+                    control={control}
+                    render={({ field }) => (
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        disabled={!!pacienteIdParam}
+                      >
+                        <SelectTrigger
+                          id="evo-patient"
+                          className={fieldClass(!!errors.patientId)}
+                          aria-invalid={!!errors.patientId}
+                          aria-describedby={
+                            errors.patientId ? "evo-patient-error" : undefined
+                          }
+                        >
+                          <SelectValue placeholder="Selecione o paciente" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {patients.map((p) => (
+                            <SelectItem key={p.id} value={p.id.toString()}>
+                              {p.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  <FormFieldError message={errors.patientId?.message} id="evo-patient-error" />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="evo-tipo">Tipo de sessão</Label>
+                  <Controller
+                    name="tipoSessao"
+                    control={control}
+                    render={({ field }) => (
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger
+                          id="evo-tipo"
+                          className={fieldClass(!!errors.tipoSessao)}
+                          aria-invalid={!!errors.tipoSessao}
+                          aria-describedby={
+                            errors.tipoSessao ? "evo-tipo-error" : undefined
+                          }
+                        >
+                          <SelectValue placeholder="Selecione o tipo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {EVOLUCAO_TIPOS_SESSAO.map((tipo) => (
+                            <SelectItem key={tipo} value={tipo}>
+                              {tipo}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  <FormFieldError message={errors.tipoSessao?.message} id="evo-tipo-error" />
+                </div>
               </div>
-              <div>
-                <Label htmlFor="tipo">Tipo de sessão</Label>
-                <Select
-                  value={formData.tipoSessao}
-                  onValueChange={(value) => setFormData({ ...formData, tipoSessao: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o tipo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {EVOLUCAO_TIPOS_SESSAO.map((tipo) => (
-                      <SelectItem key={tipo} value={tipo}>
-                        {tipo}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
 
-            <div>
-              <Label htmlFor="objetivos">Objetivos da sessão</Label>
-              <Textarea
-                id="objetivos"
-                value={formData.objetivosSessao}
-                onChange={(e) =>
-                  setFormData({ ...formData, objetivosSessao: e.target.value })
-                }
-                placeholder="Objetivos específicos desta sessão"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="atividades">Atividades realizadas</Label>
-              <Textarea
-                id="atividades"
-                value={formData.atividadesRealizadas}
-                onChange={(e) =>
-                  setFormData({ ...formData, atividadesRealizadas: e.target.value })
-                }
-                placeholder="Descreva as atividades realizadas"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="resposta">Resposta do paciente</Label>
-              <Textarea
-                id="resposta"
-                value={formData.respostaPaciente}
-                onChange={(e) =>
-                  setFormData({ ...formData, respostaPaciente: e.target.value })
-                }
-                placeholder="Como o paciente respondeu aos tratamentos"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="dorPre">Dor pré-sessão (0–10)</Label>
-                <Input
-                  id="dorPre"
-                  type="number"
-                  min="0"
-                  max="10"
-                  value={formData.dorPre}
-                  onChange={(e) =>
-                    setFormData({ ...formData, dorPre: Number(e.target.value) })
+              <div className="space-y-1">
+                <Label htmlFor="evo-objetivos">Objetivos da sessão</Label>
+                <Textarea
+                  id="evo-objetivos"
+                  className={fieldClass(!!errors.objetivosSessao)}
+                  aria-invalid={!!errors.objetivosSessao}
+                  aria-describedby={
+                    errors.objetivosSessao ? "evo-obj-error" : undefined
                   }
+                  placeholder="Objetivos específicos desta sessão"
+                  {...register("objetivosSessao")}
+                />
+                <FormFieldError
+                  message={errors.objetivosSessao?.message}
+                  id="evo-obj-error"
                 />
               </div>
-              <div>
-                <Label htmlFor="dorPos">Dor pós-sessão (0–10)</Label>
-                <Input
-                  id="dorPos"
-                  type="number"
-                  min="0"
-                  max="10"
-                  value={formData.dorPos}
-                  onChange={(e) =>
-                    setFormData({ ...formData, dorPos: Number(e.target.value) })
+
+              <div className="space-y-1">
+                <Label htmlFor="evo-atividades">Atividades realizadas</Label>
+                <Textarea
+                  id="evo-atividades"
+                  className={fieldClass(!!errors.atividadesRealizadas)}
+                  aria-invalid={!!errors.atividadesRealizadas}
+                  aria-describedby={
+                    errors.atividadesRealizadas ? "evo-atv-error" : undefined
                   }
+                  placeholder="Descreva as atividades realizadas"
+                  {...register("atividadesRealizadas")}
+                />
+                <FormFieldError
+                  message={errors.atividadesRealizadas?.message}
+                  id="evo-atv-error"
                 />
               </div>
-            </div>
 
-            <div>
-              <Label htmlFor="observacoes">Observações</Label>
-              <Textarea
-                id="observacoes"
-                value={formData.observacoes}
-                onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
-                placeholder="Observações gerais sobre a sessão"
-              />
-            </div>
+              <div className="space-y-1">
+                <Label htmlFor="evo-resposta">Resposta do paciente</Label>
+                <Textarea
+                  id="evo-resposta"
+                  className={fieldClass(!!errors.respostaPaciente)}
+                  aria-invalid={!!errors.respostaPaciente}
+                  aria-describedby={
+                    errors.respostaPaciente ? "evo-resp-error" : undefined
+                  }
+                  placeholder="Como o paciente respondeu aos tratamentos"
+                  {...register("respostaPaciente")}
+                />
+                <FormFieldError
+                  message={errors.respostaPaciente?.message}
+                  id="evo-resp-error"
+                />
+              </div>
 
-            <div>
-              <Label htmlFor="plano">Plano para próxima sessão</Label>
-              <Textarea
-                id="plano"
-                value={formData.planoProximaSessao}
-                onChange={(e) =>
-                  setFormData({ ...formData, planoProximaSessao: e.target.value })
-                }
-                placeholder="Planejamento para a próxima sessão"
-              />
-            </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label htmlFor="evo-dor-pre">Dor pré-sessão (0–10)</Label>
+                  <Controller
+                    name="dorPre"
+                    control={control}
+                    render={({ field }) => (
+                      <Input
+                        id="evo-dor-pre"
+                        type="number"
+                        min={0}
+                        max={10}
+                        className={fieldClass(!!errors.dorPre)}
+                        aria-invalid={!!errors.dorPre}
+                        aria-describedby={errors.dorPre ? "evo-dorpre-error" : undefined}
+                        value={field.value}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          field.onChange(v === "" ? 0 : parseInt(v, 10));
+                        }}
+                        onBlur={field.onBlur}
+                        name={field.name}
+                        ref={field.ref}
+                      />
+                    )}
+                  />
+                  <FormFieldError message={errors.dorPre?.message} id="evo-dorpre-error" />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="evo-dor-pos">Dor pós-sessão (0–10)</Label>
+                  <Controller
+                    name="dorPos"
+                    control={control}
+                    render={({ field }) => (
+                      <Input
+                        id="evo-dor-pos"
+                        type="number"
+                        min={0}
+                        max={10}
+                        className={fieldClass(!!errors.dorPos)}
+                        aria-invalid={!!errors.dorPos}
+                        aria-describedby={errors.dorPos ? "evo-dorpos-error" : undefined}
+                        value={field.value}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          field.onChange(v === "" ? 0 : parseInt(v, 10));
+                        }}
+                        onBlur={field.onBlur}
+                        name={field.name}
+                        ref={field.ref}
+                      />
+                    )}
+                  />
+                  <FormFieldError message={errors.dorPos?.message} id="evo-dorpos-error" />
+                </div>
+              </div>
 
-            <div className="flex gap-2">
-              <Button type="button" onClick={handleSave}>
-                <Save className="h-4 w-4 mr-2" />
-                Salvar
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setIsCreating(false);
-                  setEditingEvolucao(null);
-                  setFormData({});
-                  if (!pacienteIdParam) setSelectedPatient("");
-                }}
-              >
-                Cancelar
-              </Button>
-            </div>
+              <div className="space-y-1">
+                <Label htmlFor="evo-obs">Observações</Label>
+                <Textarea
+                  id="evo-obs"
+                  placeholder="Observações gerais sobre a sessão"
+                  {...register("observacoes")}
+                />
+                <FormFieldError message={errors.observacoes?.message} />
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="evo-plano">Plano para próxima sessão</Label>
+                <Textarea
+                  id="evo-plano"
+                  placeholder="Planejamento para a próxima sessão"
+                  {...register("planoProximaSessao")}
+                />
+                <FormFieldError message={errors.planoProximaSessao?.message} />
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <Button type="submit">
+                  <Save className="h-4 w-4 mr-2" />
+                  Salvar
+                </Button>
+                <Button type="button" variant="outline" onClick={closeForm}>
+                  Cancelar
+                </Button>
+              </div>
+            </form>
           </CardContent>
         </Card>
       )}

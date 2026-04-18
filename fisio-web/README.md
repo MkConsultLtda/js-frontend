@@ -12,7 +12,7 @@ Frontend web para gestão de clínica de fisioterapia: agenda, pacientes, anamne
 | **Tailwind CSS 4** | Estilo |
 | **Radix UI + componentes próprios** (`components/ui/*`) | Acessibilidade e padrão visual |
 | **TanStack Query** | Já instalado em `app/providers.tsx`; preparado para cache e chamadas HTTP |
-| **react-hook-form / zod** | Dependências presentes; formulários ainda podem ser padronizados com validação |
+| **react-hook-form / zod** | **Pacientes**, **Agenda**, **Anamnese** e **Evolução** usam `@hookform/resolvers/zod`; schemas em `lib/schemas/` |
 
 ## Como rodar
 
@@ -112,7 +112,7 @@ A ideia é substituir gradualmente o **provider mock** por uma camada que chama 
 
 | Área | Sugestão |
 |------|----------|
-| **Validação** | Usar **zod** + **react-hook-form** nos formulários críticos (agenda, paciente, anamnese/evolução). |
+| **Validação** | Replicar o padrão em novos formulários (ex.: **login**, **configurações** ao persistir) e alinhar mensagens ao vocabulário da cliente. |
 | **Testes** | Testes de comportamento em hooks e utilitários (`lib/date-utils`, mapeadores de API). |
 | **Acessibilidade** | Revisar foco em modais e mensagens de erro de validação. |
 | **Performance** | Lazy load de rotas pouco usadas; revisar bundle após adicionar bibliotecas. |
@@ -161,6 +161,7 @@ components/
   ui/
 lib/
   navigation.ts    # links da sidebar (única fonte)
+  schemas/         # zod: patient, appointment, anamnese, evolucao
   types.ts
   mock-seed.ts
   date-utils.ts

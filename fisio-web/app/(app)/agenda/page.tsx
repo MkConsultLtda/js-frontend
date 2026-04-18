@@ -1,6 +1,8 @@
 "use client";
 
 import * as React from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,11 +16,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  AppointmentFormFields,
-  type AppointmentFormState,
-} from "@/components/agenda/appointment-form-fields";
+import { AppointmentFormFields } from "@/components/agenda/appointment-form-fields";
 import { useMockData } from "@/components/mock-data-provider";
+import {
+  appointmentFormSchema,
+  emptyAppointmentForm,
+  type AppointmentFormValues,
+} from "@/lib/schemas/appointment-form";
 import { parseLocalDate, toLocalDateString } from "@/lib/date-utils";
 import type { Appointment } from "@/lib/types";
 import {
@@ -35,18 +39,6 @@ import {
 } from "lucide-react";
 
 const dayNames = ["D", "S", "T", "Q", "Q", "S", "S"];
-
-function emptyForm(selectedDate: string): AppointmentFormState {
-  return {
-    patientId: "",
-    date: selectedDate,
-    time: "",
-    duration: "50",
-    type: "",
-    status: "confirmed",
-    notes: "",
-  };
-}
 
 export default function AgendaPage() {
   const {
@@ -69,9 +61,16 @@ export default function AgendaPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [editingAppointment, setEditingAppointment] =
     React.useState<Appointment | null>(null);
-  const [formData, setFormData] = React.useState<AppointmentFormState>(() =>
-    emptyForm(toLocalDateString(new Date()))
-  );
+
+  const createForm = useForm<AppointmentFormValues>({
+    resolver: zodResolver(appointmentFormSchema),
+    defaultValues: emptyAppointmentForm(toLocalDateString(new Date())),
+  });
+
+  const editForm = useForm<AppointmentFormValues>({
+    resolver: zodResolver(appointmentFormSchema),
+    defaultValues: emptyAppointmentForm(toLocalDateString(new Date())),
+  });
 
   const filteredAppointments = appointments.filter((apt) => {
     const matchesSearch =
@@ -115,58 +114,52 @@ export default function AgendaPage() {
 
   const selectedDay = parseLocalDate(selectedDate).getDate();
 
-  const resetForm = () => {
-    setFormData(emptyForm(selectedDate));
-  };
-
-  const handleCreateAppointment = () => {
-    if (!formData.patientId || !formData.time || !formData.type) return;
-    const patient = patients.find((p) => p.id === parseInt(formData.patientId, 10));
+  const onCreateSubmit = (values: AppointmentFormValues) => {
+    const patient = patients.find((p) => p.id === parseInt(values.patientId, 10));
     if (!patient) return;
 
     addAppointment({
       patientId: patient.id,
       patientName: patient.name,
-      date: formData.date,
-      time: formData.time,
-      duration: parseInt(formData.duration, 10),
-      type: formData.type,
-      status: formData.status,
-      notes: formData.notes || undefined,
+      date: values.date,
+      time: values.time,
+      duration: parseInt(values.duration, 10),
+      type: values.type,
+      status: values.status,
+      notes: values.notes?.trim() || undefined,
     });
     setIsCreateDialogOpen(false);
-    resetForm();
+    createForm.reset(emptyAppointmentForm(selectedDate));
   };
 
-  const handleEditAppointment = () => {
+  const onEditSubmit = (values: AppointmentFormValues) => {
     if (!editingAppointment) return;
-    if (!formData.patientId || !formData.time || !formData.type) return;
-    const patient = patients.find((p) => p.id === parseInt(formData.patientId, 10));
+    const patient = patients.find((p) => p.id === parseInt(values.patientId, 10));
     if (!patient) return;
 
     updateAppointment({
       ...editingAppointment,
       patientId: patient.id,
       patientName: patient.name,
-      date: formData.date,
-      time: formData.time,
-      duration: parseInt(formData.duration, 10),
-      type: formData.type,
-      status: formData.status,
-      notes: formData.notes,
+      date: values.date,
+      time: values.time,
+      duration: parseInt(values.duration, 10),
+      type: values.type,
+      status: values.status,
+      notes: values.notes?.trim() || undefined,
     });
     setIsEditDialogOpen(false);
     setEditingAppointment(null);
-    resetForm();
+    editForm.reset(emptyAppointmentForm(selectedDate));
   };
 
   const openEditModal = (appointment: Appointment) => {
     setEditingAppointment(appointment);
-    setFormData({
+    editForm.reset({
       patientId: appointment.patientId.toString(),
       date: appointment.date,
       time: appointment.time,
-      duration: appointment.duration.toString(),
+      duration: String(appointment.duration) as AppointmentFormValues["duration"],
       type: appointment.type,
       status: appointment.status,
       notes: appointment.notes ?? "",
@@ -175,9 +168,9 @@ export default function AgendaPage() {
   };
 
   React.useEffect(() => {
-    if (isEditDialogOpen) return;
-    setFormData((prev) => ({ ...prev, date: selectedDate }));
-  }, [selectedDate, isEditDialogOpen]);
+    if (!isCreateDialogOpen || isEditDialogOpen) return;
+    createForm.setValue("date", selectedDate);
+  }, [selectedDate, isCreateDialogOpen, isEditDialogOpen, createForm]);
 
   return (
     <div className="p-8 space-y-6">
@@ -192,7 +185,9 @@ export default function AgendaPage() {
           open={isCreateDialogOpen}
           onOpenChange={(open) => {
             setIsCreateDialogOpen(open);
-            if (open) resetForm();
+            if (open) {
+              createForm.reset(emptyAppointmentForm(selectedDate));
+            }
           }}
         >
           <DialogTrigger asChild>
@@ -208,17 +203,20 @@ export default function AgendaPage() {
                 Crie um novo agendamento para um paciente.
               </DialogDescription>
             </DialogHeader>
-            <AppointmentFormFields
-              formData={formData}
-              onChange={setFormData}
-              patients={patientOptions}
-              idPrefix="create-"
-            />
-            <DialogFooter>
-              <Button type="button" onClick={handleCreateAppointment}>
-                Criar Agendamento
-              </Button>
-            </DialogFooter>
+            <form
+              onSubmit={createForm.handleSubmit(onCreateSubmit)}
+              className="space-y-0"
+            >
+              <AppointmentFormFields
+                control={createForm.control}
+                errors={createForm.formState.errors}
+                patients={patientOptions}
+                idPrefix="create-"
+              />
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button type="submit">Criar agendamento</Button>
+              </DialogFooter>
+            </form>
           </DialogContent>
         </Dialog>
       </div>
@@ -422,25 +420,34 @@ export default function AgendaPage() {
         </div>
       </div>
 
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+      <Dialog
+        open={isEditDialogOpen}
+        onOpenChange={(open) => {
+          setIsEditDialogOpen(open);
+          if (!open) {
+            setEditingAppointment(null);
+            editForm.reset(emptyAppointmentForm(selectedDate));
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Editar Agendamento</DialogTitle>
+            <DialogTitle>Editar agendamento</DialogTitle>
             <DialogDescription>
               Modifique os detalhes do agendamento.
             </DialogDescription>
           </DialogHeader>
-          <AppointmentFormFields
-            formData={formData}
-            onChange={setFormData}
-            patients={patientOptions}
-            idPrefix="edit-"
-          />
-          <DialogFooter>
-            <Button type="button" onClick={handleEditAppointment}>
-              Salvar Alterações
-            </Button>
-          </DialogFooter>
+          <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-0">
+            <AppointmentFormFields
+              control={editForm.control}
+              errors={editForm.formState.errors}
+              patients={patientOptions}
+              idPrefix="edit-"
+            />
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button type="submit">Salvar alterações</Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

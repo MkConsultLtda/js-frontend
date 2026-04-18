@@ -4,6 +4,8 @@ import * as React from "react";
 import { Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -16,8 +18,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { FormFieldError } from "@/components/form-field-error";
 import { useMockData } from "@/components/mock-data-provider";
+import {
+  anamneseFormSchema,
+  emptyAnamneseForm,
+  type AnamneseFormValues,
+} from "@/lib/schemas/anamnese-form";
 import type { Anamnese } from "@/lib/types";
+import { cn } from "@/lib/utils";
 import { FileText, Save, User } from "lucide-react";
 
 function AnamnesePageContent() {
@@ -26,27 +35,27 @@ function AnamnesePageContent() {
 
   const { patients, anamneses, addAnamnese, updateAnamnese } = useMockData();
 
-  const [selectedPatient, setSelectedPatient] = React.useState("");
   const [isCreating, setIsCreating] = React.useState(false);
   const [editingAnamnese, setEditingAnamnese] = React.useState<Anamnese | null>(null);
 
-  const [formData, setFormData] = React.useState<Partial<Anamnese>>({
-    queixaPrincipal: "",
-    historiaDoenca: "",
-    antecedentesFamiliares: "",
-    medicamentos: "",
-    alergias: "",
-    habitosVida: "",
-    exameFisico: "",
-    diagnosticoFisioterapico: "",
-    objetivosTratamento: "",
+  const form = useForm<AnamneseFormValues>({
+    resolver: zodResolver(anamneseFormSchema),
+    defaultValues: emptyAnamneseForm(pacienteIdParam),
   });
 
+  const {
+    register,
+    control,
+    handleSubmit,
+    reset,
+    setValue,
+    formState: { errors },
+  } = form;
+
   React.useEffect(() => {
-    if (pacienteIdParam) {
-      setSelectedPatient(pacienteIdParam);
-    }
-  }, [pacienteIdParam]);
+    if (editingAnamnese || !isCreating) return;
+    setValue("patientId", pacienteIdParam ?? "");
+  }, [pacienteIdParam, editingAnamnese, isCreating, setValue]);
 
   const filteredAnamneses = React.useMemo(() => {
     if (!pacienteIdParam) return anamneses;
@@ -54,27 +63,18 @@ function AnamnesePageContent() {
     return anamneses.filter((a) => a.patientId === pid);
   }, [anamneses, pacienteIdParam]);
 
-  const handleSave = () => {
-    if (!selectedPatient) return;
-
-    const patient = patients.find((p) => p.id.toString() === selectedPatient);
+  const onSubmit = (values: AnamneseFormValues) => {
+    const patient = patients.find((p) => p.id.toString() === values.patientId);
     if (!patient) return;
 
+    const { patientId: _pid, ...clinical } = values;
     const base: Omit<Anamnese, "id"> = {
       patientId: patient.id,
       patientName: patient.name,
       dataColeta: editingAnamnese
         ? editingAnamnese.dataColeta
         : new Date().toLocaleDateString("pt-BR"),
-      queixaPrincipal: formData.queixaPrincipal || "",
-      historiaDoenca: formData.historiaDoenca || "",
-      antecedentesFamiliares: formData.antecedentesFamiliares || "",
-      medicamentos: formData.medicamentos || "",
-      alergias: formData.alergias || "",
-      habitosVida: formData.habitosVida || "",
-      exameFisico: formData.exameFisico || "",
-      diagnosticoFisioterapico: formData.diagnosticoFisioterapico || "",
-      objetivosTratamento: formData.objetivosTratamento || "",
+      ...clinical,
     };
 
     if (editingAnamnese) {
@@ -85,24 +85,13 @@ function AnamnesePageContent() {
     }
 
     setIsCreating(false);
-    setFormData({
-      queixaPrincipal: "",
-      historiaDoenca: "",
-      antecedentesFamiliares: "",
-      medicamentos: "",
-      alergias: "",
-      habitosVida: "",
-      exameFisico: "",
-      diagnosticoFisioterapico: "",
-      objetivosTratamento: "",
-    });
-    if (!pacienteIdParam) setSelectedPatient("");
+    reset(emptyAnamneseForm(pacienteIdParam));
   };
 
   const handleEdit = (anamnese: Anamnese) => {
     setEditingAnamnese(anamnese);
-    setSelectedPatient(anamnese.patientId.toString());
-    setFormData({
+    reset({
+      patientId: anamnese.patientId.toString(),
       queixaPrincipal: anamnese.queixaPrincipal,
       historiaDoenca: anamnese.historiaDoenca,
       antecedentesFamiliares: anamnese.antecedentesFamiliares,
@@ -115,6 +104,24 @@ function AnamnesePageContent() {
     });
     setIsCreating(true);
   };
+
+  const closeForm = () => {
+    setIsCreating(false);
+    setEditingAnamnese(null);
+    reset(emptyAnamneseForm(pacienteIdParam));
+  };
+
+  const toggleCreate = () => {
+    if (isCreating) {
+      closeForm();
+    } else {
+      setEditingAnamnese(null);
+      reset(emptyAnamneseForm(pacienteIdParam));
+      setIsCreating(true);
+    }
+  };
+
+  const fieldClass = (hasError: boolean) => cn(hasError && "border-destructive");
 
   return (
     <div className="p-8 space-y-8">
@@ -131,16 +138,7 @@ function AnamnesePageContent() {
             </p>
           )}
         </div>
-        <Button
-          onClick={() => {
-            setIsCreating(!isCreating);
-            if (isCreating) {
-              setEditingAnamnese(null);
-              setFormData({});
-              if (!pacienteIdParam) setSelectedPatient("");
-            }
-          }}
-        >
+        <Button type="button" onClick={toggleCreate}>
           <FileText className="h-4 w-4 mr-2" />
           {isCreating ? "Cancelar" : "Nova anamnese"}
         </Button>
@@ -151,153 +149,186 @@ function AnamnesePageContent() {
           <CardHeader>
             <CardTitle>{editingAnamnese ? "Editar anamnese" : "Nova anamnese"}</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="patient">Paciente</Label>
-                <Select
-                  value={selectedPatient}
-                  onValueChange={setSelectedPatient}
-                  disabled={!!pacienteIdParam}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o paciente" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {patients.map((p) => (
-                      <SelectItem key={p.id} value={p.id.toString()}>
-                        {p.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+          <CardContent>
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label htmlFor="anam-patient">Paciente</Label>
+                  <Controller
+                    name="patientId"
+                    control={control}
+                    render={({ field }) => (
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        disabled={!!pacienteIdParam}
+                      >
+                        <SelectTrigger
+                          id="anam-patient"
+                          className={fieldClass(!!errors.patientId)}
+                          aria-invalid={!!errors.patientId}
+                          aria-describedby={
+                            errors.patientId ? "anam-patient-error" : undefined
+                          }
+                        >
+                          <SelectValue placeholder="Selecione o paciente" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {patients.map((p) => (
+                            <SelectItem key={p.id} value={p.id.toString()}>
+                              {p.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  <FormFieldError message={errors.patientId?.message} id="anam-patient-error" />
+                </div>
               </div>
-            </div>
 
-            <div>
-              <Label htmlFor="queixa">Queixa principal</Label>
-              <Textarea
-                id="queixa"
-                value={formData.queixaPrincipal}
-                onChange={(e) =>
-                  setFormData({ ...formData, queixaPrincipal: e.target.value })
-                }
-                placeholder="Descreva a queixa principal do paciente"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="historia">História da doença atual</Label>
-              <Textarea
-                id="historia"
-                value={formData.historiaDoenca}
-                onChange={(e) =>
-                  setFormData({ ...formData, historiaDoenca: e.target.value })
-                }
-                placeholder="Histórico detalhado da doença"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="antecedentes">Antecedentes familiares</Label>
+              <div className="space-y-1">
+                <Label htmlFor="anam-queixa">Queixa principal</Label>
                 <Textarea
-                  id="antecedentes"
-                  value={formData.antecedentesFamiliares}
-                  onChange={(e) =>
-                    setFormData({ ...formData, antecedentesFamiliares: e.target.value })
+                  id="anam-queixa"
+                  className={fieldClass(!!errors.queixaPrincipal)}
+                  aria-invalid={!!errors.queixaPrincipal}
+                  aria-describedby={
+                    errors.queixaPrincipal ? "anam-queixa-error" : undefined
                   }
-                  placeholder="Doenças na família"
+                  placeholder="Descreva a queixa principal do paciente"
+                  {...register("queixaPrincipal")}
+                />
+                <FormFieldError
+                  message={errors.queixaPrincipal?.message}
+                  id="anam-queixa-error"
                 />
               </div>
-              <div>
-                <Label htmlFor="medicamentos">Medicamentos</Label>
+
+              <div className="space-y-1">
+                <Label htmlFor="anam-historia">História da doença atual</Label>
                 <Textarea
-                  id="medicamentos"
-                  value={formData.medicamentos}
-                  onChange={(e) =>
-                    setFormData({ ...formData, medicamentos: e.target.value })
+                  id="anam-historia"
+                  className={fieldClass(!!errors.historiaDoenca)}
+                  aria-invalid={!!errors.historiaDoenca}
+                  aria-describedby={
+                    errors.historiaDoenca ? "anam-historia-error" : undefined
                   }
-                  placeholder="Medicamentos em uso"
+                  placeholder="Histórico detalhado da doença"
+                  {...register("historiaDoenca")}
+                />
+                <FormFieldError
+                  message={errors.historiaDoenca?.message}
+                  id="anam-historia-error"
                 />
               </div>
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="alergias">Alergias</Label>
-                <Input
-                  id="alergias"
-                  value={formData.alergias}
-                  onChange={(e) => setFormData({ ...formData, alergias: e.target.value })}
-                  placeholder="Alergias conhecidas"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label htmlFor="anam-antecedentes">Antecedentes familiares</Label>
+                  <Textarea
+                    id="anam-antecedentes"
+                    className={fieldClass(!!errors.antecedentesFamiliares)}
+                    aria-invalid={!!errors.antecedentesFamiliares}
+                    placeholder="Doenças na família"
+                    {...register("antecedentesFamiliares")}
+                  />
+                  <FormFieldError message={errors.antecedentesFamiliares?.message} />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="anam-medicamentos">Medicamentos</Label>
+                  <Textarea
+                    id="anam-medicamentos"
+                    className={fieldClass(!!errors.medicamentos)}
+                    placeholder="Medicamentos em uso"
+                    {...register("medicamentos")}
+                  />
+                  <FormFieldError message={errors.medicamentos?.message} />
+                </div>
               </div>
-              <div>
-                <Label htmlFor="habitos">Hábitos de vida</Label>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label htmlFor="anam-alergias">Alergias</Label>
+                  <Input
+                    id="anam-alergias"
+                    className={fieldClass(!!errors.alergias)}
+                    placeholder="Alergias conhecidas"
+                    {...register("alergias")}
+                  />
+                  <FormFieldError message={errors.alergias?.message} />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="anam-habitos">Hábitos de vida</Label>
+                  <Textarea
+                    id="anam-habitos"
+                    className={fieldClass(!!errors.habitosVida)}
+                    placeholder="Atividade física, fumo, etc."
+                    {...register("habitosVida")}
+                  />
+                  <FormFieldError message={errors.habitosVida?.message} />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="anam-exame">Exame físico</Label>
                 <Textarea
-                  id="habitos"
-                  value={formData.habitosVida}
-                  onChange={(e) =>
-                    setFormData({ ...formData, habitosVida: e.target.value })
+                  id="anam-exame"
+                  className={fieldClass(!!errors.exameFisico)}
+                  aria-invalid={!!errors.exameFisico}
+                  aria-describedby={errors.exameFisico ? "anam-exame-error" : undefined}
+                  placeholder="Achados do exame físico"
+                  {...register("exameFisico")}
+                />
+                <FormFieldError message={errors.exameFisico?.message} id="anam-exame-error" />
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="anam-diagnostico">Diagnóstico fisioterapêutico</Label>
+                <Textarea
+                  id="anam-diagnostico"
+                  className={fieldClass(!!errors.diagnosticoFisioterapico)}
+                  aria-invalid={!!errors.diagnosticoFisioterapico}
+                  aria-describedby={
+                    errors.diagnosticoFisioterapico ? "anam-dx-error" : undefined
                   }
-                  placeholder="Atividade física, fumo, etc."
+                  placeholder="Diagnóstico fisioterapêutico"
+                  {...register("diagnosticoFisioterapico")}
+                />
+                <FormFieldError
+                  message={errors.diagnosticoFisioterapico?.message}
+                  id="anam-dx-error"
                 />
               </div>
-            </div>
 
-            <div>
-              <Label htmlFor="exame">Exame físico</Label>
-              <Textarea
-                id="exame"
-                value={formData.exameFisico}
-                onChange={(e) => setFormData({ ...formData, exameFisico: e.target.value })}
-                placeholder="Achados do exame físico"
-              />
-            </div>
+              <div className="space-y-1">
+                <Label htmlFor="anam-objetivos">Objetivos do tratamento</Label>
+                <Textarea
+                  id="anam-objetivos"
+                  className={fieldClass(!!errors.objetivosTratamento)}
+                  aria-invalid={!!errors.objetivosTratamento}
+                  aria-describedby={
+                    errors.objetivosTratamento ? "anam-obj-error" : undefined
+                  }
+                  placeholder="Objetivos a serem alcançados"
+                  {...register("objetivosTratamento")}
+                />
+                <FormFieldError
+                  message={errors.objetivosTratamento?.message}
+                  id="anam-obj-error"
+                />
+              </div>
 
-            <div>
-              <Label htmlFor="diagnostico">Diagnóstico fisioterapêutico</Label>
-              <Textarea
-                id="diagnostico"
-                value={formData.diagnosticoFisioterapico}
-                onChange={(e) =>
-                  setFormData({ ...formData, diagnosticoFisioterapico: e.target.value })
-                }
-                placeholder="Diagnóstico fisioterapêutico"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="objetivos">Objetivos do tratamento</Label>
-              <Textarea
-                id="objetivos"
-                value={formData.objetivosTratamento}
-                onChange={(e) =>
-                  setFormData({ ...formData, objetivosTratamento: e.target.value })
-                }
-                placeholder="Objetivos a serem alcançados"
-              />
-            </div>
-
-            <div className="flex gap-2">
-              <Button type="button" onClick={handleSave}>
-                <Save className="h-4 w-4 mr-2" />
-                Salvar
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setIsCreating(false);
-                  setEditingAnamnese(null);
-                  setFormData({});
-                  if (!pacienteIdParam) setSelectedPatient("");
-                }}
-              >
-                Cancelar
-              </Button>
-            </div>
+              <div className="flex flex-wrap gap-2">
+                <Button type="submit">
+                  <Save className="h-4 w-4 mr-2" />
+                  Salvar
+                </Button>
+                <Button type="button" variant="outline" onClick={closeForm}>
+                  Cancelar
+                </Button>
+              </div>
+            </form>
           </CardContent>
         </Card>
       )}

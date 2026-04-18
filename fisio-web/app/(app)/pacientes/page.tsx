@@ -2,6 +2,8 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Search,
   Plus,
@@ -43,9 +45,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { FormFieldError } from "@/components/form-field-error";
 import { useMockData } from "@/components/mock-data-provider";
 import { toLocalDateString } from "@/lib/date-utils";
+import {
+  patientCreateFormSchema,
+  patientEditFormSchema,
+  type PatientCreateFormValues,
+  type PatientEditFormValues,
+} from "@/lib/schemas/patient-form";
 import type { Patient } from "@/lib/types";
+import { cn } from "@/lib/utils";
+
+const defaultCreateValues: PatientCreateFormValues = {
+  name: "",
+  age: 0,
+  diagnosis: "",
+  phone: "",
+};
 
 export default function PacientesPage() {
   const { patients, addPatient, updatePatient, deletePatient } = useMockData();
@@ -57,13 +74,18 @@ export default function PacientesPage() {
   const [isAddModalOpen, setIsAddModalOpen] = React.useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
   const [editingPatient, setEditingPatient] = React.useState<Patient | null>(null);
-  const [newPatient, setNewPatient] = React.useState<Partial<Patient>>({
-    name: "",
-    age: 0,
-    diagnosis: "",
-    phone: "",
-    status: "active",
-    lastSession: new Date().toLocaleDateString("pt-BR"),
+
+  const addForm = useForm<PatientCreateFormValues>({
+    resolver: zodResolver(patientCreateFormSchema),
+    defaultValues: defaultCreateValues,
+  });
+
+  const editForm = useForm<PatientEditFormValues>({
+    resolver: zodResolver(patientEditFormSchema),
+    defaultValues: {
+      ...defaultCreateValues,
+      status: "active",
+    },
   });
 
   const filteredPatients = patients.filter((patient) => {
@@ -75,37 +97,46 @@ export default function PacientesPage() {
     return matchesSearch && matchesStatus;
   });
 
-  const handleAddPatient = () => {
-    if (!newPatient.name?.trim() || !newPatient.diagnosis?.trim()) return;
-
+  const onCreateSubmit = (data: PatientCreateFormValues) => {
     addPatient({
-      name: newPatient.name.trim(),
-      age: Number(newPatient.age) || 0,
-      diagnosis: newPatient.diagnosis.trim(),
-      phone: newPatient.phone?.trim() ?? "",
-      status: (newPatient.status as Patient["status"]) ?? "active",
+      name: data.name,
+      age: data.age,
+      diagnosis: data.diagnosis,
+      phone: data.phone,
+      status: "active",
       lastSession: new Date().toLocaleDateString("pt-BR"),
       registeredAt: toLocalDateString(new Date()),
     });
     setIsAddModalOpen(false);
-    setNewPatient({
-      name: "",
-      age: 0,
-      diagnosis: "",
-      phone: "",
-      status: "active",
-      lastSession: new Date().toLocaleDateString("pt-BR"),
-    });
+    addForm.reset(defaultCreateValues);
   };
 
   const startEdit = (patient: Patient) => {
-    setEditingPatient({ ...patient });
+    setEditingPatient(patient);
     setIsEditModalOpen(true);
   };
 
-  const handleUpdatePatient = () => {
+  React.useEffect(() => {
+    if (!editingPatient || !isEditModalOpen) return;
+    editForm.reset({
+      name: editingPatient.name,
+      age: editingPatient.age,
+      diagnosis: editingPatient.diagnosis,
+      phone: editingPatient.phone,
+      status: editingPatient.status,
+    });
+  }, [editingPatient, isEditModalOpen, editForm]);
+
+  const onEditSubmit = (data: PatientEditFormValues) => {
     if (!editingPatient) return;
-    updatePatient(editingPatient);
+    updatePatient({
+      ...editingPatient,
+      name: data.name,
+      age: data.age,
+      diagnosis: data.diagnosis,
+      phone: data.phone,
+      status: data.status,
+    });
     setIsEditModalOpen(false);
     setEditingPatient(null);
   };
@@ -130,15 +161,8 @@ export default function PacientesPage() {
           open={isAddModalOpen}
           onOpenChange={(open) => {
             setIsAddModalOpen(open);
-            if (!open) {
-              setNewPatient({
-                name: "",
-                age: 0,
-                diagnosis: "",
-                phone: "",
-                status: "active",
-                lastSession: new Date().toLocaleDateString("pt-BR"),
-              });
+            if (open) {
+              addForm.reset(defaultCreateValues);
             }
           }}
         >
@@ -155,65 +179,109 @@ export default function PacientesPage() {
                 Preencha as informações básicas para iniciar o acompanhamento.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="new-name" className="text-right">
+            <form onSubmit={addForm.handleSubmit(onCreateSubmit)} className="space-y-2">
+              <div className="grid grid-cols-4 items-start gap-4 py-2">
+                <Label htmlFor="add-name" className="text-right pt-2">
                   Nome
                 </Label>
-                <Input
-                  id="new-name"
-                  className="col-span-3"
-                  value={newPatient.name}
-                  onChange={(e) => setNewPatient({ ...newPatient, name: e.target.value })}
-                />
+                <div className="col-span-3 space-y-1">
+                  <Input
+                    id="add-name"
+                    className={cn(addForm.formState.errors.name && "border-destructive")}
+                    aria-invalid={!!addForm.formState.errors.name}
+                    aria-describedby={
+                      addForm.formState.errors.name ? "add-name-error" : undefined
+                    }
+                    {...addForm.register("name")}
+                  />
+                  <FormFieldError
+                    message={addForm.formState.errors.name?.message}
+                    id="add-name-error"
+                  />
+                </div>
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="new-age" className="text-right">
+              <div className="grid grid-cols-4 items-start gap-4">
+                <Label htmlFor="add-age" className="text-right pt-2">
                   Idade
                 </Label>
-                <Input
-                  id="new-age"
-                  type="number"
-                  min={0}
-                  className="col-span-3"
-                  value={newPatient.age || ""}
-                  onChange={(e) =>
-                    setNewPatient({ ...newPatient, age: Number(e.target.value) })
-                  }
-                />
+                <div className="col-span-3 space-y-1">
+                  <Controller
+                    name="age"
+                    control={addForm.control}
+                    render={({ field }) => (
+                      <Input
+                        id="add-age"
+                        type="number"
+                        min={0}
+                        max={130}
+                        className={cn(addForm.formState.errors.age && "border-destructive")}
+                        aria-invalid={!!addForm.formState.errors.age}
+                        aria-describedby={
+                          addForm.formState.errors.age ? "add-age-error" : undefined
+                        }
+                        value={field.value === 0 ? "" : field.value}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          field.onChange(v === "" ? 0 : parseInt(v, 10));
+                        }}
+                        onBlur={field.onBlur}
+                        name={field.name}
+                        ref={field.ref}
+                      />
+                    )}
+                  />
+                  <FormFieldError
+                    message={addForm.formState.errors.age?.message}
+                    id="add-age-error"
+                  />
+                </div>
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="new-dx" className="text-right">
+              <div className="grid grid-cols-4 items-start gap-4">
+                <Label htmlFor="add-dx" className="text-right pt-2">
                   Diagnóstico
                 </Label>
-                <Input
-                  id="new-dx"
-                  className="col-span-3"
-                  value={newPatient.diagnosis}
-                  onChange={(e) =>
-                    setNewPatient({ ...newPatient, diagnosis: e.target.value })
-                  }
-                />
+                <div className="col-span-3 space-y-1">
+                  <Input
+                    id="add-dx"
+                    className={cn(
+                      addForm.formState.errors.diagnosis && "border-destructive"
+                    )}
+                    aria-invalid={!!addForm.formState.errors.diagnosis}
+                    aria-describedby={
+                      addForm.formState.errors.diagnosis ? "add-dx-error" : undefined
+                    }
+                    {...addForm.register("diagnosis")}
+                  />
+                  <FormFieldError
+                    message={addForm.formState.errors.diagnosis?.message}
+                    id="add-dx-error"
+                  />
+                </div>
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="new-phone" className="text-right">
+              <div className="grid grid-cols-4 items-start gap-4">
+                <Label htmlFor="add-phone" className="text-right pt-2">
                   Telefone
                 </Label>
-                <Input
-                  id="new-phone"
-                  className="col-span-3"
-                  value={newPatient.phone}
-                  onChange={(e) =>
-                    setNewPatient({ ...newPatient, phone: e.target.value })
-                  }
-                />
+                <div className="col-span-3 space-y-1">
+                  <Input
+                    id="add-phone"
+                    className={cn(addForm.formState.errors.phone && "border-destructive")}
+                    aria-invalid={!!addForm.formState.errors.phone}
+                    aria-describedby={
+                      addForm.formState.errors.phone ? "add-phone-error" : undefined
+                    }
+                    {...addForm.register("phone")}
+                  />
+                  <FormFieldError
+                    message={addForm.formState.errors.phone?.message}
+                    id="add-phone-error"
+                  />
+                </div>
               </div>
-            </div>
-            <DialogFooter>
-              <Button type="button" onClick={handleAddPatient}>
-                Salvar paciente
-              </Button>
-            </DialogFooter>
+              <DialogFooter className="pt-4">
+                <Button type="submit">Salvar paciente</Button>
+              </DialogFooter>
+            </form>
           </DialogContent>
         </Dialog>
       </div>
@@ -334,7 +402,13 @@ export default function PacientesPage() {
       </div>
 
       {editingPatient && (
-        <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <Dialog
+          open={isEditModalOpen}
+          onOpenChange={(open) => {
+            setIsEditModalOpen(open);
+            if (!open) setEditingPatient(null);
+          }}
+        >
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Editar paciente</DialogTitle>
@@ -342,78 +416,146 @@ export default function PacientesPage() {
                 Atualize as informações de {editingPatient.name}.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Nome</Label>
-                <Input
-                  className="col-span-3"
-                  value={editingPatient.name}
-                  onChange={(e) =>
-                    setEditingPatient({ ...editingPatient, name: e.target.value })
-                  }
-                />
+            <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-2">
+              <div className="grid grid-cols-4 items-start gap-4 py-2">
+                <Label htmlFor="edit-name" className="text-right pt-2">
+                  Nome
+                </Label>
+                <div className="col-span-3 space-y-1">
+                  <Input
+                    id="edit-name"
+                    className={cn(editForm.formState.errors.name && "border-destructive")}
+                    aria-invalid={!!editForm.formState.errors.name}
+                    aria-describedby={
+                      editForm.formState.errors.name ? "edit-name-error" : undefined
+                    }
+                    {...editForm.register("name")}
+                  />
+                  <FormFieldError
+                    message={editForm.formState.errors.name?.message}
+                    id="edit-name-error"
+                  />
+                </div>
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Idade</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  className="col-span-3"
-                  value={editingPatient.age}
-                  onChange={(e) =>
-                    setEditingPatient({
-                      ...editingPatient,
-                      age: Number(e.target.value),
-                    })
-                  }
-                />
+              <div className="grid grid-cols-4 items-start gap-4">
+                <Label htmlFor="edit-age" className="text-right pt-2">
+                  Idade
+                </Label>
+                <div className="col-span-3 space-y-1">
+                  <Controller
+                    name="age"
+                    control={editForm.control}
+                    render={({ field }) => (
+                      <Input
+                        id="edit-age"
+                        type="number"
+                        min={0}
+                        max={130}
+                        className={cn(editForm.formState.errors.age && "border-destructive")}
+                        aria-invalid={!!editForm.formState.errors.age}
+                        aria-describedby={
+                          editForm.formState.errors.age ? "edit-age-error" : undefined
+                        }
+                        value={field.value}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          field.onChange(v === "" ? 0 : parseInt(v, 10));
+                        }}
+                        onBlur={field.onBlur}
+                        name={field.name}
+                        ref={field.ref}
+                      />
+                    )}
+                  />
+                  <FormFieldError
+                    message={editForm.formState.errors.age?.message}
+                    id="edit-age-error"
+                  />
+                </div>
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Diagnóstico</Label>
-                <Input
-                  className="col-span-3"
-                  value={editingPatient.diagnosis}
-                  onChange={(e) =>
-                    setEditingPatient({ ...editingPatient, diagnosis: e.target.value })
-                  }
-                />
+              <div className="grid grid-cols-4 items-start gap-4">
+                <Label htmlFor="edit-dx" className="text-right pt-2">
+                  Diagnóstico
+                </Label>
+                <div className="col-span-3 space-y-1">
+                  <Input
+                    id="edit-dx"
+                    className={cn(
+                      editForm.formState.errors.diagnosis && "border-destructive"
+                    )}
+                    aria-invalid={!!editForm.formState.errors.diagnosis}
+                    aria-describedby={
+                      editForm.formState.errors.diagnosis ? "edit-dx-error" : undefined
+                    }
+                    {...editForm.register("diagnosis")}
+                  />
+                  <FormFieldError
+                    message={editForm.formState.errors.diagnosis?.message}
+                    id="edit-dx-error"
+                  />
+                </div>
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Telefone</Label>
-                <Input
-                  className="col-span-3"
-                  value={editingPatient.phone}
-                  onChange={(e) =>
-                    setEditingPatient({ ...editingPatient, phone: e.target.value })
-                  }
-                />
+              <div className="grid grid-cols-4 items-start gap-4">
+                <Label htmlFor="edit-phone" className="text-right pt-2">
+                  Telefone
+                </Label>
+                <div className="col-span-3 space-y-1">
+                  <Input
+                    id="edit-phone"
+                    className={cn(editForm.formState.errors.phone && "border-destructive")}
+                    aria-invalid={!!editForm.formState.errors.phone}
+                    aria-describedby={
+                      editForm.formState.errors.phone ? "edit-phone-error" : undefined
+                    }
+                    {...editForm.register("phone")}
+                  />
+                  <FormFieldError
+                    message={editForm.formState.errors.phone?.message}
+                    id="edit-phone-error"
+                  />
+                </div>
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Status</Label>
-                <Select
-                  value={editingPatient.status}
-                  onValueChange={(v) =>
-                    setEditingPatient({
-                      ...editingPatient,
-                      status: v as Patient["status"],
-                    })
-                  }
-                >
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Ativo</SelectItem>
-                    <SelectItem value="inactive">Inativo</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-4 items-start gap-4">
+                <Label htmlFor="edit-status" className="text-right pt-2">
+                  Status
+                </Label>
+                <div className="col-span-3 space-y-1">
+                  <Controller
+                    name="status"
+                    control={editForm.control}
+                    render={({ field }) => (
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger
+                          id="edit-status"
+                          className={cn(
+                            editForm.formState.errors.status && "border-destructive"
+                          )}
+                          aria-invalid={!!editForm.formState.errors.status}
+                          aria-describedby={
+                            editForm.formState.errors.status
+                              ? "edit-status-error"
+                              : undefined
+                          }
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="active">Ativo</SelectItem>
+                          <SelectItem value="inactive">Inativo</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  <FormFieldError
+                    message={editForm.formState.errors.status?.message}
+                    id="edit-status-error"
+                  />
+                </div>
               </div>
-            </div>
-            <DialogFooter>
-              <Button type="button" onClick={handleUpdatePatient}>
-                Salvar alterações
-              </Button>
-            </DialogFooter>
+              <DialogFooter className="pt-4">
+                <Button type="submit">Salvar alterações</Button>
+              </DialogFooter>
+            </form>
           </DialogContent>
         </Dialog>
       )}
