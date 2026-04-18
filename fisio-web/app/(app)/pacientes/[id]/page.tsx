@@ -2,10 +2,25 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, Calendar, FileText, TrendingUp, User } from "lucide-react";
+import {
+  ArrowLeft,
+  Calendar,
+  FileText,
+  Mail,
+  MapPin,
+  Phone,
+  TrendingUp,
+  User,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useMockData } from "@/components/mock-data-provider";
+import { formatIsoDateToBR } from "@/lib/date-utils";
+import {
+  ageFromBirthDateIso,
+  formatAddressOneLine,
+  formatCepDisplay,
+} from "@/lib/patient-utils";
 
 export default function PacienteProntuarioPage() {
   const params = useParams();
@@ -35,6 +50,10 @@ export default function PacienteProntuarioPage() {
     .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))
     .slice(0, 3);
 
+  const age = ageFromBirthDateIso(patient.birthDate);
+  const nascimento = formatIsoDateToBR(patient.birthDate);
+  const enderecoLinha = formatAddressOneLine(patient.address);
+
   return (
     <div className="p-8 space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -50,7 +69,7 @@ export default function PacienteProntuarioPage() {
             {patient.name}
           </h1>
           <p className="text-muted-foreground">
-            {patient.age} anos · {patient.diagnosis}
+            {age} anos · Nasc. {nascimento} · {patient.diagnosis}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -60,14 +79,40 @@ export default function PacienteProntuarioPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card className="md:col-span-2 border-primary/15">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <MapPin className="h-4 w-4" />
+              Endereço para atendimento domiciliar
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm space-y-1">
+            <p>{enderecoLinha}</p>
+            <p className="text-xs text-muted-foreground">
+              CEP armazenado: {formatCepDisplay(patient.address.cep)} (somente números no cadastro)
+            </p>
+          </CardContent>
+        </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Contato
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Phone className="h-4 w-4" />
+              Telefone
             </CardTitle>
           </CardHeader>
           <CardContent className="text-sm">{patient.phone || "—"}</CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Mail className="h-4 w-4" />
+              E-mail
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm break-all">
+            {patient.email || "—"}
+          </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">

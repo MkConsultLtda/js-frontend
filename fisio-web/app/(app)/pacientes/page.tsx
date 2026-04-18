@@ -2,12 +2,14 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, Controller, type UseFormReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Search,
   Plus,
   Phone,
+  Mail,
+  MapPin,
   FileText,
   Calendar,
   MoreVertical,
@@ -47,7 +49,13 @@ import {
 } from "@/components/ui/select";
 import { FormFieldError } from "@/components/form-field-error";
 import { useMockData } from "@/components/mock-data-provider";
-import { toLocalDateString } from "@/lib/date-utils";
+import {
+  emptyPatientCreateFormValues,
+  patientFromCreateForm,
+  patientFromEditForm,
+  patientToEditFormValues,
+} from "@/lib/patient-form-map";
+import { ageFromBirthDateIso, formatCepDisplay, patientMatchesSearch } from "@/lib/patient-utils";
 import {
   patientCreateFormSchema,
   patientEditFormSchema,
@@ -57,12 +65,223 @@ import {
 import type { Patient } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-const defaultCreateValues: PatientCreateFormValues = {
-  name: "",
-  age: 0,
-  diagnosis: "",
-  phone: "",
-};
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="w-full text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b pb-1">
+      {children}
+    </p>
+  );
+}
+
+function PatientFormRows({
+  form: formProp,
+  idPrefix,
+}: {
+  form: UseFormReturn<PatientCreateFormValues> | UseFormReturn<PatientEditFormValues>;
+  idPrefix: "add" | "edit";
+}) {
+  /** Campos comuns aos dois formulários; status fica só no modal de edição. */
+  const form = formProp as UseFormReturn<PatientCreateFormValues>;
+  const { register, formState } = form;
+  const err = formState.errors;
+
+  const fieldClass = (hasError: boolean) => cn(hasError && "border-destructive");
+
+  return (
+    <>
+      <SectionTitle>Dados pessoais</SectionTitle>
+      <div className="grid grid-cols-4 items-start gap-4">
+        <Label htmlFor={`${idPrefix}-name`} className="text-right pt-2">
+          Nome
+        </Label>
+        <div className="col-span-3 space-y-1">
+          <Input
+            id={`${idPrefix}-name`}
+            className={fieldClass(!!err.name)}
+            aria-invalid={!!err.name}
+            aria-describedby={err.name ? `${idPrefix}-name-error` : undefined}
+            {...register("name")}
+          />
+          <FormFieldError message={err.name?.message} id={`${idPrefix}-name-error`} />
+        </div>
+      </div>
+      <div className="grid grid-cols-4 items-start gap-4">
+        <Label htmlFor={`${idPrefix}-birth`} className="text-right pt-2">
+          Nascimento
+        </Label>
+        <div className="col-span-3 space-y-1">
+          <Input
+            id={`${idPrefix}-birth`}
+            type="date"
+            className={fieldClass(!!err.birthDate)}
+            aria-invalid={!!err.birthDate}
+            aria-describedby={err.birthDate ? `${idPrefix}-birth-error` : undefined}
+            {...register("birthDate")}
+          />
+          <FormFieldError message={err.birthDate?.message} id={`${idPrefix}-birth-error`} />
+        </div>
+      </div>
+      <div className="grid grid-cols-4 items-start gap-4">
+        <Label htmlFor={`${idPrefix}-cpf`} className="text-right pt-2">
+          CPF
+        </Label>
+        <div className="col-span-3 space-y-1">
+          <Input
+            id={`${idPrefix}-cpf`}
+            placeholder="Opcional"
+            className={fieldClass(!!err.cpf)}
+            aria-invalid={!!err.cpf}
+            {...register("cpf")}
+          />
+          <FormFieldError message={err.cpf?.message} />
+        </div>
+      </div>
+
+      <SectionTitle>Contato</SectionTitle>
+      <div className="grid grid-cols-4 items-start gap-4">
+        <Label htmlFor={`${idPrefix}-email`} className="text-right pt-2">
+          E-mail
+        </Label>
+        <div className="col-span-3 space-y-1">
+          <Input
+            id={`${idPrefix}-email`}
+            type="email"
+            autoComplete="email"
+            placeholder="Opcional"
+            className={fieldClass(!!err.email)}
+            aria-invalid={!!err.email}
+            {...register("email")}
+          />
+          <FormFieldError message={err.email?.message} />
+        </div>
+      </div>
+      <div className="grid grid-cols-4 items-start gap-4">
+        <Label htmlFor={`${idPrefix}-phone`} className="text-right pt-2">
+          Telefone
+        </Label>
+        <div className="col-span-3 space-y-1">
+          <Input
+            id={`${idPrefix}-phone`}
+            type="tel"
+            className={fieldClass(!!err.phone)}
+            aria-invalid={!!err.phone}
+            {...register("phone")}
+          />
+          <FormFieldError message={err.phone?.message} id={`${idPrefix}-phone-error`} />
+        </div>
+      </div>
+      <div className="grid grid-cols-4 items-start gap-4">
+        <Label htmlFor={`${idPrefix}-dx`} className="text-right pt-2">
+          Diagnóstico
+        </Label>
+        <div className="col-span-3 space-y-1">
+          <Input
+            id={`${idPrefix}-dx`}
+            className={fieldClass(!!err.diagnosis)}
+            aria-invalid={!!err.diagnosis}
+            {...register("diagnosis")}
+          />
+          <FormFieldError message={err.diagnosis?.message} id={`${idPrefix}-dx-error`} />
+        </div>
+      </div>
+
+      <SectionTitle>Endereço (domicílio)</SectionTitle>
+      <div className="grid grid-cols-4 items-start gap-4">
+        <Label htmlFor={`${idPrefix}-cep`} className="text-right pt-2">
+          CEP
+        </Label>
+        <div className="col-span-3 space-y-1">
+          <Input
+            id={`${idPrefix}-cep`}
+            placeholder="00000-000"
+            inputMode="numeric"
+            className={fieldClass(!!err.addressCep)}
+            aria-invalid={!!err.addressCep}
+            {...register("addressCep")}
+          />
+          <FormFieldError message={err.addressCep?.message} id={`${idPrefix}-cep-error`} />
+        </div>
+      </div>
+      <div className="grid grid-cols-4 items-start gap-4">
+        <Label htmlFor={`${idPrefix}-log`} className="text-right pt-2">
+          Logradouro
+        </Label>
+        <div className="col-span-3 space-y-1">
+          <Input
+            id={`${idPrefix}-log`}
+            className={fieldClass(!!err.addressLogradouro)}
+            aria-invalid={!!err.addressLogradouro}
+            {...register("addressLogradouro")}
+          />
+          <FormFieldError message={err.addressLogradouro?.message} />
+        </div>
+      </div>
+      <div className="grid grid-cols-4 items-start gap-4">
+        <Label htmlFor={`${idPrefix}-num`} className="text-right pt-2">
+          Número
+        </Label>
+        <div className="col-span-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="space-y-1">
+            <Input
+              id={`${idPrefix}-num`}
+              className={fieldClass(!!err.addressNumero)}
+              aria-invalid={!!err.addressNumero}
+              {...register("addressNumero")}
+            />
+            <FormFieldError message={err.addressNumero?.message} />
+          </div>
+          <div className="sm:col-span-2 space-y-1">
+            <Label htmlFor={`${idPrefix}-comp`} className="text-xs text-muted-foreground">
+              Complemento (opcional)
+            </Label>
+            <Input id={`${idPrefix}-comp`} {...register("addressComplemento")} />
+            <FormFieldError message={err.addressComplemento?.message} />
+          </div>
+        </div>
+      </div>
+      <div className="grid grid-cols-4 items-start gap-4">
+        <Label htmlFor={`${idPrefix}-bairro`} className="text-right pt-2">
+          Bairro
+        </Label>
+        <div className="col-span-3 space-y-1">
+          <Input
+            id={`${idPrefix}-bairro`}
+            className={fieldClass(!!err.addressBairro)}
+            aria-invalid={!!err.addressBairro}
+            {...register("addressBairro")}
+          />
+          <FormFieldError message={err.addressBairro?.message} />
+        </div>
+      </div>
+      <div className="grid grid-cols-4 items-start gap-4">
+        <Label className="text-right pt-2">Cidade / UF</Label>
+        <div className="col-span-3 grid grid-cols-1 gap-4 sm:grid-cols-5">
+          <div className="sm:col-span-4 space-y-1">
+            <Input
+              id={`${idPrefix}-cidade`}
+              placeholder="Cidade"
+              className={fieldClass(!!err.addressCidade)}
+              aria-invalid={!!err.addressCidade}
+              {...register("addressCidade")}
+            />
+            <FormFieldError message={err.addressCidade?.message} />
+          </div>
+          <div className="space-y-1">
+            <Input
+              id={`${idPrefix}-uf`}
+              placeholder="UF"
+              maxLength={2}
+              className={cn("uppercase", fieldClass(!!err.addressUf))}
+              aria-invalid={!!err.addressUf}
+              {...register("addressUf")}
+            />
+            <FormFieldError message={err.addressUf?.message} />
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
 
 export default function PacientesPage() {
   const { patients, addPatient, updatePatient, deletePatient } = useMockData();
@@ -77,38 +296,28 @@ export default function PacientesPage() {
 
   const addForm = useForm<PatientCreateFormValues>({
     resolver: zodResolver(patientCreateFormSchema),
-    defaultValues: defaultCreateValues,
+    defaultValues: emptyPatientCreateFormValues,
   });
 
   const editForm = useForm<PatientEditFormValues>({
     resolver: zodResolver(patientEditFormSchema),
     defaultValues: {
-      ...defaultCreateValues,
+      ...emptyPatientCreateFormValues,
       status: "active",
     },
   });
 
   const filteredPatients = patients.filter((patient) => {
-    const matchesSearch =
-      patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      patient.diagnosis.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = patientMatchesSearch(patient, searchTerm.trim());
     const matchesStatus =
       statusFilter === "all" || patient.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
   const onCreateSubmit = (data: PatientCreateFormValues) => {
-    addPatient({
-      name: data.name,
-      age: data.age,
-      diagnosis: data.diagnosis,
-      phone: data.phone,
-      status: "active",
-      lastSession: new Date().toLocaleDateString("pt-BR"),
-      registeredAt: toLocalDateString(new Date()),
-    });
+    addPatient(patientFromCreateForm(data));
     setIsAddModalOpen(false);
-    addForm.reset(defaultCreateValues);
+    addForm.reset(emptyPatientCreateFormValues);
   };
 
   const startEdit = (patient: Patient) => {
@@ -118,25 +327,12 @@ export default function PacientesPage() {
 
   React.useEffect(() => {
     if (!editingPatient || !isEditModalOpen) return;
-    editForm.reset({
-      name: editingPatient.name,
-      age: editingPatient.age,
-      diagnosis: editingPatient.diagnosis,
-      phone: editingPatient.phone,
-      status: editingPatient.status,
-    });
+    editForm.reset(patientToEditFormValues(editingPatient));
   }, [editingPatient, isEditModalOpen, editForm]);
 
   const onEditSubmit = (data: PatientEditFormValues) => {
     if (!editingPatient) return;
-    updatePatient({
-      ...editingPatient,
-      name: data.name,
-      age: data.age,
-      diagnosis: data.diagnosis,
-      phone: data.phone,
-      status: data.status,
-    });
+    updatePatient(patientFromEditForm(editingPatient, data));
     setIsEditModalOpen(false);
     setEditingPatient(null);
   };
@@ -147,13 +343,16 @@ export default function PacientesPage() {
     }
   };
 
+  const dialogClass =
+    "max-h-[90vh] overflow-y-auto w-[95vw] sm:max-w-2xl gap-0 py-6";
+
   return (
     <div className="p-8 space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Pacientes</h1>
           <p className="text-muted-foreground">
-            Gerencie seus pacientes e históricos clínicos.
+            Cadastro completo para atendimento domiciliar: endereço, contato e dados clínicos.
           </p>
         </div>
 
@@ -162,7 +361,7 @@ export default function PacientesPage() {
           onOpenChange={(open) => {
             setIsAddModalOpen(open);
             if (open) {
-              addForm.reset(defaultCreateValues);
+              addForm.reset(emptyPatientCreateFormValues);
             }
           }}
         >
@@ -172,113 +371,19 @@ export default function PacientesPage() {
               Novo paciente
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className={dialogClass}>
             <DialogHeader>
               <DialogTitle>Cadastrar novo paciente</DialogTitle>
               <DialogDescription>
-                Preencha as informações básicas para iniciar o acompanhamento.
+                Inclua endereço e formas de contato — essenciais para visitas em domicílio.
               </DialogDescription>
             </DialogHeader>
-            <form onSubmit={addForm.handleSubmit(onCreateSubmit)} className="space-y-2">
-              <div className="grid grid-cols-4 items-start gap-4 py-2">
-                <Label htmlFor="add-name" className="text-right pt-2">
-                  Nome
-                </Label>
-                <div className="col-span-3 space-y-1">
-                  <Input
-                    id="add-name"
-                    className={cn(addForm.formState.errors.name && "border-destructive")}
-                    aria-invalid={!!addForm.formState.errors.name}
-                    aria-describedby={
-                      addForm.formState.errors.name ? "add-name-error" : undefined
-                    }
-                    {...addForm.register("name")}
-                  />
-                  <FormFieldError
-                    message={addForm.formState.errors.name?.message}
-                    id="add-name-error"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-4 items-start gap-4">
-                <Label htmlFor="add-age" className="text-right pt-2">
-                  Idade
-                </Label>
-                <div className="col-span-3 space-y-1">
-                  <Controller
-                    name="age"
-                    control={addForm.control}
-                    render={({ field }) => (
-                      <Input
-                        id="add-age"
-                        type="number"
-                        min={0}
-                        max={130}
-                        className={cn(addForm.formState.errors.age && "border-destructive")}
-                        aria-invalid={!!addForm.formState.errors.age}
-                        aria-describedby={
-                          addForm.formState.errors.age ? "add-age-error" : undefined
-                        }
-                        value={field.value === 0 ? "" : field.value}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          field.onChange(v === "" ? 0 : parseInt(v, 10));
-                        }}
-                        onBlur={field.onBlur}
-                        name={field.name}
-                        ref={field.ref}
-                      />
-                    )}
-                  />
-                  <FormFieldError
-                    message={addForm.formState.errors.age?.message}
-                    id="add-age-error"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-4 items-start gap-4">
-                <Label htmlFor="add-dx" className="text-right pt-2">
-                  Diagnóstico
-                </Label>
-                <div className="col-span-3 space-y-1">
-                  <Input
-                    id="add-dx"
-                    className={cn(
-                      addForm.formState.errors.diagnosis && "border-destructive"
-                    )}
-                    aria-invalid={!!addForm.formState.errors.diagnosis}
-                    aria-describedby={
-                      addForm.formState.errors.diagnosis ? "add-dx-error" : undefined
-                    }
-                    {...addForm.register("diagnosis")}
-                  />
-                  <FormFieldError
-                    message={addForm.formState.errors.diagnosis?.message}
-                    id="add-dx-error"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-4 items-start gap-4">
-                <Label htmlFor="add-phone" className="text-right pt-2">
-                  Telefone
-                </Label>
-                <div className="col-span-3 space-y-1">
-                  <Input
-                    id="add-phone"
-                    className={cn(addForm.formState.errors.phone && "border-destructive")}
-                    aria-invalid={!!addForm.formState.errors.phone}
-                    aria-describedby={
-                      addForm.formState.errors.phone ? "add-phone-error" : undefined
-                    }
-                    {...addForm.register("phone")}
-                  />
-                  <FormFieldError
-                    message={addForm.formState.errors.phone?.message}
-                    id="add-phone-error"
-                  />
-                </div>
-              </div>
-              <DialogFooter className="pt-4">
+            <form
+              onSubmit={addForm.handleSubmit(onCreateSubmit)}
+              className="flex flex-col gap-4 py-4"
+            >
+              <PatientFormRows form={addForm} idPrefix="add" />
+              <DialogFooter className="flex justify-end pt-2 sm:justify-end">
                 <Button type="submit">Salvar paciente</Button>
               </DialogFooter>
             </form>
@@ -290,7 +395,7 @@ export default function PacientesPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar por nome ou diagnóstico..."
+            placeholder="Buscar por nome, diagnóstico, e-mail ou endereço..."
             className="pl-10"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -312,93 +417,113 @@ export default function PacientesPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredPatients.map((patient) => (
-          <Card
-            key={patient.id}
-            className="hover:shadow-md transition-shadow relative overflow-hidden"
-          >
-            <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="h-10 w-10 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold uppercase">
-                  {patient.name
-                    .split(" ")
-                    .map((n) => n[0])
-                    .slice(0, 2)
-                    .join("")}
+        {filteredPatients.map((patient) => {
+          const age = ageFromBirthDateIso(patient.birthDate);
+          const cidadeUf = `${patient.address.cidade} – ${patient.address.uf}`;
+          return (
+            <Card
+              key={patient.id}
+              className="hover:shadow-md transition-shadow relative overflow-hidden"
+            >
+              <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="h-10 w-10 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold uppercase">
+                    {patient.name
+                      .split(" ")
+                      .map((n) => n[0])
+                      .slice(0, 2)
+                      .join("")}
+                  </div>
+                  <div className="min-w-0">
+                    <CardTitle className="text-base font-semibold truncate">
+                      {patient.name}
+                    </CardTitle>
+                    <p className="text-xs text-muted-foreground">
+                      {age} anos · {cidadeUf}
+                    </p>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <CardTitle className="text-base font-semibold truncate">
-                    {patient.name}
-                  </CardTitle>
-                  <p className="text-xs text-muted-foreground">{patient.age} anos</p>
-                </div>
-              </div>
 
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
-                    <MoreVertical className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => startEdit(patient)}>
-                    <Edit className="mr-2 h-4 w-4" /> Editar
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    className="text-destructive"
-                    onClick={() => handleDeletePatient(patient.id)}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => startEdit(patient)}>
+                      <Edit className="mr-2 h-4 w-4" /> Editar
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="text-destructive"
+                      onClick={() => handleDeletePatient(patient.id)}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" /> Excluir
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </CardHeader>
+              <CardContent className="pt-4 space-y-4">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Activity className="h-4 w-4 text-primary shrink-0" />
+                    <span className="font-medium shrink-0">Diagnóstico:</span>
+                    <span className="text-muted-foreground truncate">{patient.diagnosis}</span>
+                  </div>
+                  <div className="flex items-start gap-2 text-sm">
+                    <MapPin className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                    <span className="text-muted-foreground line-clamp-2">
+                      {patient.address.logradouro}, {patient.address.numero}
+                      {patient.address.complemento ? `, ${patient.address.complemento}` : ""} ·{" "}
+                      {patient.address.bairro} · CEP {formatCepDisplay(patient.address.cep)}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <span>{patient.phone}</span>
+                  </div>
+                  {patient.email ? (
+                    <div className="flex items-center gap-2 text-sm min-w-0">
+                      <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span className="truncate text-muted-foreground">{patient.email}</span>
+                    </div>
+                  ) : null}
+                  <div className="flex items-center gap-2 text-sm">
+                    <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <span>Última sessão: {patient.lastSession}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-2 gap-2 flex-wrap">
+                  <span
+                    className={`text-[10px] font-bold px-2 py-1 rounded-full uppercase ${
+                      patient.status === "active"
+                        ? "bg-green-100 text-green-700"
+                        : "bg-gray-100 text-gray-700"
+                    }`}
                   >
-                    <Trash2 className="mr-2 h-4 w-4" /> Excluir
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </CardHeader>
-            <CardContent className="pt-4 space-y-4">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm">
-                  <Activity className="h-4 w-4 text-primary shrink-0" />
-                  <span className="font-medium shrink-0">Diagnóstico:</span>
-                  <span className="text-muted-foreground truncate">{patient.diagnosis}</span>
+                    {patient.status === "active" ? "Ativo" : "Inativo"}
+                  </span>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" className="h-8 gap-1" asChild>
+                      <Link href={`/pacientes/${patient.id}`}>
+                        <FileText className="h-3.5 w-3.5" />
+                        Prontuário
+                      </Link>
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0" asChild>
+                      <Link href="/agenda" aria-label="Abrir agenda">
+                        <Calendar className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <span>{patient.phone}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <span>Última sessão: {patient.lastSession}</span>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between pt-2 gap-2 flex-wrap">
-                <span
-                  className={`text-[10px] font-bold px-2 py-1 rounded-full uppercase ${
-                    patient.status === "active"
-                      ? "bg-green-100 text-green-700"
-                      : "bg-gray-100 text-gray-700"
-                  }`}
-                >
-                  {patient.status === "active" ? "Ativo" : "Inativo"}
-                </span>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="h-8 gap-1" asChild>
-                    <Link href={`/pacientes/${patient.id}`}>
-                      <FileText className="h-3.5 w-3.5" />
-                      Prontuário
-                    </Link>
-                  </Button>
-                  <Button size="sm" variant="ghost" className="h-8 w-8 p-0" asChild>
-                    <Link href="/agenda" aria-label="Abrir agenda">
-                      <Calendar className="h-4 w-4" />
-                    </Link>
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       {editingPatient && (
@@ -409,113 +534,19 @@ export default function PacientesPage() {
             if (!open) setEditingPatient(null);
           }}
         >
-          <DialogContent>
+          <DialogContent className={dialogClass}>
             <DialogHeader>
               <DialogTitle>Editar paciente</DialogTitle>
               <DialogDescription>
                 Atualize as informações de {editingPatient.name}.
               </DialogDescription>
             </DialogHeader>
-            <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-2">
-              <div className="grid grid-cols-4 items-start gap-4 py-2">
-                <Label htmlFor="edit-name" className="text-right pt-2">
-                  Nome
-                </Label>
-                <div className="col-span-3 space-y-1">
-                  <Input
-                    id="edit-name"
-                    className={cn(editForm.formState.errors.name && "border-destructive")}
-                    aria-invalid={!!editForm.formState.errors.name}
-                    aria-describedby={
-                      editForm.formState.errors.name ? "edit-name-error" : undefined
-                    }
-                    {...editForm.register("name")}
-                  />
-                  <FormFieldError
-                    message={editForm.formState.errors.name?.message}
-                    id="edit-name-error"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-4 items-start gap-4">
-                <Label htmlFor="edit-age" className="text-right pt-2">
-                  Idade
-                </Label>
-                <div className="col-span-3 space-y-1">
-                  <Controller
-                    name="age"
-                    control={editForm.control}
-                    render={({ field }) => (
-                      <Input
-                        id="edit-age"
-                        type="number"
-                        min={0}
-                        max={130}
-                        className={cn(editForm.formState.errors.age && "border-destructive")}
-                        aria-invalid={!!editForm.formState.errors.age}
-                        aria-describedby={
-                          editForm.formState.errors.age ? "edit-age-error" : undefined
-                        }
-                        value={field.value}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          field.onChange(v === "" ? 0 : parseInt(v, 10));
-                        }}
-                        onBlur={field.onBlur}
-                        name={field.name}
-                        ref={field.ref}
-                      />
-                    )}
-                  />
-                  <FormFieldError
-                    message={editForm.formState.errors.age?.message}
-                    id="edit-age-error"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-4 items-start gap-4">
-                <Label htmlFor="edit-dx" className="text-right pt-2">
-                  Diagnóstico
-                </Label>
-                <div className="col-span-3 space-y-1">
-                  <Input
-                    id="edit-dx"
-                    className={cn(
-                      editForm.formState.errors.diagnosis && "border-destructive"
-                    )}
-                    aria-invalid={!!editForm.formState.errors.diagnosis}
-                    aria-describedby={
-                      editForm.formState.errors.diagnosis ? "edit-dx-error" : undefined
-                    }
-                    {...editForm.register("diagnosis")}
-                  />
-                  <FormFieldError
-                    message={editForm.formState.errors.diagnosis?.message}
-                    id="edit-dx-error"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-4 items-start gap-4">
-                <Label htmlFor="edit-phone" className="text-right pt-2">
-                  Telefone
-                </Label>
-                <div className="col-span-3 space-y-1">
-                  <Input
-                    id="edit-phone"
-                    className={cn(editForm.formState.errors.phone && "border-destructive")}
-                    aria-invalid={!!editForm.formState.errors.phone}
-                    aria-describedby={
-                      editForm.formState.errors.phone ? "edit-phone-error" : undefined
-                    }
-                    {...editForm.register("phone")}
-                  />
-                  <FormFieldError
-                    message={editForm.formState.errors.phone?.message}
-                    id="edit-phone-error"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-4 items-start gap-4">
+            <form
+              onSubmit={editForm.handleSubmit(onEditSubmit)}
+              className="flex flex-col gap-4 py-4"
+            >
+              <PatientFormRows form={editForm} idPrefix="edit" />
+              <div className="grid grid-cols-4 items-start gap-4 w-full">
                 <Label htmlFor="edit-status" className="text-right pt-2">
                   Status
                 </Label>
@@ -531,11 +562,6 @@ export default function PacientesPage() {
                             editForm.formState.errors.status && "border-destructive"
                           )}
                           aria-invalid={!!editForm.formState.errors.status}
-                          aria-describedby={
-                            editForm.formState.errors.status
-                              ? "edit-status-error"
-                              : undefined
-                          }
                         >
                           <SelectValue />
                         </SelectTrigger>
@@ -546,13 +572,10 @@ export default function PacientesPage() {
                       </Select>
                     )}
                   />
-                  <FormFieldError
-                    message={editForm.formState.errors.status?.message}
-                    id="edit-status-error"
-                  />
+                  <FormFieldError message={editForm.formState.errors.status?.message} />
                 </div>
               </div>
-              <DialogFooter className="pt-4">
+              <DialogFooter className="flex justify-end pt-2 sm:justify-end">
                 <Button type="submit">Salvar alterações</Button>
               </DialogFooter>
             </form>

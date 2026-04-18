@@ -11,6 +11,13 @@ export function parseLocalDate(date: string): Date {
   return new Date(year, month - 1, day);
 }
 
+/** yyyy-mm-dd → dd/mm/aaaa (exibição) */
+export function formatIsoDateToBR(iso: string): string {
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return iso;
+  return `${m[3]}/${m[2]}/${m[1]}`;
+}
+
 /** dd/mm/aaaa → Date local */
 export function parseBRDate(date: string): Date {
   const [d, m, y] = date.split("/").map(Number);

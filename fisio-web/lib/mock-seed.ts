@@ -1,14 +1,45 @@
 import { addDays, startOfWeekMonday, toLocalDateString } from "@/lib/date-utils";
 import type { Anamnese, Appointment, Evolucao, Patient } from "@/lib/types";
 
+function addr(
+  cep: string,
+  logradouro: string,
+  numero: string,
+  complemento: string,
+  bairro: string,
+  cidade: string,
+  uf: string
+): Patient["address"] {
+  return {
+    cep: cep.replace(/\D/g, ""),
+    logradouro,
+    numero,
+    complemento,
+    bairro,
+    cidade,
+    uf: uf.toUpperCase(),
+  };
+}
+
 export function buildInitialPatients(): Patient[] {
   return [
     {
       id: 1,
       name: "Maria Silva",
-      age: 45,
+      birthDate: "1980-08-12",
+      email: "maria.silva@email.com",
+      cpf: "123.456.789-00",
       diagnosis: "Hérnia de Disco L4-L5",
       phone: "(11) 98888-7777",
+      address: addr(
+        "01310100",
+        "Av. Paulista",
+        "1000",
+        "Apto 42",
+        "Bela Vista",
+        "São Paulo",
+        "SP"
+      ),
       lastSession: "18/03/2026",
       status: "active",
       registeredAt: "2026-01-10",
@@ -16,9 +47,11 @@ export function buildInitialPatients(): Patient[] {
     {
       id: 2,
       name: "João Santos",
-      age: 32,
+      birthDate: "1993-11-05",
+      email: "joao.santos@email.com",
       diagnosis: "Pós-operatório de LCA",
       phone: "(11) 97777-6666",
+      address: addr("05407002", "Rua dos Pinheiros", "450", "", "Pinheiros", "São Paulo", "SP"),
       lastSession: "19/03/2026",
       status: "active",
       registeredAt: "2026-01-15",
@@ -26,9 +59,11 @@ export function buildInitialPatients(): Patient[] {
     {
       id: 3,
       name: "Ana Oliveira",
-      age: 58,
+      birthDate: "1967-04-22",
+      email: "ana.oliveira@email.com",
       diagnosis: "Artrite Reumatoide",
       phone: "(11) 96666-5555",
+      address: addr("05078001", "Rua Cardoso de Almeida", "120", "Casa 2", "Perdizes", "São Paulo", "SP"),
       lastSession: "15/03/2026",
       status: "active",
       registeredAt: "2026-02-01",
@@ -36,9 +71,11 @@ export function buildInitialPatients(): Patient[] {
     {
       id: 4,
       name: "José Carlos",
-      age: 27,
+      birthDate: "1998-01-30",
+      email: "",
       diagnosis: "Tendinite de Aquiles",
       phone: "(11) 95555-4444",
+      address: addr("03115000", "Rua Vergueiro", "2500", "Bloco B", "Vila Mariana", "São Paulo", "SP"),
       lastSession: "10/03/2026",
       status: "inactive",
       registeredAt: "2025-11-01",
@@ -46,9 +83,11 @@ export function buildInitialPatients(): Patient[] {
     {
       id: 5,
       name: "Pedro Rocha",
-      age: 41,
+      birthDate: "1984-06-18",
+      email: "pedro.rocha@email.com",
       diagnosis: "Epicondilite lateral",
       phone: "(11) 94444-3333",
+      address: addr("04551000", "Rua Funchal", "88", "", "Vila Olímpia", "São Paulo", "SP"),
       lastSession: "20/03/2026",
       status: "active",
       registeredAt: "2026-04-01",

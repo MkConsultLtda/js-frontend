@@ -2,12 +2,27 @@ export type AppointmentStatus = "confirmed" | "pending" | "cancelled";
 
 export type PatientStatus = "active" | "inactive";
 
+/** Endereço para atendimento domiciliar e correspondência */
+export interface PatientAddress {
+  cep: string;
+  logradouro: string;
+  numero: string;
+  complemento: string;
+  bairro: string;
+  cidade: string;
+  uf: string;
+}
+
 export interface Patient {
   id: number;
   name: string;
-  age: number;
+  /** Data de nascimento — yyyy-mm-dd */
+  birthDate: string;
+  email: string;
+  cpf?: string;
   diagnosis: string;
   phone: string;
+  address: PatientAddress;
   /** Exibição dd/mm/aaaa */
   lastSession: string;
   status: PatientStatus;
