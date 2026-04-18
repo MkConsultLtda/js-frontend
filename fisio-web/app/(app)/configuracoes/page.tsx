@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,9 @@ export default function ConfiguracoesPage() {
             <Building2 className="h-5 w-5" />
             Clínica
           </CardTitle>
-          <CardDescription>Nome e contato exibidos nos relatórios (futuro).</CardDescription>
+          <p className="text-sm text-muted-foreground">
+            Nome e contato exibidos nos relatórios (futuro).
+          </p>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -45,7 +47,9 @@ export default function ConfiguracoesPage() {
             <Bell className="h-5 w-5" />
             Notificações
           </CardTitle>
-          <CardDescription>Lembretes de sessão — integração futura.</CardDescription>
+          <p className="text-sm text-muted-foreground">
+            Lembretes de sessão — integração futura.
+          </p>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
@@ -63,7 +67,9 @@ export default function ConfiguracoesPage() {
             <Shield className="h-5 w-5" />
             Privacidade
           </CardTitle>
-          <CardDescription>LGPD e retenção de dados virão com o backend.</CardDescription>
+          <p className="text-sm text-muted-foreground">
+            LGPD e retenção de dados virão com o backend.
+          </p>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
