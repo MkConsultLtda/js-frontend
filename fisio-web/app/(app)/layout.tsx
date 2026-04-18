@@ -1,4 +1,4 @@
-import { AppSidebar } from "@/components/app-sidebar";
+import { AppShell } from "@/components/app-shell";
 import { MockDataProvider } from "@/components/mock-data-provider";
 
 export default function AppLayout({
@@ -8,10 +8,7 @@ export default function AppLayout({
 }) {
   return (
     <MockDataProvider>
-      <div className="flex h-screen bg-background overflow-hidden">
-        <AppSidebar />
-        <main className="flex-1 overflow-y-auto">{children}</main>
-      </div>
+      <AppShell>{children}</AppShell>
     </MockDataProvider>
   );
 }

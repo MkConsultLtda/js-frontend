@@ -41,7 +41,7 @@ Abra [http://localhost:3000](http://localhost:3000). Rotas principais após logi
 - **Pacientes:** busca, filtro ativo/inativo, cadastro/edição/exclusão, link para prontuário e para a agenda.
 - **Anamnese e evolução:** registros por paciente, edição, filtro via URL a partir do prontuário.
 - **Dashboard:** números do dia, gráfico da semana (seg–sáb), lista de hoje — todos alimentados pelo **mesmo estado mock** da agenda/pacientes.
-- **Layout:** sidebar com navegação; área logada em `app/(app)/layout.tsx`.
+- **Layout responsivo:** abaixo do breakpoint Tailwind `md`, a sidebar fica oculta; a barra superior traz o ícone de menu, que abre um **drawer** (fecha ao tocar fora, ao escolher um link ou com **Esc**). A partir de `md`, a sidebar fixa permanece como antes (`components/app-shell.tsx`, `components/sidebar-nav.tsx`, `lib/navigation.ts`).
 - **Tipos centralizados:** `lib/types.ts`.
 - **Seed único:** `lib/mock-seed.ts` (pacientes, agendamentos da semana, anamnese/evolução iniciais).
 
@@ -154,10 +154,13 @@ app/
   (app)/           # área logada + MockDataProvider no layout
   (auth)/login/    # login
 components/
+  app-shell.tsx    # layout logado (sidebar desktop + drawer mobile)
+  sidebar-nav.tsx  # itens de menu compartilhados
   mock-data-provider.tsx
-  agenda/          # formulário reutilizável da agenda
-  ui/              # componentes base
+  agenda/
+  ui/
 lib/
+  navigation.ts    # links da sidebar (única fonte)
   types.ts
   mock-seed.ts
   date-utils.ts
