@@ -4,17 +4,20 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useMockData } from "@/components/mock-data-provider";
+import { useClinicSettings } from "@/lib/clinic-settings";
 import { buildRouteForDate } from "@/lib/route-day";
+import { parseBRDate, toLocalDateString } from "@/lib/date-utils";
 import {
-  countAppointmentsByWeekday,
-  parseBRDate,
-  toLocalDateString,
-} from "@/lib/date-utils";
+  countAppointmentsByWorkingWeekdays,
+  formatWorkingDaysShort,
+  isWorkingDateKey,
+} from "@/lib/schedule-utils";
 import { Users, Calendar, Clock, Activity, TrendingUp, Route, ExternalLink } from "lucide-react";
 import { useMemo } from "react";
 
 export default function DashboardPage() {
   const { patients, appointments } = useMockData();
+  const { settings } = useClinicSettings();
 
   const metrics = useMemo(() => {
     const now = new Date();
@@ -46,7 +49,14 @@ export default function DashboardPage() {
       return lastSession < weekAgo && p.status === "active";
     }).length;
 
-    const weekBars = countAppointmentsByWeekday(appointments, now);
+    const weekBars = countAppointmentsByWorkingWeekdays(
+      appointments,
+      now,
+      settings.workingWeekdays
+    );
+    const isTodayWorking = isWorkingDateKey(today, settings.workingWeekdays);
+    const workingDaysLabel = formatWorkingDaysShort(settings.workingWeekdays);
+    const maxSessions = Math.max(1, settings.maxSessionsPerDay);
 
     return {
       appointmentsToday: todayAppointments.length,
@@ -57,8 +67,11 @@ export default function DashboardPage() {
       pendingEvaluations,
       weekBars,
       today,
+      isTodayWorking,
+      workingDaysLabel,
+      maxSessions,
     };
-  }, [patients, appointments]);
+  }, [patients, appointments, settings.workingWeekdays, settings.maxSessionsPerDay]);
 
   const routeToday = useMemo(
     () => buildRouteForDate(metrics.today, appointments, patients),
@@ -88,8 +101,25 @@ export default function DashboardPage() {
           <Button variant="outline" asChild>
             <Link href="/pacientes">Novo paciente</Link>
           </Button>
+          <Button variant="ghost" size="sm" asChild className="text-muted-foreground">
+            <Link href="/configuracoes">Dias de atendimento</Link>
+          </Button>
         </div>
       </div>
+
+      {!metrics.isTodayWorking && (
+        <div
+          className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+          role="status"
+        >
+          <p className="font-medium">Hoje não está na sua grade de atendimento</p>
+          <p className="mt-1 text-amber-900/90">
+            Seus dias configurados: <strong>{metrics.workingDaysLabel}</strong>. O gráfico da semana
+            abaixo mostra só esses dias; os cartões de hoje refletem a data real do calendário
+            (útil se houver visita excepcional).
+          </p>
+        </div>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
@@ -155,8 +185,11 @@ export default function DashboardPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5" />
-              Semana atual (seg–sáb)
+              Semana atual
             </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Dias: {metrics.workingDaysLabel} (definido em Configurações)
+            </p>
           </CardHeader>
           <CardContent className="pl-2">
             <div className="space-y-4">
@@ -236,6 +269,7 @@ export default function DashboardPage() {
           </CardTitle>
           <p className="text-sm text-muted-foreground">
             Ordem sugerida por CEP para visitas hoje — exceto cancelados. Abre o mapa em nova aba.
+            {!metrics.isTodayWorking && " Se hoje não é dia de expediente, a lista pode ser vazia ou excepcional."}
           </p>
         </CardHeader>
         <CardContent>
@@ -323,10 +357,10 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-purple-600">
-              {Math.round((metrics.appointmentsToday / 8) * 100)}%
+              {Math.round((metrics.appointmentsToday / metrics.maxSessions) * 100)}%
             </div>
             <p className="text-xs text-muted-foreground">
-              Referência: até 8 sessões/dia (mock)
+              Referência: até {metrics.maxSessions} sessões/dia (Configurações)
             </p>
           </CardContent>
         </Card>

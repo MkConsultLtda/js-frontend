@@ -11,7 +11,26 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useMockData } from "@/components/mock-data-provider";
 import { clearMockSessionCookie } from "@/lib/auth-session";
 import { useClinicSettings } from "@/lib/clinic-settings";
-import { Bell, Building2, Shield, ScrollText, LogOut, RotateCcw } from "lucide-react";
+import {
+  Bell,
+  Building2,
+  Shield,
+  ScrollText,
+  LogOut,
+  RotateCcw,
+  CalendarDays,
+} from "lucide-react";
+import { normalizeWorkingWeekdays } from "@/lib/schedule-utils";
+
+const WEEKDAY_OPTIONS: { value: number; label: string }[] = [
+  { value: 1, label: "Segunda-feira" },
+  { value: 2, label: "Terça-feira" },
+  { value: 3, label: "Quarta-feira" },
+  { value: 4, label: "Quinta-feira" },
+  { value: 5, label: "Sexta-feira" },
+  { value: 6, label: "Sábado" },
+  { value: 0, label: "Domingo" },
+];
 
 export default function ConfiguracoesPage() {
   const router = useRouter();
@@ -112,6 +131,66 @@ export default function ConfiguracoesPage() {
               automaticamente.
             </p>
           </div>
+
+          <div className="rounded-lg border bg-muted/30 p-4 space-y-4">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <CalendarDays className="h-4 w-4" />
+              Agenda e dashboard
+            </div>
+            <fieldset className="space-y-2">
+              <legend className="text-sm text-muted-foreground mb-2">
+                Dias em que você atende (o calendário e o gráfico da semana seguem esta escolha)
+              </legend>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {WEEKDAY_OPTIONS.map(({ value, label }) => (
+                  <label
+                    key={value}
+                    className="flex cursor-pointer items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm hover:bg-muted/60"
+                  >
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-input"
+                      checked={normalizeWorkingWeekdays(draft.workingWeekdays).includes(value)}
+                      onChange={() => {
+                        setDraft((prev) => {
+                          const cur = new Set(normalizeWorkingWeekdays(prev.workingWeekdays));
+                          if (cur.has(value)) cur.delete(value);
+                          else cur.add(value);
+                          let arr = [...cur].sort((a, b) => a - b);
+                          if (arr.length === 0) arr = [1];
+                          return { ...prev, workingWeekdays: arr };
+                        });
+                      }}
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+            <div className="space-y-2">
+              <Label htmlFor="max-sessions">Meta de sessões por dia (card Ocupação)</Label>
+              <Input
+                id="max-sessions"
+                type="number"
+                min={1}
+                max={24}
+                value={draft.maxSessionsPerDay}
+                onChange={(e) =>
+                  setDraft((d) => ({
+                    ...d,
+                    maxSessionsPerDay: Math.min(
+                      24,
+                      Math.max(1, parseInt(e.target.value, 10) || 1)
+                    ),
+                  }))
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                Usado só como referência percentual no dashboard; não bloqueia novos agendamentos.
+              </p>
+            </div>
+          </div>
+
           <Button type="button" onClick={saveClinic}>
             Salvar preferências
           </Button>

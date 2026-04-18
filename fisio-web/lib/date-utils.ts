@@ -39,17 +39,3 @@ export function startOfWeekMonday(date: Date): Date {
   return d;
 }
 
-/** Conta agendamentos por dia útil (seg–sáb) na semana que contém `reference` */
-export function countAppointmentsByWeekday(
-  appointments: { date: string }[],
-  reference: Date
-): { label: string; count: number; dateKey: string }[] {
-  const monday = startOfWeekMonday(reference);
-  const labels = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-  return labels.map((label, i) => {
-    const day = addDays(monday, i);
-    const dateKey = toLocalDateString(day);
-    const count = appointments.filter((a) => a.date === dateKey).length;
-    return { label, count, dateKey };
-  });
-}

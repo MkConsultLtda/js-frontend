@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -20,13 +21,18 @@ import {
 import { AppointmentFormFields } from "@/components/agenda/appointment-form-fields";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useMockData } from "@/components/mock-data-provider";
-import { getClinicSettings } from "@/lib/clinic-settings";
+import { useClinicSettings } from "@/lib/clinic-settings";
 import {
   appointmentFormSchema,
   emptyAppointmentForm,
   type AppointmentFormValues,
 } from "@/lib/schemas/appointment-form";
 import { parseLocalDate, toLocalDateString } from "@/lib/date-utils";
+import {
+  isWorkingDate,
+  nextWorkingDateKey,
+  normalizeWorkingWeekdays,
+} from "@/lib/schedule-utils";
 import { formatAddressOneLine } from "@/lib/patient-utils";
 import {
   buildSessionConfirmationWhatsappText,
@@ -61,8 +67,12 @@ export default function AgendaPage() {
     deleteAppointment,
   } = useMockData();
 
+  const { settings } = useClinicSettings();
   const patientOptions = patients.map((p) => ({ id: p.id, name: p.name }));
-  const clinicForMessages = getClinicSettings();
+  const workingWeekdays = React.useMemo(
+    () => normalizeWorkingWeekdays(settings.workingWeekdays),
+    [settings.workingWeekdays]
+  );
 
   const [currentDate, setCurrentDate] = React.useState(() => new Date());
   const [selectedDate, setSelectedDate] = React.useState(() =>
@@ -98,18 +108,25 @@ export default function AgendaPage() {
     return matchesSearch && matchesStatus && matchesDate;
   });
 
-  const navigateMonth = (direction: "prev" | "next" | "today") => {
-    const newDate = new Date(currentDate);
-    if (direction === "prev") {
-      newDate.setMonth(newDate.getMonth() - 1);
-    } else if (direction === "next") {
-      newDate.setMonth(newDate.getMonth() + 1);
-    } else {
-      newDate.setTime(Date.now());
-    }
-    setCurrentDate(newDate);
-    setSelectedDate(toLocalDateString(newDate));
-  };
+  const navigateMonth = React.useCallback(
+    (direction: "prev" | "next" | "today") => {
+      if (direction === "today") {
+        const snapped = nextWorkingDateKey(toLocalDateString(new Date()), workingWeekdays);
+        setCurrentDate(parseLocalDate(snapped));
+        setSelectedDate(snapped);
+        return;
+      }
+      const newDate = new Date(currentDate);
+      if (direction === "prev") {
+        newDate.setMonth(newDate.getMonth() - 1);
+      } else {
+        newDate.setMonth(newDate.getMonth() + 1);
+      }
+      setCurrentDate(newDate);
+      setSelectedDate(toLocalDateString(newDate));
+    },
+    [currentDate, workingWeekdays]
+  );
 
   const getDaysInCurrentMonth = () =>
     new Date(
@@ -193,6 +210,15 @@ export default function AgendaPage() {
     createForm.setValue("date", selectedDate);
   }, [selectedDate, isCreateDialogOpen, isEditDialogOpen, createForm]);
 
+  React.useEffect(() => {
+    if (isWorkingDate(parseLocalDate(selectedDate), workingWeekdays)) return;
+    const next = nextWorkingDateKey(selectedDate, workingWeekdays);
+    if (next !== selectedDate) {
+      setSelectedDate(next);
+      setCurrentDate(parseLocalDate(next));
+    }
+  }, [selectedDate, workingWeekdays]);
+
   return (
     <div className="p-8 space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -262,6 +288,13 @@ export default function AgendaPage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Dias clicáveis seguem{" "}
+              <Link href="/configuracoes" className="underline underline-offset-2">
+                seus dias de atendimento
+              </Link>
+              . Outros dias aparecem esmaecidos (ex.: fim de semana se você só atende na semana).
+            </p>
             <div className="text-sm text-muted-foreground">
               {currentDate.toLocaleDateString("pt-BR", {
                 month: "long",
@@ -279,6 +312,15 @@ export default function AgendaPage() {
                 const isActive =
                   dayNumber >= 1 && dayNumber <= getDaysInCurrentMonth();
                 const isSelected = isActive && dayNumber === selectedDay;
+                const cellDate = isActive
+                  ? new Date(
+                      currentDate.getFullYear(),
+                      currentDate.getMonth(),
+                      dayNumber
+                    )
+                  : null;
+                const isWorkingDayCell =
+                  cellDate !== null && isWorkingDate(cellDate, workingWeekdays);
                 const hasAppointments =
                   isActive &&
                   appointments.some((apt) => {
@@ -295,14 +337,31 @@ export default function AgendaPage() {
                     type="button"
                     key={index}
                     disabled={!isActive}
-                    onClick={() => isActive && handleSelectDay(dayNumber)}
+                    aria-disabled={isActive && !isWorkingDayCell}
+                    title={
+                      isActive && !isWorkingDayCell
+                        ? "Fora dos dias de atendimento configurados"
+                        : undefined
+                    }
+                    onClick={() => {
+                      if (!isActive) return;
+                      if (!isWorkingDayCell) {
+                        toast.message(
+                          "Este dia não está nos seus dias de atendimento. Ajuste em Configurações se precisar."
+                        );
+                        return;
+                      }
+                      handleSelectDay(dayNumber);
+                    }}
                     className={`h-10 rounded-lg border text-sm transition ${
                       !isActive
                         ? "bg-transparent text-muted-foreground pointer-events-none"
-                        : isSelected
-                          ? "bg-primary text-white border-primary"
-                          : "bg-background hover:bg-muted"
-                    } ${hasAppointments && !isSelected ? "ring-1 ring-primary/30" : ""}`}
+                        : !isWorkingDayCell
+                          ? "bg-muted/40 text-muted-foreground border-dashed cursor-not-allowed"
+                          : isSelected
+                            ? "bg-primary text-white border-primary"
+                            : "bg-background hover:bg-muted"
+                    } ${hasAppointments && !isSelected && isWorkingDayCell ? "ring-1 ring-primary/30" : ""}`}
                   >
                     {isActive ? dayNumber : ""}
                   </button>
@@ -386,8 +445,8 @@ export default function AgendaPage() {
                       const confirmText = buildSessionConfirmationWhatsappText({
                         appointment,
                         patient,
-                        therapistName: clinicForMessages.therapistName,
-                        clinicName: clinicForMessages.clinicName,
+                        therapistName: settings.therapistName,
+                        clinicName: settings.clinicName,
                       });
                       return (
                         <div
