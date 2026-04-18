@@ -1,5 +1,14 @@
 export type AppointmentStatus = "confirmed" | "pending" | "cancelled";
 
+export type AppointmentPaymentStatus = "pending" | "paid";
+
+/** Evento local para trilha de auditoria (LGPD / suporte) — mock até existir API */
+export interface AuditLogEntry {
+  id: string;
+  at: string;
+  message: string;
+}
+
 export type PatientStatus = "active" | "inactive";
 
 /** Endereço para atendimento domiciliar e correspondência */
@@ -41,6 +50,8 @@ export interface Appointment {
   type: string;
   status: AppointmentStatus;
   notes?: string;
+  /** Pagamento da sessão (controle financeiro leve) */
+  paymentStatus: AppointmentPaymentStatus;
 }
 
 export interface Anamnese {

@@ -213,6 +213,40 @@ export function AppointmentFormFields({
       </div>
 
       <div className="grid grid-cols-4 items-start gap-4">
+        <Label htmlFor={`${idPrefix}payment`} className={cn("text-right pt-2", rowClass(!!errors.paymentStatus))}>
+          Pagamento
+        </Label>
+        <div className="col-span-3 space-y-1">
+          <Controller
+            name="paymentStatus"
+            control={control}
+            render={({ field }) => (
+              <Select value={field.value} onValueChange={field.onChange}>
+                <SelectTrigger
+                  id={`${idPrefix}payment`}
+                  className={cn(errors.paymentStatus && "border-destructive")}
+                  aria-invalid={!!errors.paymentStatus}
+                  aria-describedby={
+                    errors.paymentStatus ? `${idPrefix}payment-error` : undefined
+                  }
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pending">Pendente</SelectItem>
+                  <SelectItem value="paid">Pago</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+          />
+          <FormFieldError
+            message={errors.paymentStatus?.message}
+            id={`${idPrefix}payment-error`}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-4 items-start gap-4">
         <Label htmlFor={`${idPrefix}notes`} className="text-right pt-2">
           Observações
         </Label>

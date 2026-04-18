@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
@@ -45,6 +46,14 @@ export default function PacienteProntuarioPage() {
 
   const anamneseCount = anamneses.filter((a) => a.patientId === id).length;
   const evolucaoCount = evolucoes.filter((e) => e.patientId === id).length;
+
+  const evolucoesRecentes = useMemo(() => {
+    return evolucoes
+      .filter((e) => e.patientId === id)
+      .sort((a, b) => b.dataSessao.localeCompare(a.dataSessao))
+      .slice(0, 5);
+  }, [evolucoes, id]);
+
   const proximos = appointments
     .filter((a) => a.patientId === id)
     .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))
@@ -133,6 +142,40 @@ export default function PacienteProntuarioPage() {
           <CardContent className="text-sm">{patient.lastSession}</CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <TrendingUp className="h-5 w-5" />
+            Evoluções recentes
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Últimos registros mockados deste paciente (ordem por data da sessão).
+          </p>
+        </CardHeader>
+        <CardContent>
+          {evolucoesRecentes.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhuma evolução registrada ainda.</p>
+          ) : (
+            <ul className="space-y-3 text-sm">
+              {evolucoesRecentes.map((e) => (
+                <li key={e.id} className="rounded-lg border border-border/70 p-3">
+                  <p className="font-medium text-foreground">
+                    {e.dataSessao} · {e.tipoSessao}
+                  </p>
+                  <p className="text-muted-foreground line-clamp-2 mt-1">{e.objetivosSessao}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Dor {e.dorPre} → {e.dorPos}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+          <Button asChild variant="outline" className="mt-4">
+            <Link href={`/evolucao?pacienteId=${id}`}>Ver todas as evoluções</Link>
+          </Button>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="border-primary/20">

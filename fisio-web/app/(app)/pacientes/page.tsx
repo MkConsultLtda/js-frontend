@@ -2,8 +2,9 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useForm, Controller, type UseFormReturn } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
 import {
   Search,
   Plus,
@@ -48,6 +49,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { FormFieldError } from "@/components/form-field-error";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { PatientFormRows } from "@/components/pacientes/patient-form-fields";
 import { useMockData } from "@/components/mock-data-provider";
 import {
   emptyPatientCreateFormValues,
@@ -65,224 +68,6 @@ import {
 import type { Patient } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="w-full text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b pb-1">
-      {children}
-    </p>
-  );
-}
-
-function PatientFormRows({
-  form: formProp,
-  idPrefix,
-}: {
-  form: UseFormReturn<PatientCreateFormValues> | UseFormReturn<PatientEditFormValues>;
-  idPrefix: "add" | "edit";
-}) {
-  /** Campos comuns aos dois formulários; status fica só no modal de edição. */
-  const form = formProp as UseFormReturn<PatientCreateFormValues>;
-  const { register, formState } = form;
-  const err = formState.errors;
-
-  const fieldClass = (hasError: boolean) => cn(hasError && "border-destructive");
-
-  return (
-    <>
-      <SectionTitle>Dados pessoais</SectionTitle>
-      <div className="grid grid-cols-4 items-start gap-4">
-        <Label htmlFor={`${idPrefix}-name`} className="text-right pt-2">
-          Nome
-        </Label>
-        <div className="col-span-3 space-y-1">
-          <Input
-            id={`${idPrefix}-name`}
-            className={fieldClass(!!err.name)}
-            aria-invalid={!!err.name}
-            aria-describedby={err.name ? `${idPrefix}-name-error` : undefined}
-            {...register("name")}
-          />
-          <FormFieldError message={err.name?.message} id={`${idPrefix}-name-error`} />
-        </div>
-      </div>
-      <div className="grid grid-cols-4 items-start gap-4">
-        <Label htmlFor={`${idPrefix}-birth`} className="text-right pt-2">
-          Nascimento
-        </Label>
-        <div className="col-span-3 space-y-1">
-          <Input
-            id={`${idPrefix}-birth`}
-            type="date"
-            className={fieldClass(!!err.birthDate)}
-            aria-invalid={!!err.birthDate}
-            aria-describedby={err.birthDate ? `${idPrefix}-birth-error` : undefined}
-            {...register("birthDate")}
-          />
-          <FormFieldError message={err.birthDate?.message} id={`${idPrefix}-birth-error`} />
-        </div>
-      </div>
-      <div className="grid grid-cols-4 items-start gap-4">
-        <Label htmlFor={`${idPrefix}-cpf`} className="text-right pt-2">
-          CPF
-        </Label>
-        <div className="col-span-3 space-y-1">
-          <Input
-            id={`${idPrefix}-cpf`}
-            placeholder="Opcional"
-            className={fieldClass(!!err.cpf)}
-            aria-invalid={!!err.cpf}
-            {...register("cpf")}
-          />
-          <FormFieldError message={err.cpf?.message} />
-        </div>
-      </div>
-
-      <SectionTitle>Contato</SectionTitle>
-      <div className="grid grid-cols-4 items-start gap-4">
-        <Label htmlFor={`${idPrefix}-email`} className="text-right pt-2">
-          E-mail
-        </Label>
-        <div className="col-span-3 space-y-1">
-          <Input
-            id={`${idPrefix}-email`}
-            type="email"
-            autoComplete="email"
-            placeholder="Opcional"
-            className={fieldClass(!!err.email)}
-            aria-invalid={!!err.email}
-            {...register("email")}
-          />
-          <FormFieldError message={err.email?.message} />
-        </div>
-      </div>
-      <div className="grid grid-cols-4 items-start gap-4">
-        <Label htmlFor={`${idPrefix}-phone`} className="text-right pt-2">
-          Telefone
-        </Label>
-        <div className="col-span-3 space-y-1">
-          <Input
-            id={`${idPrefix}-phone`}
-            type="tel"
-            className={fieldClass(!!err.phone)}
-            aria-invalid={!!err.phone}
-            {...register("phone")}
-          />
-          <FormFieldError message={err.phone?.message} id={`${idPrefix}-phone-error`} />
-        </div>
-      </div>
-      <div className="grid grid-cols-4 items-start gap-4">
-        <Label htmlFor={`${idPrefix}-dx`} className="text-right pt-2">
-          Diagnóstico
-        </Label>
-        <div className="col-span-3 space-y-1">
-          <Input
-            id={`${idPrefix}-dx`}
-            className={fieldClass(!!err.diagnosis)}
-            aria-invalid={!!err.diagnosis}
-            {...register("diagnosis")}
-          />
-          <FormFieldError message={err.diagnosis?.message} id={`${idPrefix}-dx-error`} />
-        </div>
-      </div>
-
-      <SectionTitle>Endereço (domicílio)</SectionTitle>
-      <div className="grid grid-cols-4 items-start gap-4">
-        <Label htmlFor={`${idPrefix}-cep`} className="text-right pt-2">
-          CEP
-        </Label>
-        <div className="col-span-3 space-y-1">
-          <Input
-            id={`${idPrefix}-cep`}
-            placeholder="00000-000"
-            inputMode="numeric"
-            className={fieldClass(!!err.addressCep)}
-            aria-invalid={!!err.addressCep}
-            {...register("addressCep")}
-          />
-          <FormFieldError message={err.addressCep?.message} id={`${idPrefix}-cep-error`} />
-        </div>
-      </div>
-      <div className="grid grid-cols-4 items-start gap-4">
-        <Label htmlFor={`${idPrefix}-log`} className="text-right pt-2">
-          Logradouro
-        </Label>
-        <div className="col-span-3 space-y-1">
-          <Input
-            id={`${idPrefix}-log`}
-            className={fieldClass(!!err.addressLogradouro)}
-            aria-invalid={!!err.addressLogradouro}
-            {...register("addressLogradouro")}
-          />
-          <FormFieldError message={err.addressLogradouro?.message} />
-        </div>
-      </div>
-      <div className="grid grid-cols-4 items-start gap-4">
-        <Label htmlFor={`${idPrefix}-num`} className="text-right pt-2">
-          Número
-        </Label>
-        <div className="col-span-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div className="space-y-1">
-            <Input
-              id={`${idPrefix}-num`}
-              className={fieldClass(!!err.addressNumero)}
-              aria-invalid={!!err.addressNumero}
-              {...register("addressNumero")}
-            />
-            <FormFieldError message={err.addressNumero?.message} />
-          </div>
-          <div className="sm:col-span-2 space-y-1">
-            <Label htmlFor={`${idPrefix}-comp`} className="text-xs text-muted-foreground">
-              Complemento (opcional)
-            </Label>
-            <Input id={`${idPrefix}-comp`} {...register("addressComplemento")} />
-            <FormFieldError message={err.addressComplemento?.message} />
-          </div>
-        </div>
-      </div>
-      <div className="grid grid-cols-4 items-start gap-4">
-        <Label htmlFor={`${idPrefix}-bairro`} className="text-right pt-2">
-          Bairro
-        </Label>
-        <div className="col-span-3 space-y-1">
-          <Input
-            id={`${idPrefix}-bairro`}
-            className={fieldClass(!!err.addressBairro)}
-            aria-invalid={!!err.addressBairro}
-            {...register("addressBairro")}
-          />
-          <FormFieldError message={err.addressBairro?.message} />
-        </div>
-      </div>
-      <div className="grid grid-cols-4 items-start gap-4">
-        <Label className="text-right pt-2">Cidade / UF</Label>
-        <div className="col-span-3 grid grid-cols-1 gap-4 sm:grid-cols-5">
-          <div className="sm:col-span-4 space-y-1">
-            <Input
-              id={`${idPrefix}-cidade`}
-              placeholder="Cidade"
-              className={fieldClass(!!err.addressCidade)}
-              aria-invalid={!!err.addressCidade}
-              {...register("addressCidade")}
-            />
-            <FormFieldError message={err.addressCidade?.message} />
-          </div>
-          <div className="space-y-1">
-            <Input
-              id={`${idPrefix}-uf`}
-              placeholder="UF"
-              maxLength={2}
-              className={cn("uppercase", fieldClass(!!err.addressUf))}
-              aria-invalid={!!err.addressUf}
-              {...register("addressUf")}
-            />
-            <FormFieldError message={err.addressUf?.message} />
-          </div>
-        </div>
-      </div>
-    </>
-  );
-}
-
 export default function PacientesPage() {
   const { patients, addPatient, updatePatient, deletePatient } = useMockData();
 
@@ -293,6 +78,7 @@ export default function PacientesPage() {
   const [isAddModalOpen, setIsAddModalOpen] = React.useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
   const [editingPatient, setEditingPatient] = React.useState<Patient | null>(null);
+  const [patientToDeleteId, setPatientToDeleteId] = React.useState<number | null>(null);
 
   const addForm = useForm<PatientCreateFormValues>({
     resolver: zodResolver(patientCreateFormSchema),
@@ -318,6 +104,7 @@ export default function PacientesPage() {
     addPatient(patientFromCreateForm(data));
     setIsAddModalOpen(false);
     addForm.reset(emptyPatientCreateFormValues);
+    toast.success("Paciente cadastrado.");
   };
 
   const startEdit = (patient: Patient) => {
@@ -335,12 +122,7 @@ export default function PacientesPage() {
     updatePatient(patientFromEditForm(editingPatient, data));
     setIsEditModalOpen(false);
     setEditingPatient(null);
-  };
-
-  const handleDeletePatient = (id: number) => {
-    if (confirm("Tem certeza que deseja excluir este paciente?")) {
-      deletePatient(id);
-    }
+    toast.success("Paciente atualizado.");
   };
 
   const dialogClass =
@@ -458,7 +240,7 @@ export default function PacientesPage() {
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="text-destructive"
-                      onClick={() => handleDeletePatient(patient.id)}
+                      onClick={() => setPatientToDeleteId(patient.id)}
                     >
                       <Trash2 className="mr-2 h-4 w-4" /> Excluir
                     </DropdownMenuItem>
@@ -589,6 +371,23 @@ export default function PacientesPage() {
           <p>Nenhum paciente encontrado.</p>
         </div>
       )}
+
+      <ConfirmDialog
+        open={patientToDeleteId !== null}
+        onOpenChange={(open) => {
+          if (!open) setPatientToDeleteId(null);
+        }}
+        title="Excluir paciente?"
+        description="Serão removidos também os agendamentos, anamneses e evoluções vinculados a este paciente (dados mock locais)."
+        confirmLabel="Excluir tudo"
+        variant="destructive"
+        onConfirm={() => {
+          if (patientToDeleteId == null) return;
+          deletePatient(patientToDeleteId);
+          toast.success("Paciente e registros vinculados removidos.");
+          setPatientToDeleteId(null);
+        }}
+      />
     </div>
   );
 }

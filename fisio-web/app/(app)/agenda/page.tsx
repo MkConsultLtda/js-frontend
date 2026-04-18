@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,13 +18,21 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { AppointmentFormFields } from "@/components/agenda/appointment-form-fields";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useMockData } from "@/components/mock-data-provider";
+import { getClinicSettings } from "@/lib/clinic-settings";
 import {
   appointmentFormSchema,
   emptyAppointmentForm,
   type AppointmentFormValues,
 } from "@/lib/schemas/appointment-form";
 import { parseLocalDate, toLocalDateString } from "@/lib/date-utils";
+import { formatAddressOneLine } from "@/lib/patient-utils";
+import {
+  buildSessionConfirmationWhatsappText,
+  buildWhatsAppLink,
+  toWhatsAppDigits,
+} from "@/lib/session-messages";
 import type { Appointment } from "@/lib/types";
 import {
   Calendar as CalendarIcon,
@@ -36,6 +45,9 @@ import {
   Activity,
   Edit,
   Trash2,
+  MessageCircle,
+  ExternalLink,
+  Banknote,
 } from "lucide-react";
 
 const dayNames = ["D", "S", "T", "Q", "Q", "S", "S"];
@@ -50,6 +62,7 @@ export default function AgendaPage() {
   } = useMockData();
 
   const patientOptions = patients.map((p) => ({ id: p.id, name: p.name }));
+  const clinicForMessages = getClinicSettings();
 
   const [currentDate, setCurrentDate] = React.useState(() => new Date());
   const [selectedDate, setSelectedDate] = React.useState(() =>
@@ -61,6 +74,9 @@ export default function AgendaPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [editingAppointment, setEditingAppointment] =
     React.useState<Appointment | null>(null);
+  const [appointmentToDeleteId, setAppointmentToDeleteId] = React.useState<number | null>(
+    null
+  );
 
   const createForm = useForm<AppointmentFormValues>({
     resolver: zodResolver(appointmentFormSchema),
@@ -127,9 +143,11 @@ export default function AgendaPage() {
       type: values.type,
       status: values.status,
       notes: values.notes?.trim() || undefined,
+      paymentStatus: values.paymentStatus,
     });
     setIsCreateDialogOpen(false);
     createForm.reset(emptyAppointmentForm(selectedDate));
+    toast.success("Agendamento criado.");
   };
 
   const onEditSubmit = (values: AppointmentFormValues) => {
@@ -147,10 +165,12 @@ export default function AgendaPage() {
       type: values.type,
       status: values.status,
       notes: values.notes?.trim() || undefined,
+      paymentStatus: values.paymentStatus,
     });
     setIsEditDialogOpen(false);
     setEditingAppointment(null);
     editForm.reset(emptyAppointmentForm(selectedDate));
+    toast.success("Agendamento atualizado.");
   };
 
   const openEditModal = (appointment: Appointment) => {
@@ -162,6 +182,7 @@ export default function AgendaPage() {
       duration: String(appointment.duration) as AppointmentFormValues["duration"],
       type: appointment.type,
       status: appointment.status,
+      paymentStatus: appointment.paymentStatus ?? "pending",
       notes: appointment.notes ?? "",
     });
     setIsEditDialogOpen(true);
@@ -356,69 +377,155 @@ export default function AgendaPage() {
                 <div className="space-y-4">
                   {filteredAppointments
                     .sort((a, b) => a.time.localeCompare(b.time))
-                    .map((appointment) => (
-                      <div
-                        key={appointment.id}
-                        className="flex flex-col gap-4 rounded-lg border p-4 transition hover:bg-muted/50 sm:flex-row sm:items-center sm:justify-between"
-                      >
-                        <div className="space-y-2">
-                          <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                            <span className="inline-flex items-center gap-1">
-                              <Clock className="h-4 w-4" />
-                              {appointment.time}
-                            </span>
-                            <span className="inline-flex items-center gap-1">
-                              <User className="h-4 w-4" />
-                              {appointment.patientName}
-                            </span>
-                          </div>
-                          <div className="flex flex-wrap items-center gap-3 text-sm">
-                            <span className="inline-flex items-center gap-1 text-muted-foreground">
-                              <Activity className="h-4 w-4" />
-                              {appointment.type}
-                            </span>
-                            <span
-                              className={`rounded-full px-2 py-1 text-xs ${
-                                appointment.status === "confirmed"
-                                  ? "bg-green-100 text-green-800"
+                    .map((appointment) => {
+                      const patient = patients.find((p) => p.id === appointment.patientId);
+                      const mapsUrl = patient
+                        ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(formatAddressOneLine(patient.address))}`
+                        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(appointment.patientName)}`;
+                      const waDigits = patient ? toWhatsAppDigits(patient.phone) : "";
+                      const confirmText = buildSessionConfirmationWhatsappText({
+                        appointment,
+                        patient,
+                        therapistName: clinicForMessages.therapistName,
+                        clinicName: clinicForMessages.clinicName,
+                      });
+                      return (
+                        <div
+                          key={appointment.id}
+                          className="flex flex-col gap-4 rounded-lg border p-4 transition hover:bg-muted/50 sm:flex-row sm:items-start sm:justify-between"
+                        >
+                          <div className="space-y-2 min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                              <span className="inline-flex items-center gap-1">
+                                <Clock className="h-4 w-4 shrink-0" />
+                                {appointment.time}
+                              </span>
+                              <span className="inline-flex items-center gap-1 min-w-0">
+                                <User className="h-4 w-4 shrink-0" />
+                                <span className="truncate">{appointment.patientName}</span>
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2 text-sm">
+                              <span className="inline-flex items-center gap-1 text-muted-foreground">
+                                <Activity className="h-4 w-4 shrink-0" />
+                                {appointment.type}
+                              </span>
+                              <span
+                                className={`rounded-full px-2 py-1 text-xs ${
+                                  appointment.status === "confirmed"
+                                    ? "bg-green-100 text-green-800"
+                                    : appointment.status === "pending"
+                                      ? "bg-yellow-100 text-yellow-800"
+                                      : "bg-red-100 text-red-800"
+                                }`}
+                              >
+                                {appointment.status === "confirmed"
+                                  ? "Confirmado"
                                   : appointment.status === "pending"
-                                    ? "bg-yellow-100 text-yellow-800"
-                                    : "bg-red-100 text-red-800"
-                              }`}
+                                    ? "Pendente"
+                                    : "Cancelado"}
+                              </span>
+                              <span
+                                className={`rounded-full px-2 py-1 text-xs ${
+                                  appointment.paymentStatus === "paid"
+                                    ? "bg-emerald-100 text-emerald-900"
+                                    : "bg-slate-100 text-slate-700"
+                                }`}
+                              >
+                                {appointment.paymentStatus === "paid" ? "Pago" : "Pag. pendente"}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2 shrink-0">
+                            <Button variant="outline" size="sm" asChild className="gap-1">
+                              <a href={mapsUrl} target="_blank" rel="noopener noreferrer">
+                                <ExternalLink className="h-4 w-4" />
+                                Mapa
+                              </a>
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-1"
+                              type="button"
+                              onClick={() => {
+                                if (!waDigits) {
+                                  toast.error("Paciente sem telefone válido para WhatsApp.");
+                                  return;
+                                }
+                                void navigator.clipboard.writeText(confirmText);
+                                toast.success("Mensagem copiada. Abra o WhatsApp para colar.");
+                                window.open(buildWhatsAppLink(waDigits, confirmText), "_blank");
+                              }}
                             >
-                              {appointment.status === "confirmed"
-                                ? "Confirmado"
-                                : appointment.status === "pending"
-                                  ? "Pendente"
-                                  : "Cancelado"}
-                            </span>
+                              <MessageCircle className="h-4 w-4" />
+                              WhatsApp
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              type="button"
+                              className="gap-1"
+                              onClick={() => {
+                                updateAppointment({
+                                  ...appointment,
+                                  paymentStatus:
+                                    appointment.paymentStatus === "paid" ? "pending" : "paid",
+                                });
+                                toast.message(
+                                  appointment.paymentStatus === "paid"
+                                    ? "Marcado como pagamento pendente."
+                                    : "Marcado como pago."
+                                );
+                              }}
+                            >
+                              <Banknote className="h-4 w-4" />
+                              {appointment.paymentStatus === "paid" ? "Desmarcar pago" : "Pago"}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openEditModal(appointment)}
+                              aria-label="Editar agendamento"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setAppointmentToDeleteId(appointment.id)}
+                              className="text-red-600 hover:text-red-700"
+                              aria-label="Excluir agendamento"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openEditModal(appointment)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => deleteAppointment(appointment.id)}
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                 </div>
               )}
             </CardContent>
           </Card>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={appointmentToDeleteId !== null}
+        onOpenChange={(open) => {
+          if (!open) setAppointmentToDeleteId(null);
+        }}
+        title="Excluir agendamento?"
+        description="Esta ação não pode ser desfeita. O registro será removido do mock local."
+        confirmLabel="Excluir"
+        variant="destructive"
+        onConfirm={() => {
+          if (appointmentToDeleteId == null) return;
+          deleteAppointment(appointmentToDeleteId);
+          toast.success("Agendamento excluído.");
+          setAppointmentToDeleteId(null);
+        }}
+      />
 
       <Dialog
         open={isEditDialogOpen}

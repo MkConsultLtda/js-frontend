@@ -112,6 +112,7 @@ export function buildInitialAppointments(): Appointment[] {
       duration: 50,
       type: "Fisioterapia Motora",
       status: "confirmed",
+      paymentStatus: "paid",
     },
     {
       id: 2,
@@ -122,6 +123,7 @@ export function buildInitialAppointments(): Appointment[] {
       duration: 50,
       type: "Avaliação Inicial",
       status: "confirmed",
+      paymentStatus: "paid",
     },
     {
       id: 3,
@@ -132,6 +134,7 @@ export function buildInitialAppointments(): Appointment[] {
       duration: 50,
       type: "Acupuntura",
       status: "pending",
+      paymentStatus: "pending",
     },
     {
       id: 4,
@@ -142,6 +145,7 @@ export function buildInitialAppointments(): Appointment[] {
       duration: 50,
       type: "RPG",
       status: "confirmed",
+      paymentStatus: "pending",
     },
     {
       id: 5,
@@ -152,6 +156,7 @@ export function buildInitialAppointments(): Appointment[] {
       duration: 50,
       type: "Fisioterapia Esportiva",
       status: "pending",
+      paymentStatus: "pending",
     },
     {
       id: 6,
@@ -162,6 +167,7 @@ export function buildInitialAppointments(): Appointment[] {
       duration: 50,
       type: "Fisioterapia Motora",
       status: "confirmed",
+      paymentStatus: "pending",
     },
     {
       id: 7,
@@ -172,6 +178,7 @@ export function buildInitialAppointments(): Appointment[] {
       duration: 50,
       type: "RPG",
       status: "confirmed",
+      paymentStatus: "paid",
     },
     {
       id: 8,
@@ -182,6 +189,7 @@ export function buildInitialAppointments(): Appointment[] {
       duration: 50,
       type: "Pilates",
       status: "pending",
+      paymentStatus: "pending",
     },
     {
       id: 9,
@@ -192,6 +200,7 @@ export function buildInitialAppointments(): Appointment[] {
       duration: 50,
       type: "Avaliação Inicial",
       status: "confirmed",
+      paymentStatus: "pending",
     },
     {
       id: 10,
@@ -202,6 +211,7 @@ export function buildInitialAppointments(): Appointment[] {
       duration: 50,
       type: "Acupuntura",
       status: "cancelled",
+      paymentStatus: "pending",
     },
     {
       id: 11,
@@ -212,6 +222,7 @@ export function buildInitialAppointments(): Appointment[] {
       duration: 50,
       type: "Fisioterapia Esportiva",
       status: "confirmed",
+      paymentStatus: "pending",
     },
   ];
 }

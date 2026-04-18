@@ -4,12 +4,13 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useMockData } from "@/components/mock-data-provider";
+import { buildRouteForDate } from "@/lib/route-day";
 import {
   countAppointmentsByWeekday,
   parseBRDate,
   toLocalDateString,
 } from "@/lib/date-utils";
-import { Users, Calendar, Clock, Activity, TrendingUp } from "lucide-react";
+import { Users, Calendar, Clock, Activity, TrendingUp, Route, ExternalLink } from "lucide-react";
 import { useMemo } from "react";
 
 export default function DashboardPage() {
@@ -58,6 +59,11 @@ export default function DashboardPage() {
       today,
     };
   }, [patients, appointments]);
+
+  const routeToday = useMemo(
+    () => buildRouteForDate(metrics.today, appointments, patients),
+    [metrics.today, appointments, patients]
+  );
 
   const todayList = useMemo(() => {
     return appointments
@@ -221,6 +227,53 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Route className="h-5 w-5" />
+            Rota do dia (domicílio)
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Ordem sugerida por CEP para visitas hoje — exceto cancelados. Abre o mapa em nova aba.
+          </p>
+        </CardHeader>
+        <CardContent>
+          {routeToday.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhuma visita agendada para hoje.</p>
+          ) : (
+            <ol className="space-y-3 text-sm">
+              {routeToday.map((stop, index) => (
+                <li
+                  key={stop.appointment.id}
+                  className="flex flex-wrap items-start justify-between gap-3 border-b border-border/60 pb-3 last:border-0 last:pb-0"
+                >
+                  <div className="min-w-0 space-y-1">
+                    <span className="font-semibold text-muted-foreground">{index + 1}.</span>{" "}
+                    <span className="font-medium">{stop.appointment.patientName}</span>
+                    <span className="text-muted-foreground">
+                      {" "}
+                      · {stop.appointment.time} · CEP {stop.cepSortKey}
+                    </span>
+                    {stop.patient ? (
+                      <p className="text-xs text-muted-foreground line-clamp-2">
+                        {stop.patient.address.bairro}, {stop.patient.address.cidade} —{" "}
+                        {stop.appointment.type}
+                      </p>
+                    ) : null}
+                  </div>
+                  <Button variant="outline" size="sm" className="shrink-0 gap-1" asChild>
+                    <a href={stop.mapsUrl} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      Mapa
+                    </a>
+                  </Button>
+                </li>
+              ))}
+            </ol>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card>

@@ -4,13 +4,10 @@ export const appointmentFormSchema = z.object({
   patientId: z.string().min(1, "Selecione um paciente"),
   date: z.string().min(1, "Informe a data"),
   time: z.string().min(1, "Informe o horário"),
-  duration: z.enum(["30", "50", "60", "90"], {
-    error: "Selecione a duração",
-  }),
+  duration: z.enum(["30", "50", "60", "90"]),
   type: z.string().min(1, "Selecione o tipo de sessão"),
-  status: z.enum(["confirmed", "pending", "cancelled"], {
-    error: "Selecione o status",
-  }),
+  status: z.enum(["confirmed", "pending", "cancelled"]),
+  paymentStatus: z.enum(["pending", "paid"]),
   notes: z.string(),
 });
 
@@ -24,6 +21,7 @@ export function emptyAppointmentForm(selectedDate: string): AppointmentFormValue
     duration: "50",
     type: "",
     status: "confirmed",
+    paymentStatus: "pending",
     notes: "",
   };
 }
