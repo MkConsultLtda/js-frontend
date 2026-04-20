@@ -10,16 +10,23 @@ import type { Appointment } from "@/lib/types";
 import { parseLocalDate, toLocalDateString } from "@/lib/date-utils";
 import { isWorkingDate } from "@/lib/schedule-utils";
 import {
-  computeWeekTimeRange,
   getWeekDatesContaining,
   hourTicks,
   parseTimeToMinutes,
+  WEEK_VIEW_DAY_RANGE,
 } from "@/lib/agenda-calendar-utils";
 import { cn } from "@/lib/utils";
 
 const DOW_SHORT = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"] as const;
 
-const HOUR_HEIGHT_PX = 52;
+/** Altura por hora na grade (24h → rolagem vertical no painel). */
+const HOUR_HEIGHT_PX = 36;
+
+function formatHourTickLabel(totalMinutes: number): string {
+  const h = Math.floor(totalMinutes / 60) % 24;
+  const m = totalMinutes % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
 
 type Props = {
   anchorDate: Date;
@@ -54,18 +61,15 @@ export function AgendaWeekView({
     return `${left} – ${right}`;
   }, [weekDates]);
 
-  const { startMin, endMin } = React.useMemo(
-    () => computeWeekTimeRange(weekDates, appointments),
-    [weekDates, appointments]
-  );
-
+  const startMin = WEEK_VIEW_DAY_RANGE.startMin;
+  const endMin = WEEK_VIEW_DAY_RANGE.endMin;
   const totalMinutes = endMin - startMin;
-  const gridHeightPx = Math.max(320, (totalMinutes / 60) * HOUR_HEIGHT_PX);
+  const gridHeightPx = (totalMinutes / 60) * HOUR_HEIGHT_PX;
 
   const ticks = React.useMemo(() => hourTicks(startMin, endMin), [startMin, endMin]);
 
   return (
-    <Card className="overflow-hidden">
+    <Card>
       <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <CalendarRange className="h-5 w-5" />
@@ -85,8 +89,8 @@ export function AgendaWeekView({
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-xs text-muted-foreground leading-relaxed">
-          A grade mostra a duração de cada atendimento. Espaços vazios são horários livres. Dias fora do
-          expediente ficam esmaecidos — veja{" "}
+          Grade com as 24 horas do dia (00:00–23:59). Role dentro do quadro abaixo para percorrer o dia
+          inteiro. Dias fora do expediente ficam esmaecidos — veja{" "}
           <Link href="/configuracoes" className="underline underline-offset-2">
             Configurações
           </Link>
@@ -94,142 +98,155 @@ export function AgendaWeekView({
         </p>
         <div className="text-sm font-medium capitalize">{rangeLabel}</div>
 
-        <p className="text-[11px] text-muted-foreground">
-          Role dentro da grade para ver todas as horas e atendimentos.
-        </p>
-
         <div
-          className="max-h-[min(75vh,880px)] overflow-y-auto overflow-x-auto rounded-xl border overscroll-contain scroll-smooth"
-          role="region"
-          aria-label="Grade semanal de horários"
+          className="flex h-[min(72vh,820px)] min-h-[320px] max-h-[90vh] flex-col overflow-hidden rounded-xl border bg-card"
+          role="presentation"
         >
-          <div className="min-w-[720px]">
-            <div className="sticky top-0 z-10 grid grid-cols-[52px_repeat(7,minmax(0,1fr))] border-b bg-background/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/80">
-              <div className="p-2" />
-              {weekDates.map((d, i) => {
-                const key = toLocalDateString(d);
-                const isSelected = key === selectedDate;
-                const working = isWorkingDate(d, workingWeekdays);
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => {
-                      if (!working) {
-                        toast.message(
-                          "Este dia não está nos seus dias de atendimento. Ajuste em Configurações se precisar."
-                        );
-                        return;
-                      }
-                      onSelectDateKey(key);
-                    }}
-                    className={cn(
-                      "border-l p-2 text-left text-xs transition",
-                      working ? "hover:bg-muted/60" : "cursor-not-allowed bg-muted/30 text-muted-foreground",
-                      isSelected && working && "bg-primary/10"
-                    )}
-                  >
-                    <div className="font-semibold text-[11px] text-muted-foreground">
-                      {DOW_SHORT[i] ?? ""}
-                    </div>
-                    <div className={cn("text-lg font-bold leading-none", isSelected && "text-primary")}>
-                      {d.getDate()}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="grid grid-cols-[52px_repeat(7,minmax(0,1fr))]">
-              <div
-                className="relative border-r bg-muted/20"
-                style={{ height: `${gridHeightPx}px` }}
-              >
-                {ticks.map((t) => {
-                  const y = ((t - startMin) / totalMinutes) * gridHeightPx;
+          <div
+            className="min-h-0 flex-1 touch-pan-y overflow-y-auto overflow-x-auto overscroll-contain [scrollbar-gutter:stable] [-webkit-overflow-scrolling:touch]"
+            role="region"
+            aria-label="Grade semanal: 24 horas, role para ver todas"
+            tabIndex={0}
+          >
+            <div className="min-w-[720px]">
+              <div className="sticky top-0 z-10 grid grid-cols-[56px_repeat(7,minmax(0,1fr))] border-b bg-background shadow-sm">
+                <div className="border-r bg-muted/30 p-1" aria-hidden />
+                {weekDates.map((d, i) => {
+                  const key = toLocalDateString(d);
+                  const isSelected = key === selectedDate;
+                  const working = isWorkingDate(d, workingWeekdays);
                   return (
-                    <div
-                      key={t}
-                      className="absolute left-0 right-0 flex -translate-y-1/2 items-start justify-end pr-2 text-[11px] text-muted-foreground"
-                      style={{ top: `${y}px` }}
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => {
+                        if (!working) {
+                          toast.message(
+                            "Este dia não está nos seus dias de atendimento. Ajuste em Configurações se precisar."
+                          );
+                          return;
+                        }
+                        onSelectDateKey(key);
+                      }}
+                      className={cn(
+                        "border-l p-2 text-left text-xs transition",
+                        working ? "hover:bg-muted/60" : "cursor-not-allowed bg-muted/30 text-muted-foreground",
+                        isSelected && working && "bg-primary/10"
+                      )}
                     >
-                      {String(Math.floor(t / 60)).padStart(2, "0")}:00
-                    </div>
+                      <div className="font-semibold text-[11px] text-muted-foreground">
+                        {DOW_SHORT[i] ?? ""}
+                      </div>
+                      <div className={cn("text-lg font-bold leading-none", isSelected && "text-primary")}>
+                        {d.getDate()}
+                      </div>
+                    </button>
                   );
                 })}
               </div>
 
-              {weekDates.map((d) => {
-                const key = toLocalDateString(d);
-                const working = isWorkingDate(d, workingWeekdays);
-                const dayAppointments = appointments
-                  .filter((a) => a.date === key)
-                  .sort((a, b) => parseTimeToMinutes(a.time) - parseTimeToMinutes(b.time));
+              <div className="grid grid-cols-[56px_repeat(7,minmax(0,1fr))]">
+                <div
+                  className="relative border-r bg-muted/20"
+                  style={{ height: `${gridHeightPx}px` }}
+                >
+                  {ticks.map((t) => {
+                    const y = ((t - startMin) / totalMinutes) * gridHeightPx;
+                    return (
+                      <div
+                        key={t}
+                        className="absolute left-0 right-0 flex -translate-y-1/2 items-start justify-end pr-1.5 text-[10px] tabular-nums text-muted-foreground"
+                        style={{ top: `${y}px` }}
+                      >
+                        {formatHourTickLabel(t)}
+                      </div>
+                    );
+                  })}
+                </div>
 
-                return (
-                  <div
-                    key={key}
-                    className={cn(
-                      "relative border-l",
-                      !working && "bg-muted/20",
-                      selectedDate === key && working && "bg-primary/5"
-                    )}
-                    style={{ height: `${gridHeightPx}px` }}
-                  >
-                    {ticks.map((t) => {
-                      const y = ((t - startMin) / totalMinutes) * gridHeightPx;
-                      return (
-                        <div
-                          key={t}
-                          className="pointer-events-none absolute left-0 right-0 border-t border-border/60"
-                          style={{ top: `${y}px` }}
-                        />
-                      );
-                    })}
+                {weekDates.map((d) => {
+                  const key = toLocalDateString(d);
+                  const working = isWorkingDate(d, workingWeekdays);
+                  const dayAppointments = appointments
+                    .filter((a) => a.date === key)
+                    .sort((a, b) => parseTimeToMinutes(a.time) - parseTimeToMinutes(b.time));
 
-                    {dayAppointments.map((apt) => {
-                      const start = parseTimeToMinutes(apt.time);
-                      const end = start + apt.duration;
-                      const clampedStart = Math.max(start, startMin);
-                      const clampedEnd = Math.min(end, endMin);
-                      if (clampedEnd <= startMin || clampedStart >= endMin) return null;
-                      const top = ((clampedStart - startMin) / totalMinutes) * gridHeightPx;
-                      const height = Math.max(
-                        18,
-                        ((Math.min(end, endMin) - Math.max(start, startMin)) / totalMinutes) *
-                          gridHeightPx
-                      );
+                  return (
+                    <div
+                      key={key}
+                      className={cn(
+                        "relative border-l",
+                        !working && "bg-muted/20",
+                        selectedDate === key && working && "bg-primary/5"
+                      )}
+                      style={{ height: `${gridHeightPx}px` }}
+                    >
+                      {ticks.map((t) => {
+                        const y = ((t - startMin) / totalMinutes) * gridHeightPx;
+                        return (
+                          <div
+                            key={t}
+                            className="pointer-events-none absolute left-0 right-0 border-t border-border/70"
+                            style={{ top: `${y}px` }}
+                          />
+                        );
+                      })}
 
-                      return (
-                        <button
-                          key={apt.id}
-                          type="button"
-                          onClick={() => onAppointmentClick(apt)}
-                          className={cn(
-                            "absolute left-0.5 right-0.5 overflow-hidden rounded-md border px-1 py-0.5 text-left text-[10px] leading-tight shadow-sm transition hover:brightness-95",
-                            apt.status === "cancelled" &&
-                              "border-muted bg-muted/80 text-muted-foreground line-through",
-                            apt.status === "confirmed" &&
-                              "border-emerald-200 bg-emerald-100 text-emerald-950 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-50",
-                            apt.status === "pending" &&
-                              "border-amber-200 bg-amber-100 text-amber-950 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-50",
-                            apt.status !== "confirmed" &&
-                              apt.status !== "pending" &&
-                              apt.status !== "cancelled" &&
-                              "border-slate-200 bg-slate-100 text-slate-900 dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-50"
-                          )}
-                          style={{ top: `${top}px`, height: `${height}px` }}
-                        >
-                          <div className="font-semibold">{apt.time}</div>
-                          <div className="truncate font-medium">{apt.patientName}</div>
-                          <div className="truncate opacity-80">{apt.type}</div>
-                          <div className="text-[9px] opacity-70">{apt.duration} min</div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                );
-              })}
+                      {Array.from({ length: 24 }, (_, h) => {
+                        const y = (h + 0.5) * HOUR_HEIGHT_PX;
+                        return (
+                          <div
+                            key={`half-${h}`}
+                            className="pointer-events-none absolute left-0 right-0 border-t border-border/25"
+                            style={{ top: `${y}px` }}
+                          />
+                        );
+                      })}
+
+                      {dayAppointments.map((apt) => {
+                        const start = parseTimeToMinutes(apt.time);
+                        const end = start + apt.duration;
+                        const clampedStart = Math.max(start, startMin);
+                        const clampedEnd = Math.min(end, endMin);
+                        if (clampedEnd <= startMin || clampedStart >= endMin) return null;
+                        const top = ((clampedStart - startMin) / totalMinutes) * gridHeightPx;
+                        const height = Math.max(
+                          16,
+                          ((Math.min(end, endMin) - Math.max(start, startMin)) / totalMinutes) *
+                            gridHeightPx
+                        );
+
+                        return (
+                          <button
+                            key={apt.id}
+                            type="button"
+                            onClick={() => onAppointmentClick(apt)}
+                            className={cn(
+                              "absolute left-0.5 right-0.5 overflow-hidden rounded-md border px-1 py-0.5 text-left text-[10px] leading-tight shadow-sm transition hover:brightness-95",
+                              apt.status === "cancelled" &&
+                                "border-muted bg-muted/80 text-muted-foreground line-through",
+                              apt.status === "confirmed" &&
+                                "border-emerald-200 bg-emerald-100 text-emerald-950 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-50",
+                              apt.status === "pending" &&
+                                "border-amber-200 bg-amber-100 text-amber-950 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-50",
+                              apt.status !== "confirmed" &&
+                                apt.status !== "pending" &&
+                                apt.status !== "cancelled" &&
+                                "border-slate-200 bg-slate-100 text-slate-900 dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-50"
+                            )}
+                            style={{ top: `${top}px`, height: `${height}px` }}
+                          >
+                            <div className="font-semibold">{apt.time}</div>
+                            <div className="truncate font-medium">{apt.patientName}</div>
+                            <div className="truncate opacity-80">{apt.type}</div>
+                            <div className="text-[9px] opacity-70">{apt.duration} min</div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>

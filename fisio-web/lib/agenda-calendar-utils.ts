@@ -1,13 +1,4 @@
-import { addDays, toLocalDateString } from "@/lib/date-utils";
-import type { Appointment } from "@/lib/types";
-
-/** Domingo = primeiro dia da semana (alinha ao calendário mensal da agenda). */
-export function startOfWeekSunday(date: Date): Date {
-  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const day = d.getDay();
-  d.setDate(d.getDate() - day);
-  return d;
-}
+import { addDays, startOfWeekSunday } from "@/lib/date-utils";
 
 export function getWeekDatesContaining(date: Date): Date[] {
   const start = startOfWeekSunday(date);
@@ -23,39 +14,10 @@ export function parseTimeToMinutes(time: string): number {
 }
 
 /**
- * Faixa horária visível na semana, com base nos atendimentos da semana.
- * Limites 06:00–23:00 para não estourar a tela.
+ * Grade semanal: dia completo 00:00 → 24:00 (meia-noite do dia seguinte),
+ * para permitir rolagem por todas as horas.
  */
-export function computeWeekTimeRange(
-  weekDates: Date[],
-  appointments: Appointment[]
-): { startMin: number; endMin: number } {
-  const keys = new Set(weekDates.map((d) => toLocalDateString(d)));
-  const list = appointments.filter((a) => keys.has(a.date));
-  const HARD_MIN = 6 * 60;
-  const HARD_MAX = 23 * 60;
-  const DEFAULT_START = 8 * 60;
-  const DEFAULT_END = 18 * 60;
-
-  if (list.length === 0) {
-    return { startMin: DEFAULT_START, endMin: DEFAULT_END };
-  }
-
-  let startMin = HARD_MAX;
-  let endMin = HARD_MIN;
-  for (const apt of list) {
-    const s = parseTimeToMinutes(apt.time);
-    const e = s + apt.duration;
-    startMin = Math.min(startMin, s);
-    endMin = Math.max(endMin, e);
-  }
-  startMin = Math.max(HARD_MIN, Math.floor(startMin / 60) * 60 - 60);
-  endMin = Math.min(HARD_MAX, Math.ceil(endMin / 60) * 60 + 60);
-  if (endMin <= startMin) {
-    return { startMin: DEFAULT_START, endMin: DEFAULT_END };
-  }
-  return { startMin, endMin };
-}
+export const WEEK_VIEW_DAY_RANGE = { startMin: 0, endMin: 24 * 60 } as const;
 
 export function hourTicks(startMin: number, endMin: number): number[] {
   const ticks: number[] = [];

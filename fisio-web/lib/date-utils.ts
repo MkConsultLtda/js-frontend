@@ -39,3 +39,11 @@ export function startOfWeekMonday(date: Date): Date {
   return d;
 }
 
+/** Domingo = primeiro dia da semana (mesmo critério do calendário mensal da agenda). */
+export function startOfWeekSunday(date: Date): Date {
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const day = d.getDay();
+  d.setDate(d.getDate() - day);
+  return d;
+}
+

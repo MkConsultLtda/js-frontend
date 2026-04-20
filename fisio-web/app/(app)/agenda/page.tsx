@@ -28,8 +28,8 @@ import {
 } from "@/lib/schemas/appointment-form";
 import { parseLocalDate, toLocalDateString } from "@/lib/date-utils";
 import {
+  closestWorkingDayInWeek,
   isWorkingDate,
-  nextWorkingDateKey,
   normalizeWorkingWeekdays,
 } from "@/lib/schedule-utils";
 import type { Appointment } from "@/lib/types";
@@ -90,9 +90,9 @@ export default function AgendaPage() {
   const navigateMonth = React.useCallback(
     (direction: "prev" | "next" | "today") => {
       if (direction === "today") {
-        const snapped = nextWorkingDateKey(toLocalDateString(new Date()), workingWeekdays);
-        setCurrentDate(parseLocalDate(snapped));
-        setSelectedDate(snapped);
+        const todayKey = toLocalDateString(new Date());
+        setCurrentDate(parseLocalDate(todayKey));
+        setSelectedDate(todayKey);
         return;
       }
       const newDate = new Date(currentDate);
@@ -104,15 +104,15 @@ export default function AgendaPage() {
       setCurrentDate(newDate);
       setSelectedDate(toLocalDateString(newDate));
     },
-    [currentDate, workingWeekdays]
+    [currentDate]
   );
 
   const navigateWeek = React.useCallback(
     (direction: "prev" | "next" | "today") => {
       if (direction === "today") {
-        const snapped = nextWorkingDateKey(toLocalDateString(new Date()), workingWeekdays);
-        setCurrentDate(parseLocalDate(snapped));
-        setSelectedDate(snapped);
+        const todayKey = toLocalDateString(new Date());
+        setCurrentDate(parseLocalDate(todayKey));
+        setSelectedDate(todayKey);
         return;
       }
       const newDate = new Date(currentDate);
@@ -124,7 +124,7 @@ export default function AgendaPage() {
         return toLocalDateString(p);
       });
     },
-    [currentDate, workingWeekdays]
+    [currentDate]
   );
 
   const handleSelectDay = (day: number) => {
@@ -216,10 +216,10 @@ export default function AgendaPage() {
 
   React.useEffect(() => {
     if (isWorkingDate(parseLocalDate(selectedDate), workingWeekdays)) return;
-    const next = nextWorkingDateKey(selectedDate, workingWeekdays);
-    if (next !== selectedDate) {
-      setSelectedDate(next);
-      setCurrentDate(parseLocalDate(next));
+    const snapped = closestWorkingDayInWeek(selectedDate, workingWeekdays);
+    if (snapped !== selectedDate) {
+      setSelectedDate(snapped);
+      setCurrentDate(parseLocalDate(snapped));
     }
   }, [selectedDate, workingWeekdays]);
 

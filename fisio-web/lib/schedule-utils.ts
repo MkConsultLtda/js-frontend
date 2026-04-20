@@ -1,4 +1,10 @@
-import { addDays, parseLocalDate, startOfWeekMonday, toLocalDateString } from "@/lib/date-utils";
+import {
+  addDays,
+  parseLocalDate,
+  startOfWeekMonday,
+  startOfWeekSunday,
+  toLocalDateString,
+} from "@/lib/date-utils";
 
 /** Padrão: segunda a sexta (convenção JS `Date.getDay()` — 0 domingo … 6 sábado). */
 export const DEFAULT_WORKING_WEEKDAYS: readonly number[] = [1, 2, 3, 4, 5];
@@ -40,6 +46,37 @@ export function nextWorkingDateKey(
     d = addDays(d, 1);
   }
   return fromKey;
+}
+
+/**
+ * Dentro da mesma semana (domingo a sábado), escolhe o dia útil mais próximo de `dateKey`.
+ * Evita que `nextWorkingDateKey` a partir de um sábado pule para a segunda da semana seguinte.
+ */
+export function closestWorkingDayInWeek(
+  dateKey: string,
+  workingWeekdays: number[]
+): string {
+  const set = new Set(normalizeWorkingWeekdays(workingWeekdays));
+  const d0 = parseLocalDate(dateKey);
+  const weekStart = startOfWeekSunday(d0);
+  let bestKey = dateKey;
+  let bestDist = 8;
+  let bestI = 99;
+  for (let i = 0; i < 7; i++) {
+    const d = addDays(weekStart, i);
+    if (!set.has(d.getDay())) continue;
+    const dist = Math.abs(d.getTime() - d0.getTime()) / 86_400_000;
+    const key = toLocalDateString(d);
+    if (dist < bestDist || (dist === bestDist && i < bestI)) {
+      bestDist = dist;
+      bestI = i;
+      bestKey = key;
+    }
+  }
+  if (bestDist === 8) {
+    return nextWorkingDateKey(dateKey, workingWeekdays);
+  }
+  return bestKey;
 }
 
 /** Resumo para textos de UI (ex.: "seg, ter, qua, qui, sex"). */
