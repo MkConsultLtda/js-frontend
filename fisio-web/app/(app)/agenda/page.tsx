@@ -1,14 +1,10 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -19,6 +15,9 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { AppointmentFormFields } from "@/components/agenda/appointment-form-fields";
+import { AgendaAppointmentList } from "@/components/agenda/agenda-appointment-list";
+import { AgendaMonthView } from "@/components/agenda/agenda-month-view";
+import { AgendaWeekView } from "@/components/agenda/agenda-week-view";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useMockData } from "@/components/mock-data-provider";
 import { useClinicSettings } from "@/lib/clinic-settings";
@@ -33,30 +32,10 @@ import {
   nextWorkingDateKey,
   normalizeWorkingWeekdays,
 } from "@/lib/schedule-utils";
-import { formatAddressOneLine } from "@/lib/patient-utils";
-import {
-  buildSessionConfirmationWhatsappText,
-  buildWhatsAppLink,
-  toWhatsAppDigits,
-} from "@/lib/session-messages";
 import type { Appointment } from "@/lib/types";
-import {
-  Calendar as CalendarIcon,
-  ChevronLeft,
-  ChevronRight,
-  Plus,
-  Clock,
-  User,
-  Search,
-  Activity,
-  Edit,
-  Trash2,
-  MessageCircle,
-  ExternalLink,
-  Banknote,
-} from "lucide-react";
+import { Plus } from "lucide-react";
 
-const dayNames = ["D", "S", "T", "Q", "Q", "S", "S"];
+type AgendaViewMode = "month" | "week";
 
 export default function AgendaPage() {
   const {
@@ -74,6 +53,7 @@ export default function AgendaPage() {
     [settings.workingWeekdays]
   );
 
+  const [viewMode, setViewMode] = React.useState<AgendaViewMode>("month");
   const [currentDate, setCurrentDate] = React.useState(() => new Date());
   const [selectedDate, setSelectedDate] = React.useState(() =>
     toLocalDateString(new Date())
@@ -102,8 +82,7 @@ export default function AgendaPage() {
     const matchesSearch =
       apt.patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       apt.type.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus =
-      statusFilter === "all" || apt.status === statusFilter;
+    const matchesStatus = statusFilter === "all" || apt.status === statusFilter;
     const matchesDate = apt.date === selectedDate;
     return matchesSearch && matchesStatus && matchesDate;
   });
@@ -128,15 +107,25 @@ export default function AgendaPage() {
     [currentDate, workingWeekdays]
   );
 
-  const getDaysInCurrentMonth = () =>
-    new Date(
-      currentDate.getFullYear(),
-      currentDate.getMonth() + 1,
-      0
-    ).getDate();
-
-  const firstWeekdayOfMonth = () =>
-    new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay();
+  const navigateWeek = React.useCallback(
+    (direction: "prev" | "next" | "today") => {
+      if (direction === "today") {
+        const snapped = nextWorkingDateKey(toLocalDateString(new Date()), workingWeekdays);
+        setCurrentDate(parseLocalDate(snapped));
+        setSelectedDate(snapped);
+        return;
+      }
+      const newDate = new Date(currentDate);
+      newDate.setDate(newDate.getDate() + (direction === "prev" ? -7 : 7));
+      setCurrentDate(newDate);
+      setSelectedDate((prev) => {
+        const p = parseLocalDate(prev);
+        p.setDate(p.getDate() + (direction === "prev" ? -7 : 7));
+        return toLocalDateString(p);
+      });
+    },
+    [currentDate, workingWeekdays]
+  );
 
   const handleSelectDay = (day: number) => {
     const newDate = new Date(currentDate);
@@ -145,7 +134,10 @@ export default function AgendaPage() {
     setSelectedDate(toLocalDateString(newDate));
   };
 
-  const selectedDay = parseLocalDate(selectedDate).getDate();
+  const handleSelectDateKey = (dateKey: string) => {
+    setSelectedDate(dateKey);
+    setCurrentDate(parseLocalDate(dateKey));
+  };
 
   const onCreateSubmit = (values: AppointmentFormValues) => {
     const patient = patients.find((p) => p.id === parseInt(values.patientId, 10));
@@ -205,6 +197,18 @@ export default function AgendaPage() {
     setIsEditDialogOpen(true);
   };
 
+  const handleTogglePayment = (appointment: Appointment) => {
+    updateAppointment({
+      ...appointment,
+      paymentStatus: appointment.paymentStatus === "paid" ? "pending" : "paid",
+    });
+    toast.message(
+      appointment.paymentStatus === "paid"
+        ? "Marcado como pagamento pendente."
+        : "Marcado como pago."
+    );
+  };
+
   React.useEffect(() => {
     if (!isCreateDialogOpen || isEditDialogOpen) return;
     createForm.setValue("date", selectedDate);
@@ -221,352 +225,117 @@ export default function AgendaPage() {
 
   return (
     <div className="p-8 space-y-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Agenda</h1>
           <p className="text-muted-foreground">
-            Gerencie seus agendamentos e consultas
+            Visualização em estilo calendário: mês com atendimentos no próprio grid e semana com horários
+            e duração.
           </p>
         </div>
-        <Dialog
-          open={isCreateDialogOpen}
-          onOpenChange={(open) => {
-            setIsCreateDialogOpen(open);
-            if (open) {
-              createForm.reset(emptyAppointmentForm(selectedDate));
-            }
-          }}
-        >
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Novo Agendamento
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Novo Agendamento</DialogTitle>
-              <DialogDescription>
-                Crie um novo agendamento para um paciente.
-              </DialogDescription>
-            </DialogHeader>
-            <form
-              onSubmit={createForm.handleSubmit(onCreateSubmit)}
-              className="space-y-0"
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+          <div className="inline-flex rounded-lg border bg-muted/40 p-1">
+            <Button
+              type="button"
+              variant={viewMode === "month" ? "default" : "ghost"}
+              size="sm"
+              className="px-4"
+              onClick={() => {
+                setViewMode("month");
+                setCurrentDate(parseLocalDate(selectedDate));
+              }}
             >
-              <AppointmentFormFields
-                control={createForm.control}
-                errors={createForm.formState.errors}
-                patients={patientOptions}
-                idPrefix="create-"
-              />
-              <DialogFooter className="gap-2 sm:gap-0">
-                <Button type="submit">Criar agendamento</Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+              Mês
+            </Button>
+            <Button
+              type="button"
+              variant={viewMode === "week" ? "default" : "ghost"}
+              size="sm"
+              className="px-4"
+              onClick={() => {
+                setViewMode("week");
+                setCurrentDate(parseLocalDate(selectedDate));
+              }}
+            >
+              Semana
+            </Button>
+          </div>
+          <Dialog
+            open={isCreateDialogOpen}
+            onOpenChange={(open) => {
+              setIsCreateDialogOpen(open);
+              if (open) {
+                createForm.reset(emptyAppointmentForm(selectedDate));
+              }
+            }}
+          >
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Novo Agendamento
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Novo Agendamento</DialogTitle>
+                <DialogDescription>
+                  Crie um novo agendamento para um paciente.
+                </DialogDescription>
+              </DialogHeader>
+              <form
+                onSubmit={createForm.handleSubmit(onCreateSubmit)}
+                className="space-y-0"
+              >
+                <AppointmentFormFields
+                  control={createForm.control}
+                  errors={createForm.formState.errors}
+                  patients={patientOptions}
+                  idPrefix="create-"
+                />
+                <DialogFooter className="gap-2 sm:gap-0">
+                  <Button type="submit">Criar agendamento</Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-        <Card className="space-y-4">
-          <CardHeader className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <CalendarIcon className="h-5 w-5" />
-              <CardTitle className="text-lg">Calendário</CardTitle>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => navigateMonth("prev")}>
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => navigateMonth("today")}>
-                Hoje
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => navigateMonth("next")}>
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Dias clicáveis seguem{" "}
-              <Link href="/configuracoes" className="underline underline-offset-2">
-                seus dias de atendimento
-              </Link>
-              . Outros dias aparecem esmaecidos (ex.: fim de semana se você só atende na semana).
-            </p>
-            <div className="text-sm text-muted-foreground">
-              {currentDate.toLocaleDateString("pt-BR", {
-                month: "long",
-                year: "numeric",
-              })}
-            </div>
-            <div className="grid grid-cols-7 gap-2 text-center text-[11px] font-semibold uppercase text-muted-foreground">
-              {dayNames.map((day, index) => (
-                <div key={index}>{day}</div>
-              ))}
-            </div>
-            <div className="grid grid-cols-7 gap-2">
-              {Array.from({ length: 42 }).map((_, index) => {
-                const dayNumber = index - firstWeekdayOfMonth() + 1;
-                const isActive =
-                  dayNumber >= 1 && dayNumber <= getDaysInCurrentMonth();
-                const isSelected = isActive && dayNumber === selectedDay;
-                const cellDate = isActive
-                  ? new Date(
-                      currentDate.getFullYear(),
-                      currentDate.getMonth(),
-                      dayNumber
-                    )
-                  : null;
-                const isWorkingDayCell =
-                  cellDate !== null && isWorkingDate(cellDate, workingWeekdays);
-                const hasAppointments =
-                  isActive &&
-                  appointments.some((apt) => {
-                    const appointmentDate = parseLocalDate(apt.date);
-                    return (
-                      appointmentDate.getFullYear() === currentDate.getFullYear() &&
-                      appointmentDate.getMonth() === currentDate.getMonth() &&
-                      appointmentDate.getDate() === dayNumber
-                    );
-                  });
+      <div className="space-y-6">
+        {viewMode === "month" ? (
+          <AgendaMonthView
+            currentDate={currentDate}
+            selectedDate={selectedDate}
+            appointments={appointments}
+            workingWeekdays={workingWeekdays}
+            onNavigate={navigateMonth}
+            onSelectDay={handleSelectDay}
+          />
+        ) : (
+          <AgendaWeekView
+            anchorDate={currentDate}
+            selectedDate={selectedDate}
+            appointments={appointments}
+            workingWeekdays={workingWeekdays}
+            onNavigate={navigateWeek}
+            onSelectDateKey={handleSelectDateKey}
+            onAppointmentClick={openEditModal}
+          />
+        )}
 
-                return (
-                  <button
-                    type="button"
-                    key={index}
-                    disabled={!isActive}
-                    aria-disabled={isActive && !isWorkingDayCell}
-                    title={
-                      isActive && !isWorkingDayCell
-                        ? "Fora dos dias de atendimento configurados"
-                        : undefined
-                    }
-                    onClick={() => {
-                      if (!isActive) return;
-                      if (!isWorkingDayCell) {
-                        toast.message(
-                          "Este dia não está nos seus dias de atendimento. Ajuste em Configurações se precisar."
-                        );
-                        return;
-                      }
-                      handleSelectDay(dayNumber);
-                    }}
-                    className={`h-10 rounded-lg border text-sm transition ${
-                      !isActive
-                        ? "bg-transparent text-muted-foreground pointer-events-none"
-                        : !isWorkingDayCell
-                          ? "bg-muted/40 text-muted-foreground border-dashed cursor-not-allowed"
-                          : isSelected
-                            ? "bg-primary text-white border-primary"
-                            : "bg-background hover:bg-muted"
-                    } ${hasAppointments && !isSelected && isWorkingDayCell ? "ring-1 ring-primary/30" : ""}`}
-                  >
-                    {isActive ? dayNumber : ""}
-                  </button>
-                );
-              })}
-            </div>
-            <div className="rounded-xl border bg-muted p-4 text-sm text-muted-foreground">
-              Dia selecionado:{" "}
-              <span className="font-semibold text-foreground">
-                {parseLocalDate(selectedDate).toLocaleDateString("pt-BR", {
-                  weekday: "long",
-                  day: "2-digit",
-                  month: "long",
-                })}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="space-y-6">
-          <Card>
-            <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <CardTitle className="text-lg">Pacientes deste dia</CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  {filteredAppointments.length} agendamento(s) para{" "}
-                  {parseLocalDate(selectedDate).toLocaleDateString("pt-BR", {
-                    day: "2-digit",
-                    month: "long",
-                    year: "numeric",
-                  })}
-                </p>
-              </div>
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <div className="relative">
-                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Buscar paciente ou tipo..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-8 w-full sm:w-72"
-                  />
-                </div>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-full sm:w-40">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="confirmed">Confirmados</SelectItem>
-                    <SelectItem value="pending">Pendentes</SelectItem>
-                    <SelectItem value="cancelled">Cancelados</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardHeader>
-          </Card>
-
-          <Card>
-            <CardContent>
-              {filteredAppointments.length === 0 ? (
-                <div className="text-center py-8">
-                  <CalendarIcon className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-medium">Nenhum agendamento encontrado</h3>
-                  <p className="text-muted-foreground">
-                    {searchTerm || statusFilter !== "all"
-                      ? "Tente ajustar os filtros de busca."
-                      : "Não há agendamentos para esta data."}
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {filteredAppointments
-                    .sort((a, b) => a.time.localeCompare(b.time))
-                    .map((appointment) => {
-                      const patient = patients.find((p) => p.id === appointment.patientId);
-                      const mapsUrl = patient
-                        ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(formatAddressOneLine(patient.address))}`
-                        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(appointment.patientName)}`;
-                      const waDigits = patient ? toWhatsAppDigits(patient.phone) : "";
-                      const confirmText = buildSessionConfirmationWhatsappText({
-                        appointment,
-                        patient,
-                        therapistName: settings.therapistName,
-                        clinicName: settings.clinicName,
-                      });
-                      return (
-                        <div
-                          key={appointment.id}
-                          className="flex flex-col gap-4 rounded-lg border p-4 transition hover:bg-muted/50 sm:flex-row sm:items-start sm:justify-between"
-                        >
-                          <div className="space-y-2 min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                              <span className="inline-flex items-center gap-1">
-                                <Clock className="h-4 w-4 shrink-0" />
-                                {appointment.time}
-                              </span>
-                              <span className="inline-flex items-center gap-1 min-w-0">
-                                <User className="h-4 w-4 shrink-0" />
-                                <span className="truncate">{appointment.patientName}</span>
-                              </span>
-                            </div>
-                            <div className="flex flex-wrap items-center gap-2 text-sm">
-                              <span className="inline-flex items-center gap-1 text-muted-foreground">
-                                <Activity className="h-4 w-4 shrink-0" />
-                                {appointment.type}
-                              </span>
-                              <span
-                                className={`rounded-full px-2 py-1 text-xs ${
-                                  appointment.status === "confirmed"
-                                    ? "bg-green-100 text-green-800"
-                                    : appointment.status === "pending"
-                                      ? "bg-yellow-100 text-yellow-800"
-                                      : "bg-red-100 text-red-800"
-                                }`}
-                              >
-                                {appointment.status === "confirmed"
-                                  ? "Confirmado"
-                                  : appointment.status === "pending"
-                                    ? "Pendente"
-                                    : "Cancelado"}
-                              </span>
-                              <span
-                                className={`rounded-full px-2 py-1 text-xs ${
-                                  appointment.paymentStatus === "paid"
-                                    ? "bg-emerald-100 text-emerald-900"
-                                    : "bg-slate-100 text-slate-700"
-                                }`}
-                              >
-                                {appointment.paymentStatus === "paid" ? "Pago" : "Pag. pendente"}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="flex flex-wrap items-center gap-2 shrink-0">
-                            <Button variant="outline" size="sm" asChild className="gap-1">
-                              <a href={mapsUrl} target="_blank" rel="noopener noreferrer">
-                                <ExternalLink className="h-4 w-4" />
-                                Mapa
-                              </a>
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="gap-1"
-                              type="button"
-                              onClick={() => {
-                                if (!waDigits) {
-                                  toast.error("Paciente sem telefone válido para WhatsApp.");
-                                  return;
-                                }
-                                void navigator.clipboard.writeText(confirmText);
-                                toast.success("Mensagem copiada. Abra o WhatsApp para colar.");
-                                window.open(buildWhatsAppLink(waDigits, confirmText), "_blank");
-                              }}
-                            >
-                              <MessageCircle className="h-4 w-4" />
-                              WhatsApp
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              type="button"
-                              className="gap-1"
-                              onClick={() => {
-                                updateAppointment({
-                                  ...appointment,
-                                  paymentStatus:
-                                    appointment.paymentStatus === "paid" ? "pending" : "paid",
-                                });
-                                toast.message(
-                                  appointment.paymentStatus === "paid"
-                                    ? "Marcado como pagamento pendente."
-                                    : "Marcado como pago."
-                                );
-                              }}
-                            >
-                              <Banknote className="h-4 w-4" />
-                              {appointment.paymentStatus === "paid" ? "Desmarcar pago" : "Pago"}
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => openEditModal(appointment)}
-                              aria-label="Editar agendamento"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setAppointmentToDeleteId(appointment.id)}
-                              className="text-red-600 hover:text-red-700"
-                              aria-label="Excluir agendamento"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+        <AgendaAppointmentList
+          selectedDate={selectedDate}
+          searchTerm={searchTerm}
+          onSearchTermChange={setSearchTerm}
+          statusFilter={statusFilter}
+          onStatusFilterChange={setStatusFilter}
+          filteredAppointments={filteredAppointments}
+          patients={patients}
+          settings={settings}
+          onEdit={openEditModal}
+          onDeleteRequest={setAppointmentToDeleteId}
+          onTogglePayment={handleTogglePayment}
+        />
       </div>
 
       <ConfirmDialog
