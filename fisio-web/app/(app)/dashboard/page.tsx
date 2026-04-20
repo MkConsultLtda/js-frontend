@@ -12,6 +12,7 @@ import {
   formatWorkingDaysShort,
   isWorkingDateKey,
 } from "@/lib/schedule-utils";
+import { isSessionAppointment } from "@/lib/types";
 import { Users, Calendar, Clock, Activity, TrendingUp, Route, ExternalLink } from "lucide-react";
 import { useMemo } from "react";
 
@@ -22,7 +23,8 @@ export default function DashboardPage() {
   const metrics = useMemo(() => {
     const now = new Date();
     const today = toLocalDateString(now);
-    const todayAppointments = appointments.filter((apt) => apt.date === today);
+    const sessions = appointments.filter(isSessionAppointment);
+    const todayAppointments = sessions.filter((apt) => apt.date === today);
     const confirmedToday = todayAppointments.filter(
       (apt) => apt.status === "confirmed"
     ).length;
@@ -50,7 +52,7 @@ export default function DashboardPage() {
     }).length;
 
     const weekBars = countAppointmentsByWorkingWeekdays(
-      appointments,
+      sessions,
       now,
       settings.workingWeekdays
     );
@@ -80,7 +82,7 @@ export default function DashboardPage() {
 
   const todayList = useMemo(() => {
     return appointments
-      .filter((apt) => apt.date === metrics.today)
+      .filter((apt) => isSessionAppointment(apt) && apt.date === metrics.today)
       .sort((a, b) => a.time.localeCompare(b.time));
   }, [appointments, metrics.today]);
 
@@ -236,17 +238,21 @@ export default function DashboardPage() {
                   <div
                     className={`shrink-0 text-xs px-2 py-1 rounded-full ${
                       appointment.status === "confirmed"
-                        ? "bg-green-100 text-green-800"
-                        : appointment.status === "pending"
-                          ? "bg-yellow-100 text-yellow-800"
-                          : "bg-red-100 text-red-800"
+                        ? "bg-sky-100 text-sky-900"
+                        : appointment.status === "scheduled"
+                          ? "bg-amber-100 text-amber-900"
+                          : appointment.status === "completed"
+                            ? "bg-emerald-100 text-emerald-900"
+                            : "bg-red-100 text-red-800 line-through"
                     }`}
                   >
                     {appointment.status === "confirmed"
                       ? "Confirmado"
-                      : appointment.status === "pending"
-                        ? "Pendente"
-                        : "Cancelado"}
+                      : appointment.status === "scheduled"
+                        ? "Agendado"
+                        : appointment.status === "completed"
+                          ? "Concluído"
+                          : "Cancelado"}
                   </div>
                 </div>
               ))}

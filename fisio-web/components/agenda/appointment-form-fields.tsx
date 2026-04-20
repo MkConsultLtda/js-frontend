@@ -14,7 +14,7 @@ import {
 import { FormFieldError } from "@/components/form-field-error";
 import { SESSION_TYPES } from "@/lib/constants";
 import type { AppointmentFormValues } from "@/lib/schemas/appointment-form";
-import type { AppointmentStatus } from "@/lib/types";
+import type { SessionStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 type PatientOption = { id: number; name: string };
@@ -190,7 +190,7 @@ export function AppointmentFormFields({
             render={({ field }) => (
               <Select
                 value={field.value}
-                onValueChange={(value: AppointmentStatus) => field.onChange(value)}
+                onValueChange={(value: SessionStatus) => field.onChange(value)}
               >
                 <SelectTrigger
                   id={`${idPrefix}status`}
@@ -201,8 +201,9 @@ export function AppointmentFormFields({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="scheduled">Agendado</SelectItem>
                   <SelectItem value="confirmed">Confirmado</SelectItem>
-                  <SelectItem value="pending">Pendente</SelectItem>
+                  <SelectItem value="completed">Concluído</SelectItem>
                   <SelectItem value="cancelled">Cancelado</SelectItem>
                 </SelectContent>
               </Select>

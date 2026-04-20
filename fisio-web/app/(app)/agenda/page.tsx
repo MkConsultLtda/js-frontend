@@ -14,10 +14,18 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { AppointmentFormFields } from "@/components/agenda/appointment-form-fields";
 import { AgendaAppointmentList } from "@/components/agenda/agenda-appointment-list";
+import { AgendaColorLegend } from "@/components/agenda/agenda-color-legend";
 import { AgendaMonthView } from "@/components/agenda/agenda-month-view";
 import { AgendaWeekView } from "@/components/agenda/agenda-week-view";
+import { CalendarExtraFormFields } from "@/components/agenda/calendar-extra-form-fields";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useMockData } from "@/components/mock-data-provider";
 import { useClinicSettings } from "@/lib/clinic-settings";
@@ -26,14 +34,19 @@ import {
   emptyAppointmentForm,
   type AppointmentFormValues,
 } from "@/lib/schemas/appointment-form";
+import {
+  calendarExtraFormSchema,
+  emptyCalendarExtraForm,
+  type CalendarExtraFormValues,
+} from "@/lib/schemas/calendar-extra-form";
 import { parseLocalDate, toLocalDateString } from "@/lib/date-utils";
 import {
   closestWorkingDayInWeek,
   isWorkingDate,
   normalizeWorkingWeekdays,
 } from "@/lib/schedule-utils";
-import type { Appointment } from "@/lib/types";
-import { Plus } from "lucide-react";
+import { isSessionAppointment, type Appointment } from "@/lib/types";
+import { ChevronDown, Plus } from "lucide-react";
 
 type AgendaViewMode = "month" | "week";
 
@@ -41,6 +54,7 @@ export default function AgendaPage() {
   const {
     patients,
     appointments,
+    holidays,
     addAppointment,
     updateAppointment,
     deleteAppointment,
@@ -60,7 +74,8 @@ export default function AgendaPage() {
   );
   const [searchTerm, setSearchTerm] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState("all");
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = React.useState(false);
+  const [createOpen, setCreateOpen] = React.useState(false);
+  const [createKind, setCreateKind] = React.useState<"session" | "block" | "personal">("session");
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [editingAppointment, setEditingAppointment] =
     React.useState<Appointment | null>(null);
@@ -78,7 +93,18 @@ export default function AgendaPage() {
     defaultValues: emptyAppointmentForm(toLocalDateString(new Date())),
   });
 
+  const createExtraForm = useForm<CalendarExtraFormValues>({
+    resolver: zodResolver(calendarExtraFormSchema),
+    defaultValues: emptyCalendarExtraForm(toLocalDateString(new Date())),
+  });
+
+  const editExtraForm = useForm<CalendarExtraFormValues>({
+    resolver: zodResolver(calendarExtraFormSchema),
+    defaultValues: emptyCalendarExtraForm(toLocalDateString(new Date())),
+  });
+
   const filteredAppointments = appointments.filter((apt) => {
+    if (!isSessionAppointment(apt)) return false;
     const matchesSearch =
       apt.patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       apt.type.toLowerCase().includes(searchTerm.toLowerCase());
@@ -139,11 +165,12 @@ export default function AgendaPage() {
     setCurrentDate(parseLocalDate(dateKey));
   };
 
-  const onCreateSubmit = (values: AppointmentFormValues) => {
+  const onCreateSessionSubmit = (values: AppointmentFormValues) => {
     const patient = patients.find((p) => p.id === parseInt(values.patientId, 10));
     if (!patient) return;
 
     addAppointment({
+      kind: "session",
       patientId: patient.id,
       patientName: patient.name,
       date: values.date,
@@ -154,12 +181,31 @@ export default function AgendaPage() {
       notes: values.notes?.trim() || undefined,
       paymentStatus: values.paymentStatus,
     });
-    setIsCreateDialogOpen(false);
+    setCreateOpen(false);
     createForm.reset(emptyAppointmentForm(selectedDate));
     toast.success("Agendamento criado.");
   };
 
-  const onEditSubmit = (values: AppointmentFormValues) => {
+  const onCreateExtraSubmit = (values: CalendarExtraFormValues) => {
+    const kind = createKind === "block" ? "block" : "personal";
+    addAppointment({
+      kind,
+      patientId: 0,
+      patientName: values.title.trim(),
+      date: values.date,
+      time: values.time,
+      duration: parseInt(values.duration, 10),
+      type: kind === "block" ? "Bloqueio" : "Evento pessoal",
+      status: "confirmed",
+      notes: values.notes?.trim() || undefined,
+      paymentStatus: "pending",
+    });
+    setCreateOpen(false);
+    createExtraForm.reset(emptyCalendarExtraForm(selectedDate));
+    toast.success(kind === "block" ? "Horário bloqueado." : "Evento adicionado.");
+  };
+
+  const onEditSessionSubmit = (values: AppointmentFormValues) => {
     if (!editingAppointment) return;
     const patient = patients.find((p) => p.id === parseInt(values.patientId, 10));
     if (!patient) return;
@@ -182,22 +228,49 @@ export default function AgendaPage() {
     toast.success("Agendamento atualizado.");
   };
 
+  const onEditExtraSubmit = (values: CalendarExtraFormValues) => {
+    if (!editingAppointment || isSessionAppointment(editingAppointment)) return;
+    updateAppointment({
+      ...editingAppointment,
+      patientName: values.title.trim(),
+      date: values.date,
+      time: values.time,
+      duration: parseInt(values.duration, 10),
+      notes: values.notes?.trim() || undefined,
+    });
+    setIsEditDialogOpen(false);
+    setEditingAppointment(null);
+    editExtraForm.reset(emptyCalendarExtraForm(selectedDate));
+    toast.success("Registro atualizado.");
+  };
+
   const openEditModal = (appointment: Appointment) => {
     setEditingAppointment(appointment);
-    editForm.reset({
-      patientId: appointment.patientId.toString(),
-      date: appointment.date,
-      time: appointment.time,
-      duration: String(appointment.duration) as AppointmentFormValues["duration"],
-      type: appointment.type,
-      status: appointment.status,
-      paymentStatus: appointment.paymentStatus ?? "pending",
-      notes: appointment.notes ?? "",
-    });
+    if (isSessionAppointment(appointment)) {
+      editForm.reset({
+        patientId: appointment.patientId.toString(),
+        date: appointment.date,
+        time: appointment.time,
+        duration: String(appointment.duration) as AppointmentFormValues["duration"],
+        type: appointment.type,
+        status: appointment.status,
+        paymentStatus: appointment.paymentStatus ?? "pending",
+        notes: appointment.notes ?? "",
+      });
+    } else {
+      editExtraForm.reset({
+        title: appointment.patientName,
+        date: appointment.date,
+        time: appointment.time,
+        duration: String(appointment.duration) as CalendarExtraFormValues["duration"],
+        notes: appointment.notes ?? "",
+      });
+    }
     setIsEditDialogOpen(true);
   };
 
   const handleTogglePayment = (appointment: Appointment) => {
+    if (!isSessionAppointment(appointment)) return;
     updateAppointment({
       ...appointment,
       paymentStatus: appointment.paymentStatus === "paid" ? "pending" : "paid",
@@ -210,9 +283,10 @@ export default function AgendaPage() {
   };
 
   React.useEffect(() => {
-    if (!isCreateDialogOpen || isEditDialogOpen) return;
+    if (!createOpen || isEditDialogOpen) return;
     createForm.setValue("date", selectedDate);
-  }, [selectedDate, isCreateDialogOpen, isEditDialogOpen, createForm]);
+    createExtraForm.setValue("date", selectedDate);
+  }, [selectedDate, createOpen, isEditDialogOpen, createForm, createExtraForm]);
 
   React.useEffect(() => {
     if (isWorkingDate(parseLocalDate(selectedDate), workingWeekdays)) return;
@@ -260,46 +334,112 @@ export default function AgendaPage() {
               Semana
             </Button>
           </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Novo na agenda
+                <ChevronDown className="ml-2 h-4 w-4 opacity-70" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem
+                onSelect={() => {
+                  setCreateKind("session");
+                  createForm.reset(emptyAppointmentForm(selectedDate));
+                  setCreateOpen(true);
+                }}
+              >
+                Atendimento (paciente)
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => {
+                  setCreateKind("block");
+                  createExtraForm.reset(emptyCalendarExtraForm(selectedDate));
+                  setCreateOpen(true);
+                }}
+              >
+                Bloquear horário
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => {
+                  setCreateKind("personal");
+                  createExtraForm.reset(emptyCalendarExtraForm(selectedDate));
+                  setCreateOpen(true);
+                }}
+              >
+                Evento pessoal / trabalho fixo
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <Dialog
-            open={isCreateDialogOpen}
+            open={createOpen}
             onOpenChange={(open) => {
-              setIsCreateDialogOpen(open);
+              setCreateOpen(open);
               if (open) {
-                createForm.reset(emptyAppointmentForm(selectedDate));
+                if (createKind === "session") {
+                  createForm.reset(emptyAppointmentForm(selectedDate));
+                } else {
+                  createExtraForm.reset(emptyCalendarExtraForm(selectedDate));
+                }
               }
             }}
           >
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Novo Agendamento
-              </Button>
-            </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
-                <DialogTitle>Novo Agendamento</DialogTitle>
+                <DialogTitle>
+                  {createKind === "session"
+                    ? "Novo atendimento"
+                    : createKind === "block"
+                      ? "Bloquear horário"
+                      : "Evento pessoal ou trabalho"}
+                </DialogTitle>
                 <DialogDescription>
-                  Crie um novo agendamento para um paciente.
+                  {createKind === "session"
+                    ? "Agende uma sessão para um paciente."
+                    : createKind === "block"
+                      ? "Reserve o intervalo na agenda (não aparece como atendimento na lista do dia)."
+                      : "Marque compromissos pessoais ou trabalho fixo (cor roxa na grade)."}
                 </DialogDescription>
               </DialogHeader>
-              <form
-                onSubmit={createForm.handleSubmit(onCreateSubmit)}
-                className="space-y-0"
-              >
-                <AppointmentFormFields
-                  control={createForm.control}
-                  errors={createForm.formState.errors}
-                  patients={patientOptions}
-                  idPrefix="create-"
-                />
-                <DialogFooter className="gap-2 sm:gap-0">
-                  <Button type="submit">Criar agendamento</Button>
-                </DialogFooter>
-              </form>
+              {createKind === "session" ? (
+                <form
+                  onSubmit={createForm.handleSubmit(onCreateSessionSubmit)}
+                  className="space-y-0"
+                >
+                  <AppointmentFormFields
+                    control={createForm.control}
+                    errors={createForm.formState.errors}
+                    patients={patientOptions}
+                    idPrefix="create-"
+                  />
+                  <DialogFooter className="gap-2 sm:gap-0">
+                    <Button type="submit">Criar</Button>
+                  </DialogFooter>
+                </form>
+              ) : (
+                <form
+                  onSubmit={createExtraForm.handleSubmit(onCreateExtraSubmit)}
+                  className="space-y-0"
+                >
+                  <CalendarExtraFormFields
+                    control={createExtraForm.control}
+                    errors={createExtraForm.formState.errors}
+                    idPrefix="create-extra-"
+                    titleLabel={createKind === "block" ? "Motivo do bloqueio" : "Título do evento"}
+                  />
+                  <DialogFooter className="gap-2 sm:gap-0">
+                    <Button type="submit">Adicionar</Button>
+                  </DialogFooter>
+                </form>
+              )}
             </DialogContent>
           </Dialog>
         </div>
       </div>
+
+      <AgendaColorLegend />
 
       <div className="space-y-6">
         {viewMode === "month" ? (
@@ -307,6 +447,7 @@ export default function AgendaPage() {
             currentDate={currentDate}
             selectedDate={selectedDate}
             appointments={appointments}
+            holidays={holidays}
             workingWeekdays={workingWeekdays}
             onNavigate={navigateMonth}
             onSelectDay={handleSelectDay}
@@ -316,6 +457,7 @@ export default function AgendaPage() {
             anchorDate={currentDate}
             selectedDate={selectedDate}
             appointments={appointments}
+            holidays={holidays}
             workingWeekdays={workingWeekdays}
             onNavigate={navigateWeek}
             onSelectDateKey={handleSelectDateKey}
@@ -343,14 +485,14 @@ export default function AgendaPage() {
         onOpenChange={(open) => {
           if (!open) setAppointmentToDeleteId(null);
         }}
-        title="Excluir agendamento?"
-        description="Esta ação não pode ser desfeita. O registro será removido do mock local."
+        title="Excluir registro da agenda?"
+        description="Esta ação não pode ser desfeita. O item será removido do mock local."
         confirmLabel="Excluir"
         variant="destructive"
         onConfirm={() => {
           if (appointmentToDeleteId == null) return;
           deleteAppointment(appointmentToDeleteId);
-          toast.success("Agendamento excluído.");
+          toast.success("Registro excluído.");
           setAppointmentToDeleteId(null);
         }}
       />
@@ -362,27 +504,50 @@ export default function AgendaPage() {
           if (!open) {
             setEditingAppointment(null);
             editForm.reset(emptyAppointmentForm(selectedDate));
+            editExtraForm.reset(emptyCalendarExtraForm(selectedDate));
           }
         }}
       >
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Editar agendamento</DialogTitle>
+            <DialogTitle>
+              {editingAppointment && isSessionAppointment(editingAppointment)
+                ? "Editar atendimento"
+                : "Editar bloqueio ou evento"}
+            </DialogTitle>
             <DialogDescription>
-              Modifique os detalhes do agendamento.
+              {editingAppointment && isSessionAppointment(editingAppointment)
+                ? "Altere os dados da sessão."
+                : "Altere horário, título ou observações."}
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-0">
-            <AppointmentFormFields
-              control={editForm.control}
-              errors={editForm.formState.errors}
-              patients={patientOptions}
-              idPrefix="edit-"
-            />
-            <DialogFooter className="gap-2 sm:gap-0">
-              <Button type="submit">Salvar alterações</Button>
-            </DialogFooter>
-          </form>
+          {editingAppointment && isSessionAppointment(editingAppointment) ? (
+            <form onSubmit={editForm.handleSubmit(onEditSessionSubmit)} className="space-y-0">
+              <AppointmentFormFields
+                control={editForm.control}
+                errors={editForm.formState.errors}
+                patients={patientOptions}
+                idPrefix="edit-"
+              />
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button type="submit">Salvar alterações</Button>
+              </DialogFooter>
+            </form>
+          ) : editingAppointment ? (
+            <form onSubmit={editExtraForm.handleSubmit(onEditExtraSubmit)} className="space-y-0">
+              <CalendarExtraFormFields
+                control={editExtraForm.control}
+                errors={editExtraForm.formState.errors}
+                idPrefix="edit-extra-"
+                titleLabel={
+                  editingAppointment.kind === "block" ? "Motivo do bloqueio" : "Título do evento"
+                }
+              />
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button type="submit">Salvar alterações</Button>
+              </DialogFooter>
+            </form>
+          ) : null}
         </DialogContent>
       </Dialog>
     </div>

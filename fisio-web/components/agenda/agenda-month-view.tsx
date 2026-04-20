@@ -6,8 +6,10 @@ import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
-import type { Appointment } from "@/lib/types";
-import { parseLocalDate } from "@/lib/date-utils";
+import type { Appointment, Holiday } from "@/lib/types";
+import { parseLocalDate, toLocalDateString } from "@/lib/date-utils";
+import { monthChipClassName } from "@/lib/agenda-entry-styles";
+import { holidaysForDate } from "@/lib/holiday-utils";
 import { isWorkingDate } from "@/lib/schedule-utils";
 import { parseTimeToMinutes } from "@/lib/agenda-calendar-utils";
 
@@ -17,6 +19,7 @@ type Props = {
   currentDate: Date;
   selectedDate: string;
   appointments: Appointment[];
+  holidays: Holiday[];
   workingWeekdays: number[];
   onNavigate: (direction: "prev" | "next" | "today") => void;
   onSelectDay: (day: number) => void;
@@ -26,6 +29,7 @@ export function AgendaMonthView({
   currentDate,
   selectedDate,
   appointments,
+  holidays,
   workingWeekdays,
   onNavigate,
   onSelectDay,
@@ -109,6 +113,9 @@ export function AgendaMonthView({
             const isWorkingDayCell =
               cellDate !== null && isWorkingDate(cellDate, workingWeekdays);
             const dayAppointments = isActive ? appointmentsByDay.get(dayNumber) ?? [] : [];
+            const cellDateKey =
+              cellDate !== null ? toLocalDateString(cellDate) : "";
+            const dayHolidays = cellDateKey ? holidaysForDate(holidays, cellDateKey) : [];
 
             return (
               <button
@@ -142,25 +149,30 @@ export function AgendaMonthView({
                 }`}
               >
                 <span
-                  className={`mb-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
+                  className={`mb-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
                     isSelected ? "bg-primary text-primary-foreground" : "text-foreground"
                   }`}
                 >
                   {isActive ? dayNumber : ""}
                 </span>
+                {dayHolidays.length > 0 ? (
+                  <div className="mb-1 space-y-0.5">
+                    {dayHolidays.map((h) => (
+                      <div
+                        key={h.id}
+                        className="truncate text-[9px] font-semibold leading-tight text-amber-600 dark:text-amber-400"
+                        title={h.name}
+                      >
+                        {h.name}
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
                 <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-hidden">
                   {dayAppointments.slice(0, 3).map((apt) => (
                     <div
                       key={apt.id}
-                      className={`truncate rounded px-1 py-0.5 text-[10px] leading-tight ${
-                        apt.status === "cancelled"
-                          ? "bg-muted/80 text-muted-foreground line-through"
-                          : apt.status === "confirmed"
-                            ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-100"
-                            : apt.status === "pending"
-                              ? "bg-amber-100 text-amber-900 dark:bg-amber-950/50 dark:text-amber-100"
-                              : "bg-slate-100 text-slate-800 dark:bg-slate-900/40 dark:text-slate-100"
-                      }`}
+                      className={monthChipClassName(apt)}
                       title={`${apt.time} · ${apt.patientName}`}
                     >
                       <span className="font-medium">{apt.time}</span>{" "}

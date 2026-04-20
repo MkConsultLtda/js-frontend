@@ -72,9 +72,10 @@ export function AgendaAppointmentList({
       <Card>
         <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <CardTitle className="text-lg">Detalhes do dia</CardTitle>
+            <CardTitle className="text-lg">Atendimentos do dia</CardTitle>
             <p className="text-sm text-muted-foreground">
-              {filteredAppointments.length} agendamento(s) para {dateLabel}
+              {filteredAppointments.length} sessão(ões) com paciente em {dateLabel}. Bloqueios e eventos
+              aparecem só na grade.
             </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -93,8 +94,9 @@ export function AgendaAppointmentList({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="scheduled">Agendados</SelectItem>
                 <SelectItem value="confirmed">Confirmados</SelectItem>
-                <SelectItem value="pending">Pendentes</SelectItem>
+                <SelectItem value="completed">Concluídos</SelectItem>
                 <SelectItem value="cancelled">Cancelados</SelectItem>
               </SelectContent>
             </Select>
@@ -155,17 +157,21 @@ export function AgendaAppointmentList({
                           <span
                             className={`rounded-full px-2 py-1 text-xs ${
                               appointment.status === "confirmed"
-                                ? "bg-green-100 text-green-800"
-                                : appointment.status === "pending"
-                                  ? "bg-yellow-100 text-yellow-800"
-                                  : "bg-red-100 text-red-800"
+                                ? "bg-sky-100 text-sky-900"
+                                : appointment.status === "scheduled"
+                                  ? "bg-amber-100 text-amber-900"
+                                  : appointment.status === "completed"
+                                    ? "bg-emerald-100 text-emerald-900"
+                                    : "bg-red-100 text-red-800 line-through"
                             }`}
                           >
                             {appointment.status === "confirmed"
                               ? "Confirmado"
-                              : appointment.status === "pending"
-                                ? "Pendente"
-                                : "Cancelado"}
+                              : appointment.status === "scheduled"
+                                ? "Agendado"
+                                : appointment.status === "completed"
+                                  ? "Concluído"
+                                  : "Cancelado"}
                           </span>
                           <span
                             className={`rounded-full px-2 py-1 text-xs ${

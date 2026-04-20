@@ -3,13 +3,16 @@ import {
   buildInitialAnamneses,
   buildInitialAppointments,
   buildInitialEvolucoes,
+  buildInitialHolidays,
   buildInitialPatients,
 } from "@/lib/mock-seed";
-import type { Anamnese, Appointment, AuditLogEntry, Evolucao, Patient } from "@/lib/types";
+import type { Anamnese, Appointment, AuditLogEntry, Evolucao, Holiday, Patient } from "@/lib/types";
+import { isSessionAppointment } from "@/lib/types";
 
 export type MockState = {
   patients: Patient[];
   appointments: Appointment[];
+  holidays: Holiday[];
   anamneses: Anamnese[];
   evolucoes: Evolucao[];
   auditLog: AuditLogEntry[];
@@ -49,9 +52,11 @@ function withAudit(state: MockState, message: string): MockState {
 
 export function createInitialMockState(): MockState {
   const patients = buildInitialPatients();
+  const now = new Date();
   return {
     patients,
-    appointments: buildInitialAppointments(),
+    appointments: buildInitialAppointments(now),
+    holidays: buildInitialHolidays(now),
     anamneses: buildInitialAnamneses(patients),
     evolucoes: buildInitialEvolucoes(patients),
     auditLog: [],
@@ -64,6 +69,7 @@ export function mockReducer(state: MockState, action: MockAction): MockState {
       return {
         patients: action.payload.patients,
         appointments: action.payload.appointments,
+        holidays: action.payload.holidays ?? [],
         anamneses: action.payload.anamneses,
         evolucoes: action.payload.evolucoes,
         auditLog: action.payload.auditLog ?? [],
@@ -88,7 +94,7 @@ export function mockReducer(state: MockState, action: MockAction): MockState {
         ...state,
         patients: state.patients.map((x) => (x.id === p.id ? p : x)),
         appointments: state.appointments.map((a) =>
-          a.patientId === p.id ? { ...a, patientName: p.name } : a
+          a.patientId === p.id && isSessionAppointment(a) ? { ...a, patientName: p.name } : a
         ),
         anamneses: state.anamneses.map((a) =>
           a.patientId === p.id ? { ...a, patientName: p.name } : a
@@ -123,6 +129,7 @@ export function mockReducer(state: MockState, action: MockAction): MockState {
           {
             ...action.payload,
             id,
+            kind: action.payload.kind ?? "session",
             paymentStatus: action.payload.paymentStatus ?? "pending",
           },
         ],

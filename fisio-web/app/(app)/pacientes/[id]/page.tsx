@@ -22,6 +22,7 @@ import {
   formatAddressOneLine,
   formatCepDisplay,
 } from "@/lib/patient-utils";
+import { isSessionAppointment } from "@/lib/types";
 
 export default function PacienteProntuarioPage() {
   const params = useParams();
@@ -55,7 +56,7 @@ export default function PacienteProntuarioPage() {
   }, [evolucoes, id]);
 
   const proximos = appointments
-    .filter((a) => a.patientId === id)
+    .filter((a) => isSessionAppointment(a) && a.patientId === id)
     .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))
     .slice(0, 3);
 

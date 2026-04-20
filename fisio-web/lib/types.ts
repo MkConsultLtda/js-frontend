@@ -1,6 +1,20 @@
-export type AppointmentStatus = "confirmed" | "pending" | "cancelled";
+/** Fluxo do atendimento na agenda (cores na grade). */
+export type SessionStatus = "scheduled" | "confirmed" | "completed" | "cancelled";
+
+/** @deprecated use SessionStatus — mantido para migração de dados */
+export type AppointmentStatus = SessionStatus | "pending";
 
 export type AppointmentPaymentStatus = "pending" | "paid";
+
+/** Entrada na agenda: sessão com paciente, bloqueio de horário ou evento pessoal/trabalho. */
+export type CalendarEntryKind = "session" | "personal" | "block";
+
+export interface Holiday {
+  id: number;
+  /** yyyy-mm-dd */
+  date: string;
+  name: string;
+}
 
 /** Evento local para trilha de auditoria (LGPD / suporte) — mock até existir API */
 export interface AuditLogEntry {
@@ -41,17 +55,26 @@ export interface Patient {
 
 export interface Appointment {
   id: number;
+  /** Padrão: sessão com paciente */
+  kind?: CalendarEntryKind;
+  /** Sessões: id do paciente; bloqueio/evento: 0 */
   patientId: number;
+  /** Paciente ou título do evento / bloqueio */
   patientName: string;
   /** yyyy-mm-dd */
   date: string;
   time: string;
   duration: number;
   type: string;
-  status: AppointmentStatus;
+  /** Apenas para kind session; em block/personal pode ser "confirmed" internamente */
+  status: SessionStatus;
   notes?: string;
   /** Pagamento da sessão (controle financeiro leve) */
   paymentStatus: AppointmentPaymentStatus;
+}
+
+export function isSessionAppointment(a: Pick<Appointment, "kind">): boolean {
+  return a.kind === undefined || a.kind === "session";
 }
 
 export interface Anamnese {

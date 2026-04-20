@@ -6,8 +6,10 @@ import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CalendarRange, ChevronLeft, ChevronRight } from "lucide-react";
-import type { Appointment } from "@/lib/types";
+import type { Appointment, Holiday } from "@/lib/types";
+import { calendarEntryClassName } from "@/lib/agenda-entry-styles";
 import { parseLocalDate, toLocalDateString } from "@/lib/date-utils";
+import { holidaysForDate } from "@/lib/holiday-utils";
 import { isWorkingDate } from "@/lib/schedule-utils";
 import {
   getWeekDatesContaining,
@@ -32,6 +34,7 @@ type Props = {
   anchorDate: Date;
   selectedDate: string;
   appointments: Appointment[];
+  holidays: Holiday[];
   workingWeekdays: number[];
   onNavigate: (direction: "prev" | "next" | "today") => void;
   onSelectDateKey: (dateKey: string) => void;
@@ -42,6 +45,7 @@ export function AgendaWeekView({
   anchorDate,
   selectedDate,
   appointments,
+  holidays,
   workingWeekdays,
   onNavigate,
   onSelectDateKey,
@@ -115,6 +119,7 @@ export function AgendaWeekView({
                   const key = toLocalDateString(d);
                   const isSelected = key === selectedDate;
                   const working = isWorkingDate(d, workingWeekdays);
+                  const dayHolidays = holidaysForDate(holidays, key);
                   return (
                     <button
                       key={key}
@@ -140,6 +145,19 @@ export function AgendaWeekView({
                       <div className={cn("text-lg font-bold leading-none", isSelected && "text-primary")}>
                         {d.getDate()}
                       </div>
+                      {dayHolidays.length > 0 ? (
+                        <div className="mt-1 space-y-0.5">
+                          {dayHolidays.map((h) => (
+                            <div
+                              key={h.id}
+                              className="truncate text-[9px] font-semibold leading-tight text-amber-600 dark:text-amber-400"
+                              title={h.name}
+                            >
+                              {h.name}
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
                     </button>
                   );
                 })}
@@ -217,25 +235,16 @@ export function AgendaWeekView({
                         );
 
                         return (
-                          <button
-                            key={apt.id}
-                            type="button"
-                            onClick={() => onAppointmentClick(apt)}
-                            className={cn(
-                              "absolute left-0.5 right-0.5 overflow-hidden rounded-md border px-1 py-0.5 text-left text-[10px] leading-tight shadow-sm transition hover:brightness-95",
-                              apt.status === "cancelled" &&
-                                "border-muted bg-muted/80 text-muted-foreground line-through",
-                              apt.status === "confirmed" &&
-                                "border-emerald-200 bg-emerald-100 text-emerald-950 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-50",
-                              apt.status === "pending" &&
-                                "border-amber-200 bg-amber-100 text-amber-950 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-50",
-                              apt.status !== "confirmed" &&
-                                apt.status !== "pending" &&
-                                apt.status !== "cancelled" &&
-                                "border-slate-200 bg-slate-100 text-slate-900 dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-50"
-                            )}
-                            style={{ top: `${top}px`, height: `${height}px` }}
-                          >
+                        <button
+                          key={apt.id}
+                          type="button"
+                          onClick={() => onAppointmentClick(apt)}
+                          className={cn(
+                            "absolute left-0.5 right-0.5 overflow-hidden rounded-md px-1 py-0.5 text-left text-[10px] leading-tight hover:brightness-95",
+                            calendarEntryClassName(apt)
+                          )}
+                          style={{ top: `${top}px`, height: `${height}px` }}
+                        >
                             <div className="font-semibold">{apt.time}</div>
                             <div className="truncate font-medium">{apt.patientName}</div>
                             <div className="truncate opacity-80">{apt.type}</div>

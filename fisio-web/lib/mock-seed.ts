@@ -1,5 +1,5 @@
 import { addDays, startOfWeekMonday, toLocalDateString } from "@/lib/date-utils";
-import type { Anamnese, Appointment, Evolucao, Patient } from "@/lib/types";
+import type { Anamnese, Appointment, Evolucao, Holiday, Patient } from "@/lib/types";
 
 function addr(
   cep: string,
@@ -95,15 +95,31 @@ export function buildInitialPatients(): Patient[] {
   ];
 }
 
-export function buildInitialAppointments(): Appointment[] {
-  const now = new Date();
-  const today = toLocalDateString(now);
-  const monday = startOfWeekMonday(now);
+const session = (
+  row: Omit<Appointment, "kind" | "status"> & { status: Appointment["status"] }
+): Appointment => ({
+  ...row,
+  kind: "session",
+  status: row.status,
+});
 
+export function buildInitialHolidays(reference: Date): Holiday[] {
+  const today = toLocalDateString(reference);
+  const inWeek = toLocalDateString(addDays(reference, 2));
+  return [
+    { id: 1, date: today, name: "Feriado (exemplo)" },
+    { id: 2, date: "2026-04-21", name: "Tiradentes" },
+    { id: 3, date: inWeek, name: "Ponto facultativo" },
+  ];
+}
+
+export function buildInitialAppointments(reference: Date): Appointment[] {
+  const today = toLocalDateString(reference);
+  const monday = startOfWeekMonday(reference);
   const day = (offset: number) => toLocalDateString(addDays(monday, offset));
 
   return [
-    {
+    session({
       id: 1,
       patientId: 1,
       patientName: "Maria Silva",
@@ -111,10 +127,10 @@ export function buildInitialAppointments(): Appointment[] {
       time: "08:00",
       duration: 50,
       type: "Fisioterapia Motora",
-      status: "confirmed",
+      status: "completed",
       paymentStatus: "paid",
-    },
-    {
+    }),
+    session({
       id: 2,
       patientId: 2,
       patientName: "João Santos",
@@ -124,8 +140,8 @@ export function buildInitialAppointments(): Appointment[] {
       type: "Avaliação Inicial",
       status: "confirmed",
       paymentStatus: "paid",
-    },
-    {
+    }),
+    session({
       id: 3,
       patientId: 4,
       patientName: "José Carlos",
@@ -133,10 +149,10 @@ export function buildInitialAppointments(): Appointment[] {
       time: "10:30",
       duration: 50,
       type: "Acupuntura",
-      status: "pending",
+      status: "scheduled",
       paymentStatus: "pending",
-    },
-    {
+    }),
+    session({
       id: 4,
       patientId: 3,
       patientName: "Ana Oliveira",
@@ -146,8 +162,8 @@ export function buildInitialAppointments(): Appointment[] {
       type: "RPG",
       status: "confirmed",
       paymentStatus: "pending",
-    },
-    {
+    }),
+    session({
       id: 5,
       patientId: 5,
       patientName: "Pedro Rocha",
@@ -155,10 +171,34 @@ export function buildInitialAppointments(): Appointment[] {
       time: "16:00",
       duration: 50,
       type: "Fisioterapia Esportiva",
-      status: "pending",
+      status: "scheduled",
+      paymentStatus: "pending",
+    }),
+    {
+      id: 12,
+      kind: "block",
+      patientId: 0,
+      patientName: "Horário bloqueado",
+      date: today,
+      time: "12:00",
+      duration: 60,
+      type: "Bloqueio",
+      status: "confirmed",
       paymentStatus: "pending",
     },
     {
+      id: 13,
+      kind: "personal",
+      patientId: 0,
+      patientName: "Trabalho fixo — administração",
+      date: today,
+      time: "18:00",
+      duration: 60,
+      type: "Trabalho fixo",
+      status: "confirmed",
+      paymentStatus: "pending",
+    },
+    session({
       id: 6,
       patientId: 2,
       patientName: "João Santos",
@@ -168,8 +208,8 @@ export function buildInitialAppointments(): Appointment[] {
       type: "Fisioterapia Motora",
       status: "confirmed",
       paymentStatus: "pending",
-    },
-    {
+    }),
+    session({
       id: 7,
       patientId: 3,
       patientName: "Ana Oliveira",
@@ -179,8 +219,8 @@ export function buildInitialAppointments(): Appointment[] {
       type: "RPG",
       status: "confirmed",
       paymentStatus: "paid",
-    },
-    {
+    }),
+    session({
       id: 8,
       patientId: 1,
       patientName: "Maria Silva",
@@ -188,10 +228,10 @@ export function buildInitialAppointments(): Appointment[] {
       time: "11:00",
       duration: 50,
       type: "Pilates",
-      status: "pending",
+      status: "scheduled",
       paymentStatus: "pending",
-    },
-    {
+    }),
+    session({
       id: 9,
       patientId: 5,
       patientName: "Pedro Rocha",
@@ -201,8 +241,8 @@ export function buildInitialAppointments(): Appointment[] {
       type: "Avaliação Inicial",
       status: "confirmed",
       paymentStatus: "pending",
-    },
-    {
+    }),
+    session({
       id: 10,
       patientId: 4,
       patientName: "José Carlos",
@@ -212,8 +252,8 @@ export function buildInitialAppointments(): Appointment[] {
       type: "Acupuntura",
       status: "cancelled",
       paymentStatus: "pending",
-    },
-    {
+    }),
+    session({
       id: 11,
       patientId: 2,
       patientName: "João Santos",
@@ -223,7 +263,7 @@ export function buildInitialAppointments(): Appointment[] {
       type: "Fisioterapia Esportiva",
       status: "confirmed",
       paymentStatus: "pending",
-    },
+    }),
   ];
 }
 

@@ -1,5 +1,5 @@
 import { formatAddressOneLine } from "@/lib/patient-utils";
-import type { Appointment, Patient } from "@/lib/types";
+import { isSessionAppointment, type Appointment, type Patient } from "@/lib/types";
 
 export type RouteStop = {
   appointment: Appointment;
@@ -20,7 +20,12 @@ export function buildRouteForDate(
   patients: Patient[]
 ): RouteStop[] {
   const list = appointments
-    .filter((a) => a.date === date && a.status !== "cancelled")
+    .filter(
+      (a) =>
+        a.date === date &&
+        isSessionAppointment(a) &&
+        a.status !== "cancelled"
+    )
     .map((appointment) => {
       const patient = patients.find((p) => p.id === appointment.patientId);
       const cepSortKey = (patient?.address.cep ?? "99999999").replace(/\D/g, "").padStart(8, "0");
