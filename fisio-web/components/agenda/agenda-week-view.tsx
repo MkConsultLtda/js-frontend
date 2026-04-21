@@ -12,6 +12,7 @@ import { parseLocalDate, toLocalDateString } from "@/lib/date-utils";
 import { holidaysForDate } from "@/lib/holiday-utils";
 import { isWorkingDate } from "@/lib/schedule-utils";
 import {
+  buildWeekOverlapLayout,
   getWeekDatesContaining,
   hourTicks,
   parseTimeToMinutes,
@@ -188,6 +189,16 @@ export function AgendaWeekView({
                   const dayAppointments = appointments
                     .filter((a) => a.date === key)
                     .sort((a, b) => parseTimeToMinutes(a.time) - parseTimeToMinutes(b.time));
+                  const overlapLayout = buildWeekOverlapLayout(dayAppointments, (apt) => {
+                    const start = parseTimeToMinutes(apt.time);
+                    const end = start + apt.duration;
+                    const clampedStart = Math.max(start, startMin);
+                    const clampedEnd = Math.min(end, endMin);
+                    if (clampedEnd <= startMin || clampedStart >= endMin) {
+                      return null;
+                    }
+                    return { startMin: clampedStart, endMin: clampedEnd };
+                  });
 
                   return (
                     <div
@@ -221,30 +232,32 @@ export function AgendaWeekView({
                         );
                       })}
 
-                      {dayAppointments.map((apt) => {
-                        const start = parseTimeToMinutes(apt.time);
-                        const end = start + apt.duration;
-                        const clampedStart = Math.max(start, startMin);
-                        const clampedEnd = Math.min(end, endMin);
-                        if (clampedEnd <= startMin || clampedStart >= endMin) return null;
-                        const top = ((clampedStart - startMin) / totalMinutes) * gridHeightPx;
+                      {overlapLayout.map((slot) => {
+                        const apt = slot.item;
+                        const top = ((slot.startMin - startMin) / totalMinutes) * gridHeightPx;
                         const height = Math.max(
                           16,
-                          ((Math.min(end, endMin) - Math.max(start, startMin)) / totalMinutes) *
-                            gridHeightPx
+                          ((slot.endMin - slot.startMin) / totalMinutes) * gridHeightPx
                         );
+                        const widthPct = 100 / slot.columnCount;
+                        const leftPct = slot.columnIndex * widthPct;
 
                         return (
-                        <button
-                          key={apt.id}
-                          type="button"
-                          onClick={() => onAppointmentClick(apt)}
-                          className={cn(
-                            "absolute left-0.5 right-0.5 overflow-hidden rounded-md px-1 py-0.5 text-left text-[10px] leading-tight hover:brightness-95",
-                            calendarEntryClassName(apt)
-                          )}
-                          style={{ top: `${top}px`, height: `${height}px` }}
-                        >
+                          <button
+                            key={apt.id}
+                            type="button"
+                            onClick={() => onAppointmentClick(apt)}
+                            className={cn(
+                              "absolute overflow-hidden rounded-md px-1 py-0.5 text-left text-[10px] leading-tight hover:brightness-95",
+                              calendarEntryClassName(apt)
+                            )}
+                            style={{
+                              top: `${top}px`,
+                              height: `${height}px`,
+                              width: `calc(${widthPct}% - 4px)`,
+                              left: `calc(${leftPct}% + 2px)`,
+                            }}
+                          >
                             <div className="font-semibold">{apt.time}</div>
                             <div className="truncate font-medium">{apt.patientName}</div>
                             <div className="truncate opacity-80">{apt.type}</div>

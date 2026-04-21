@@ -12,7 +12,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -112,6 +111,14 @@ export default function AgendaPage() {
     const matchesDate = apt.date === selectedDate;
     return matchesSearch && matchesStatus && matchesDate;
   });
+
+  const dayAppointments = React.useMemo(
+    () =>
+      appointments.filter(
+        (apt) => isSessionAppointment(apt) && apt.date === selectedDate
+      ),
+    [appointments, selectedDate]
+  );
 
   const navigateMonth = React.useCallback(
     (direction: "prev" | "next" | "today") => {
@@ -451,6 +458,7 @@ export default function AgendaPage() {
             workingWeekdays={workingWeekdays}
             onNavigate={navigateMonth}
             onSelectDay={handleSelectDay}
+            onAppointmentClick={openEditModal}
           />
         ) : (
           <AgendaWeekView
@@ -472,6 +480,7 @@ export default function AgendaPage() {
           statusFilter={statusFilter}
           onStatusFilterChange={setStatusFilter}
           filteredAppointments={filteredAppointments}
+          dayAppointments={dayAppointments}
           patients={patients}
           settings={settings}
           onEdit={openEditModal}

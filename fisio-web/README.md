@@ -110,14 +110,14 @@ A ideia é substituir gradualmente o **provider mock** por uma camada que chama 
 
 ## Melhorias técnicas recomendadas
 
-| Área | Sugestão |
-|------|----------|
-| **Validação** | Replicar o padrão em novos formulários (ex.: **login**, **configurações** ao persistir) e alinhar mensagens ao vocabulário da cliente. |
-| **Testes** | Testes de comportamento em hooks e utilitários (`lib/date-utils`, mapeadores de API). |
-| **Acessibilidade** | Revisar foco em modais e mensagens de erro de validação. |
-| **Performance** | Lazy load de rotas pouco usadas; revisar bundle após adicionar bibliotecas. |
-| **Persistência offline (opcional)** | IndexedDB ou sync apenas se a cliente precisar; não é obrigatório para o primeiro release com API. |
-| **Observabilidade** | Logging de erros no cliente (ex.: Sentry) após produção. |
+| Área | Melhoria aplicável agora | Próximo passo recomendado |
+|------|--------------------------|--------------------------|
+| **Validação** | Padronizar schemas e mensagens com `zod` para `login` e futuras telas de `configurações`, mantendo vocabulário alinhado com a clínica. | Centralizar mensagens em `lib/validation-messages.ts` para reduzir duplicação e facilitar ajustes de texto. |
+| **Testes** | Cobrir comportamento de utilitários e mapeadores (ex.: `lib/date-utils`, funções de transformação API -> domínio). | Adicionar testes de hooks críticos de dados/formulários antes da migração completa para API real. |
+| **Acessibilidade** | Garantir foco inicial e retorno de foco em modal/drawer; associar erros de formulário com `aria-describedby`. | Incluir checklist de acessibilidade em PRs (teclado, contraste, feedback de erro, leitor de tela). |
+| **Performance** | Aplicar lazy loading em rotas e componentes pouco usados (ex.: telas administrativas e blocos secundários). | Medir impacto com análise de bundle após novas bibliotecas e manter baseline de performance. |
+| **Persistência offline (opcional)** | Manter fora do escopo inicial para evitar complexidade prematura no primeiro release com API. | Reavaliar somente se houver requisito claro de uso sem internet, priorizando sincronização simples. |
+| **Observabilidade** | Preparar boundary de erro e estratégia mínima de captura para falhas de UI e chamadas HTTP. | Integrar monitoramento em produção (ex.: Sentry) com sanitização para evitar envio de dados sensíveis. |
 
 ---
 

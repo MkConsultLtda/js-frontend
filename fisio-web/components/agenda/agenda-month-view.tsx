@@ -23,6 +23,7 @@ type Props = {
   workingWeekdays: number[];
   onNavigate: (direction: "prev" | "next" | "today") => void;
   onSelectDay: (day: number) => void;
+  onAppointmentClick: (appointment: Appointment) => void;
 };
 
 export function AgendaMonthView({
@@ -33,6 +34,7 @@ export function AgendaMonthView({
   workingWeekdays,
   onNavigate,
   onSelectDay,
+  onAppointmentClick,
 }: Props) {
   const selectedDay = parseLocalDate(selectedDate).getDate();
 
@@ -172,8 +174,12 @@ export function AgendaMonthView({
                   {dayAppointments.slice(0, 3).map((apt) => (
                     <div
                       key={apt.id}
-                      className={monthChipClassName(apt)}
+                      className={`${monthChipClassName(apt)} cursor-pointer`}
                       title={`${apt.time} · ${apt.patientName}`}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onAppointmentClick(apt);
+                      }}
                     >
                       <span className="font-medium">{apt.time}</span>{" "}
                       <span className="opacity-90">{apt.patientName}</span>

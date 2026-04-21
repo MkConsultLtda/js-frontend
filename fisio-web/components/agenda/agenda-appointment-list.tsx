@@ -41,8 +41,9 @@ type Props = {
   statusFilter: string;
   onStatusFilterChange: (value: string) => void;
   filteredAppointments: Appointment[];
+  dayAppointments: Appointment[];
   patients: Patient[];
-  settings: Pick<ClinicSettings, "therapistName" | "clinicName">;
+  settings: Pick<ClinicSettings, "therapistName" | "clinicName" | "maxSessionsPerDay">;
   onEdit: (appointment: Appointment) => void;
   onDeleteRequest: (id: number) => void;
   onTogglePayment: (appointment: Appointment) => void;
@@ -55,6 +56,7 @@ export function AgendaAppointmentList({
   statusFilter,
   onStatusFilterChange,
   filteredAppointments,
+  dayAppointments,
   patients,
   settings,
   onEdit,
@@ -66,6 +68,49 @@ export function AgendaAppointmentList({
     month: "long",
     year: "numeric",
   });
+  const hasActiveFilters = searchTerm.trim().length > 0 || statusFilter !== "all";
+  const now = new Date();
+  const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(
+    now.getDate()
+  ).padStart(2, "0")}`;
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+  const statusCounts = React.useMemo(() => {
+    return dayAppointments.reduce(
+      (acc, apt) => {
+        acc.total += 1;
+        acc[apt.status] += 1;
+        if (apt.paymentStatus === "paid") {
+          acc.paid += 1;
+        } else {
+          acc.pendingPayment += 1;
+        }
+        return acc;
+      },
+      {
+        total: 0,
+        scheduled: 0,
+        confirmed: 0,
+        completed: 0,
+        cancelled: 0,
+        paid: 0,
+        pendingPayment: 0,
+      }
+    );
+  }, [dayAppointments]);
+
+  const nextAppointmentId = React.useMemo(() => {
+    if (selectedDate !== todayKey) return null;
+    const next = dayAppointments
+      .filter((apt) => apt.status !== "cancelled")
+      .sort((a, b) => a.time.localeCompare(b.time))
+      .find((apt) => {
+        const [hour, minute] = apt.time.split(":");
+        const aptMinutes = Number(hour) * 60 + Number(minute);
+        return aptMinutes >= nowMinutes;
+      });
+    return next?.id ?? null;
+  }, [dayAppointments, nowMinutes, selectedDate, todayKey]);
 
   return (
     <>
@@ -100,12 +145,52 @@ export function AgendaAppointmentList({
                 <SelectItem value="cancelled">Cancelados</SelectItem>
               </SelectContent>
             </Select>
+            {hasActiveFilters ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  onSearchTermChange("");
+                  onStatusFilterChange("all");
+                }}
+              >
+                Limpar filtros
+              </Button>
+            ) : null}
           </div>
         </CardHeader>
       </Card>
 
       <Card>
         <CardContent>
+          <div className="mb-4 grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-lg border bg-muted/40 px-3 py-2">
+              <p className="text-muted-foreground">Ocupação prevista</p>
+              <p className="font-semibold">
+                {statusCounts.total}/{settings.maxSessionsPerDay} sessões
+              </p>
+            </div>
+            <div className="rounded-lg border bg-muted/40 px-3 py-2">
+              <p className="text-muted-foreground">Confirmações</p>
+              <p className="font-semibold">
+                {statusCounts.confirmed} confirmada(s) · {statusCounts.scheduled} agendada(s)
+              </p>
+            </div>
+            <div className="rounded-lg border bg-muted/40 px-3 py-2">
+              <p className="text-muted-foreground">Finalização</p>
+              <p className="font-semibold">
+                {statusCounts.completed} concluída(s) · {statusCounts.cancelled} cancelada(s)
+              </p>
+            </div>
+            <div className="rounded-lg border bg-muted/40 px-3 py-2">
+              <p className="text-muted-foreground">Financeiro do dia</p>
+              <p className="font-semibold">
+                {statusCounts.paid} pago(s) · {statusCounts.pendingPayment} pendente(s)
+              </p>
+            </div>
+          </div>
+
           {filteredAppointments.length === 0 ? (
             <div className="text-center py-8">
               <CalendarIcon className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
@@ -136,7 +221,9 @@ export function AgendaAppointmentList({
                   return (
                     <div
                       key={appointment.id}
-                      className="flex flex-col gap-4 rounded-lg border p-4 transition hover:bg-muted/50 sm:flex-row sm:items-start sm:justify-between"
+                      className={`flex flex-col gap-4 rounded-lg border p-4 transition hover:bg-muted/50 sm:flex-row sm:items-start sm:justify-between ${
+                        appointment.id === nextAppointmentId ? "border-primary bg-primary/5" : ""
+                      }`}
                     >
                       <div className="space-y-2 min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
