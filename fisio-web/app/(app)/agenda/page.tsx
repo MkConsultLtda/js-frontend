@@ -38,7 +38,7 @@ import {
   emptyCalendarExtraForm,
   type CalendarExtraFormValues,
 } from "@/lib/schemas/calendar-extra-form";
-import { addDays, parseLocalDate, toLocalDateString } from "@/lib/date-utils";
+import { addDays, formatIsoDateToBR, parseLocalDate, toLocalDateString } from "@/lib/date-utils";
 import {
   appointmentsOverlap,
   calculateDurationFromTimeRange,
@@ -66,6 +66,7 @@ export default function AgendaPage() {
   const {
     patients,
     appointments,
+    evolucoes,
     holidays,
     addAppointment,
     updateAppointment,
@@ -281,9 +282,25 @@ export default function AgendaPage() {
     return dates.length > 0 ? dates : [values.date];
   }, []);
 
+  const hasEvolucaoForAppointmentDate = React.useCallback(
+    (patientId: number, isoDate: string) => {
+      const brDate = formatIsoDateToBR(isoDate);
+      return evolucoes.some(
+        (ev) => ev.patientId === patientId && ev.dataSessao === brDate
+      );
+    },
+    [evolucoes]
+  );
+
   const onCreateSessionSubmit = (values: AppointmentFormValues) => {
     const patient = patients.find((p) => p.id === parseInt(values.patientId, 10));
     if (!patient) return;
+    if (values.status === "completed" && !hasEvolucaoForAppointmentDate(patient.id, values.date)) {
+      toast.error(
+        "Para marcar como concluído, registre uma evolução do paciente na mesma data do atendimento."
+      );
+      return;
+    }
     const duration = parseInt(values.duration, 10);
     const payload = {
       kind: "session" as const,
@@ -366,6 +383,12 @@ export default function AgendaPage() {
     if (!editingAppointment) return;
     const patient = patients.find((p) => p.id === parseInt(values.patientId, 10));
     if (!patient) return;
+    if (values.status === "completed" && !hasEvolucaoForAppointmentDate(patient.id, values.date)) {
+      toast.error(
+        "Não é possível concluir sem evolução vinculada à data do atendimento."
+      );
+      return;
+    }
     const duration = parseInt(values.duration, 10);
     const updated = {
       ...editingAppointment,

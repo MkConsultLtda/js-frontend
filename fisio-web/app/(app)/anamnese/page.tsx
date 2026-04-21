@@ -8,9 +8,8 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import {
   Select,
   SelectContent,
@@ -26,8 +25,31 @@ import {
   type AnamneseFormValues,
 } from "@/lib/schemas/anamnese-form";
 import type { Anamnese } from "@/lib/types";
-import { cn } from "@/lib/utils";
 import { FileText, Save, User } from "lucide-react";
+
+function normalizeAnamneseHtml(raw: string): string {
+  if (!raw.trim()) return "";
+  return raw;
+}
+
+function legacyAnamneseToHtml(anamnese: Anamnese): string {
+  if (anamnese.anamneseTexto?.trim()) return anamnese.anamneseTexto;
+  const sections = [
+    { title: "Queixa principal", body: anamnese.queixaPrincipal },
+    { title: "História da doença atual", body: anamnese.historiaDoenca },
+    { title: "Antecedentes familiares", body: anamnese.antecedentesFamiliares },
+    { title: "Medicamentos", body: anamnese.medicamentos },
+    { title: "Alergias", body: anamnese.alergias },
+    { title: "Hábitos de vida", body: anamnese.habitosVida },
+    { title: "Exame físico", body: anamnese.exameFisico },
+    { title: "Diagnóstico fisioterapêutico", body: anamnese.diagnosticoFisioterapico },
+    { title: "Objetivos do tratamento", body: anamnese.objetivosTratamento },
+  ];
+  return sections
+    .filter((section) => section.body?.trim())
+    .map((section) => `<h3>${section.title}</h3><p>${section.body}</p>`)
+    .join("");
+}
 
 function AnamnesePageContent() {
   const searchParams = useSearchParams();
@@ -44,7 +66,6 @@ function AnamnesePageContent() {
   });
 
   const {
-    register,
     control,
     handleSubmit,
     reset,
@@ -67,14 +88,23 @@ function AnamnesePageContent() {
     const patient = patients.find((p) => p.id.toString() === values.patientId);
     if (!patient) return;
 
-    const { patientId: _pid, ...clinical } = values;
+    const normalizedHtml = normalizeAnamneseHtml(values.anamneseTexto);
     const base: Omit<Anamnese, "id"> = {
       patientId: patient.id,
       patientName: patient.name,
       dataColeta: editingAnamnese
         ? editingAnamnese.dataColeta
         : new Date().toLocaleDateString("pt-BR"),
-      ...clinical,
+      anamneseTexto: normalizedHtml,
+      queixaPrincipal: "",
+      historiaDoenca: "",
+      antecedentesFamiliares: "",
+      medicamentos: "",
+      alergias: "",
+      habitosVida: "",
+      exameFisico: "",
+      diagnosticoFisioterapico: "",
+      objetivosTratamento: "",
     };
 
     if (editingAnamnese) {
@@ -92,15 +122,7 @@ function AnamnesePageContent() {
     setEditingAnamnese(anamnese);
     reset({
       patientId: anamnese.patientId.toString(),
-      queixaPrincipal: anamnese.queixaPrincipal,
-      historiaDoenca: anamnese.historiaDoenca,
-      antecedentesFamiliares: anamnese.antecedentesFamiliares,
-      medicamentos: anamnese.medicamentos,
-      alergias: anamnese.alergias,
-      habitosVida: anamnese.habitosVida,
-      exameFisico: anamnese.exameFisico,
-      diagnosticoFisioterapico: anamnese.diagnosticoFisioterapico,
-      objetivosTratamento: anamnese.objetivosTratamento,
+      anamneseTexto: legacyAnamneseToHtml(anamnese),
     });
     setIsCreating(true);
   };
@@ -120,8 +142,6 @@ function AnamnesePageContent() {
       setIsCreating(true);
     }
   };
-
-  const fieldClass = (hasError: boolean) => cn(hasError && "border-destructive");
 
   return (
     <div className="p-8 space-y-8">
@@ -163,14 +183,7 @@ function AnamnesePageContent() {
                         onValueChange={field.onChange}
                         disabled={!!pacienteIdParam}
                       >
-                        <SelectTrigger
-                          id="anam-patient"
-                          className={fieldClass(!!errors.patientId)}
-                          aria-invalid={!!errors.patientId}
-                          aria-describedby={
-                            errors.patientId ? "anam-patient-error" : undefined
-                          }
-                        >
+                        <SelectTrigger id="anam-patient" aria-invalid={!!errors.patientId}>
                           <SelectValue placeholder="Selecione o paciente" />
                         </SelectTrigger>
                         <SelectContent>
@@ -188,135 +201,23 @@ function AnamnesePageContent() {
               </div>
 
               <div className="space-y-1">
-                <Label htmlFor="anam-queixa">Queixa principal</Label>
-                <Textarea
-                  id="anam-queixa"
-                  className={fieldClass(!!errors.queixaPrincipal)}
-                  aria-invalid={!!errors.queixaPrincipal}
-                  aria-describedby={
-                    errors.queixaPrincipal ? "anam-queixa-error" : undefined
-                  }
-                  placeholder="Descreva a queixa principal do paciente"
-                  {...register("queixaPrincipal")}
+                <Label htmlFor="anam-texto">Anamnese (bloco único)</Label>
+                <Controller
+                  name="anamneseTexto"
+                  control={control}
+                  render={({ field }) => (
+                    <RichTextEditor
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder="Escreva a anamnese completa. Use os botões para negrito, itálico, listas e títulos."
+                      ariaInvalid={!!errors.anamneseTexto}
+                    />
+                  )}
                 />
-                <FormFieldError
-                  message={errors.queixaPrincipal?.message}
-                  id="anam-queixa-error"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="anam-historia">História da doença atual</Label>
-                <Textarea
-                  id="anam-historia"
-                  className={fieldClass(!!errors.historiaDoenca)}
-                  aria-invalid={!!errors.historiaDoenca}
-                  aria-describedby={
-                    errors.historiaDoenca ? "anam-historia-error" : undefined
-                  }
-                  placeholder="Histórico detalhado da doença"
-                  {...register("historiaDoenca")}
-                />
-                <FormFieldError
-                  message={errors.historiaDoenca?.message}
-                  id="anam-historia-error"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <Label htmlFor="anam-antecedentes">Antecedentes familiares</Label>
-                  <Textarea
-                    id="anam-antecedentes"
-                    className={fieldClass(!!errors.antecedentesFamiliares)}
-                    aria-invalid={!!errors.antecedentesFamiliares}
-                    placeholder="Doenças na família"
-                    {...register("antecedentesFamiliares")}
-                  />
-                  <FormFieldError message={errors.antecedentesFamiliares?.message} />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="anam-medicamentos">Medicamentos</Label>
-                  <Textarea
-                    id="anam-medicamentos"
-                    className={fieldClass(!!errors.medicamentos)}
-                    placeholder="Medicamentos em uso"
-                    {...register("medicamentos")}
-                  />
-                  <FormFieldError message={errors.medicamentos?.message} />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <Label htmlFor="anam-alergias">Alergias</Label>
-                  <Input
-                    id="anam-alergias"
-                    className={fieldClass(!!errors.alergias)}
-                    placeholder="Alergias conhecidas"
-                    {...register("alergias")}
-                  />
-                  <FormFieldError message={errors.alergias?.message} />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="anam-habitos">Hábitos de vida</Label>
-                  <Textarea
-                    id="anam-habitos"
-                    className={fieldClass(!!errors.habitosVida)}
-                    placeholder="Atividade física, fumo, etc."
-                    {...register("habitosVida")}
-                  />
-                  <FormFieldError message={errors.habitosVida?.message} />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="anam-exame">Exame físico</Label>
-                <Textarea
-                  id="anam-exame"
-                  className={fieldClass(!!errors.exameFisico)}
-                  aria-invalid={!!errors.exameFisico}
-                  aria-describedby={errors.exameFisico ? "anam-exame-error" : undefined}
-                  placeholder="Achados do exame físico"
-                  {...register("exameFisico")}
-                />
-                <FormFieldError message={errors.exameFisico?.message} id="anam-exame-error" />
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="anam-diagnostico">Diagnóstico fisioterapêutico</Label>
-                <Textarea
-                  id="anam-diagnostico"
-                  className={fieldClass(!!errors.diagnosticoFisioterapico)}
-                  aria-invalid={!!errors.diagnosticoFisioterapico}
-                  aria-describedby={
-                    errors.diagnosticoFisioterapico ? "anam-dx-error" : undefined
-                  }
-                  placeholder="Diagnóstico fisioterapêutico"
-                  {...register("diagnosticoFisioterapico")}
-                />
-                <FormFieldError
-                  message={errors.diagnosticoFisioterapico?.message}
-                  id="anam-dx-error"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="anam-objetivos">Objetivos do tratamento</Label>
-                <Textarea
-                  id="anam-objetivos"
-                  className={fieldClass(!!errors.objetivosTratamento)}
-                  aria-invalid={!!errors.objetivosTratamento}
-                  aria-describedby={
-                    errors.objetivosTratamento ? "anam-obj-error" : undefined
-                  }
-                  placeholder="Objetivos a serem alcançados"
-                  {...register("objetivosTratamento")}
-                />
-                <FormFieldError
-                  message={errors.objetivosTratamento?.message}
-                  id="anam-obj-error"
-                />
+                <FormFieldError message={errors.anamneseTexto?.message} id="anam-texto-error" />
+                <p className="text-xs text-muted-foreground">
+                  Dica: use títulos curtos para organizar seções clínicas dentro do mesmo texto.
+                </p>
               </div>
 
               <div className="flex flex-wrap gap-2">
@@ -353,12 +254,13 @@ function AnamnesePageContent() {
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <div>
-                  <strong>Queixa principal:</strong> {anamnese.queixaPrincipal}
-                </div>
-                <div>
-                  <strong>Diagnóstico:</strong> {anamnese.diagnosticoFisioterapico}
+                  <strong>Resumo:</strong> avaliação registrada em {anamnese.dataColeta}
                 </div>
               </div>
+              <div
+                className="prose prose-sm mt-4 max-w-none dark:prose-invert"
+                dangerouslySetInnerHTML={{ __html: legacyAnamneseToHtml(anamnese) }}
+              />
               <div className="mt-4">
                 <Button variant="outline" size="sm" onClick={() => handleEdit(anamnese)}>
                   Editar

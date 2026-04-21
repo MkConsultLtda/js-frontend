@@ -42,12 +42,10 @@ export function ConfirmDialog({
         onEscapeKeyDown={() => onOpenChange(false)}
         role="alertdialog"
         aria-modal="true"
-        aria-labelledby="confirm-dialog-title"
-        aria-describedby="confirm-dialog-desc"
       >
         <DialogHeader>
-          <DialogTitle id="confirm-dialog-title">{title}</DialogTitle>
-          <DialogDescription id="confirm-dialog-desc">{description}</DialogDescription>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
         <DialogFooter className="gap-2 sm:gap-0">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

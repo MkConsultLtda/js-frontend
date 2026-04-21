@@ -193,6 +193,46 @@ export default function ConfiguracoesPage() {
                 Usado só como referência percentual no dashboard; não bloqueia novos agendamentos.
               </p>
             </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="session-price">Valor da sessão (R$)</Label>
+                <Input
+                  id="session-price"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={draft.sessionPrice}
+                  onChange={(e) =>
+                    setDraft((d) => ({
+                      ...d,
+                      sessionPrice: Math.max(0, Number(e.target.value) || 0),
+                    }))
+                  }
+                />
+                <p className="text-xs text-muted-foreground">
+                  Referência para estimar valor recebido em dia/semana/mês.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="monthly-goal">Meta financeira mensal (R$)</Label>
+                <Input
+                  id="monthly-goal"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={draft.monthlyRevenueGoal}
+                  onChange={(e) =>
+                    setDraft((d) => ({
+                      ...d,
+                      monthlyRevenueGoal: Math.max(0, Number(e.target.value) || 0),
+                    }))
+                  }
+                />
+                <p className="text-xs text-muted-foreground">
+                  Usada para mostrar progresso financeiro no dashboard.
+                </p>
+              </div>
+            </div>
 
             <div className="space-y-3 rounded-md border bg-background p-3">
               <Label className="text-sm font-medium">Durações de atendimento</Label>

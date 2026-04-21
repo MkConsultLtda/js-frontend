@@ -26,9 +26,16 @@ import {
   emptyEvolucaoForm,
   type EvolucaoFormValues,
 } from "@/lib/schemas/evolucao-form";
+import { formatIsoDateToBR, parseBRDate, toLocalDateString } from "@/lib/date-utils";
 import type { Evolucao } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { TrendingUp, Save, Calendar, User } from "lucide-react";
+
+function toDateInputValue(brDate: string): string {
+  const isValidBr = /^\d{2}\/\d{2}\/\d{4}$/.test(brDate);
+  if (!isValidBr) return toLocalDateString(new Date());
+  return toLocalDateString(parseBRDate(brDate));
+}
 
 function EvolucaoPageContent() {
   const searchParams = useSearchParams();
@@ -38,9 +45,7 @@ function EvolucaoPageContent() {
 
   const [isCreating, setIsCreating] = React.useState(false);
   const [editingEvolucao, setEditingEvolucao] = React.useState<Evolucao | null>(null);
-  const [selectedPatientFilter, setSelectedPatientFilter] = React.useState(
-    pacienteIdParam ?? "all"
-  );
+  const [patientNameFilter, setPatientNameFilter] = React.useState("");
 
   const form = useForm<EvolucaoFormValues>({
     resolver: zodResolver(evolucaoFormSchema),
@@ -57,23 +62,24 @@ function EvolucaoPageContent() {
   } = form;
 
   React.useEffect(() => {
-    setSelectedPatientFilter(pacienteIdParam ?? "all");
-  }, [pacienteIdParam]);
+    if (!pacienteIdParam) {
+      setPatientNameFilter("");
+      return;
+    }
+    const patient = patients.find((p) => p.id === Number(pacienteIdParam));
+    setPatientNameFilter(patient?.name ?? "");
+  }, [pacienteIdParam, patients]);
 
   const filteredEvolucoes = React.useMemo(() => {
-    if (selectedPatientFilter === "all") return evolucoes;
-    const pid = Number(selectedPatientFilter);
-    return evolucoes.filter((e) => e.patientId === pid);
-  }, [evolucoes, selectedPatientFilter]);
+    const query = patientNameFilter.trim().toLowerCase();
+    if (!query) return evolucoes;
+    return evolucoes.filter((e) => e.patientName.toLowerCase().includes(query));
+  }, [evolucoes, patientNameFilter]);
 
   React.useEffect(() => {
     if (editingEvolucao || !isCreating) return;
-    if (selectedPatientFilter !== "all") {
-      setValue("patientId", selectedPatientFilter);
-      return;
-    }
     setValue("patientId", pacienteIdParam ?? "");
-  }, [pacienteIdParam, selectedPatientFilter, editingEvolucao, isCreating, setValue]);
+  }, [pacienteIdParam, editingEvolucao, isCreating, setValue]);
 
   const onSubmit = (values: EvolucaoFormValues) => {
     const patient = patients.find((p) => p.id.toString() === values.patientId);
@@ -82,9 +88,7 @@ function EvolucaoPageContent() {
     const base: Omit<Evolucao, "id"> = {
       patientId: patient.id,
       patientName: patient.name,
-      dataSessao: editingEvolucao
-        ? editingEvolucao.dataSessao
-        : new Date().toLocaleDateString("pt-BR"),
+      dataSessao: formatIsoDateToBR(values.dataSessao),
       tipoSessao: values.tipoSessao,
       sinaisVitaisInicio: values.sinaisVitaisInicio.trim() || undefined,
       sinaisVitaisFim: values.sinaisVitaisFim.trim() || undefined,
@@ -105,13 +109,14 @@ function EvolucaoPageContent() {
     }
 
     setIsCreating(false);
-    reset(emptyEvolucaoForm(selectedPatientFilter === "all" ? null : selectedPatientFilter));
+    reset(emptyEvolucaoForm(pacienteIdParam));
   };
 
   const handleEdit = (evolucao: Evolucao) => {
     setEditingEvolucao(evolucao);
     reset({
       patientId: evolucao.patientId.toString(),
+      dataSessao: toDateInputValue(evolucao.dataSessao),
       tipoSessao: evolucao.tipoSessao,
       sinaisVitaisInicio: evolucao.sinaisVitaisInicio ?? "",
       sinaisVitaisFim: evolucao.sinaisVitaisFim ?? "",
@@ -129,7 +134,7 @@ function EvolucaoPageContent() {
   const closeForm = () => {
     setIsCreating(false);
     setEditingEvolucao(null);
-    reset(emptyEvolucaoForm(selectedPatientFilter === "all" ? null : selectedPatientFilter));
+    reset(emptyEvolucaoForm(pacienteIdParam));
   };
 
   const toggleCreate = () => {
@@ -137,7 +142,7 @@ function EvolucaoPageContent() {
       closeForm();
     } else {
       setEditingEvolucao(null);
-      reset(emptyEvolucaoForm(selectedPatientFilter === "all" ? null : selectedPatientFilter));
+      reset(emptyEvolucaoForm(pacienteIdParam));
       setIsCreating(true);
     }
   };
@@ -150,6 +155,17 @@ function EvolucaoPageContent() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Evolução</h1>
           <p className="text-muted-foreground">Registro do progresso dos pacientes</p>
+          <div className="mt-3 max-w-md space-y-1">
+            <Label htmlFor="evo-filter-name" className="text-xs text-muted-foreground">
+              Buscar por nome do paciente
+            </Label>
+            <Input
+              id="evo-filter-name"
+              value={patientNameFilter}
+              onChange={(e) => setPatientNameFilter(e.target.value)}
+              placeholder="Digite o nome do paciente..."
+            />
+          </div>
           {pacienteIdParam && (
             <p className="text-sm text-muted-foreground mt-2">
               Filtrando por paciente.{" "}
@@ -160,24 +176,6 @@ function EvolucaoPageContent() {
           )}
         </div>
         <div className="flex flex-col gap-2 sm:items-end">
-          <div className="w-full sm:w-64">
-            <Label htmlFor="evo-filter-patient" className="mb-1 block text-xs text-muted-foreground">
-              Filtro de paciente
-            </Label>
-            <Select value={selectedPatientFilter} onValueChange={setSelectedPatientFilter}>
-              <SelectTrigger id="evo-filter-patient">
-                <SelectValue placeholder="Todos os pacientes" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os pacientes</SelectItem>
-                {patients.map((p) => (
-                  <SelectItem key={p.id} value={p.id.toString()}>
-                    {p.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
           <Button type="button" onClick={toggleCreate}>
             <TrendingUp className="h-4 w-4 mr-2" />
             {isCreating ? "Cancelar" : "Novo registro"}
@@ -228,6 +226,24 @@ function EvolucaoPageContent() {
                   />
                   <FormFieldError message={errors.patientId?.message} id="evo-patient-error" />
                 </div>
+                <div className="space-y-1">
+                  <Label htmlFor="evo-data-sessao">Data da sessão</Label>
+                  <Input
+                    id="evo-data-sessao"
+                    type="date"
+                    className={fieldClass(!!errors.dataSessao)}
+                    aria-invalid={!!errors.dataSessao}
+                    aria-describedby={errors.dataSessao ? "evo-data-sessao-error" : undefined}
+                    {...register("dataSessao")}
+                  />
+                  <FormFieldError
+                    message={errors.dataSessao?.message}
+                    id="evo-data-sessao-error"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <Label htmlFor="evo-tipo">Tipo de sessão</Label>
                   <Controller

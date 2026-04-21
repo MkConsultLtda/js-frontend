@@ -22,17 +22,15 @@ Este arquivo centraliza as tarefas para facilitar nosso fluxo em conjunto.
 
 ## Backlog
 
-- - [ ] [prioridade: alta] [anamnese] Exemplo: Bloco unico de texto.
-  - Contexto: Ao criar uma anamnese, ter apenas as opções de selecionar o paciente e abaixo, um bloco de texto editável, com opções de negrito e etc.
-  - Criterios de aceite:
-    - Ao criar uma anamnese, eu seleciono o paciente e escrevo no bloco de texto a anamnese.
-  - Observacoes: O bloco de texto tem que ser editável, poder selecionar negrito, italico, estilo de fonte e etc.
+- [ ] [prioridade: media] [dashboard] Métricas mensais, semanais e diarias.
+  - Contexto: Baseado no que existe no sistema e em como a cliente trabalha, crie métricas no dashboard para que facilite a vida da minha cliente, como por exemplo, atendimentos realizados na semana, realizados no mes e etc. Com seu conhecimento, enriqueça as métricas que temos atualmente.
+  - Criterios de aceite: Ter métrias uteis para minha cliente, tanto no seu dia a dia quanto quando ela olhar semanalmente e mensalmente.
+  - Observacoes:
 
-- - [ ] [prioridade: media] [dashboard] Exemplo: Direcionamento paciente.
-  - Contexto: Atualizar o dashboard com as métricas que a cliente pediu + o que a IA achar interessante de se ter...
-  - Criterios de aceite:
-    - Quando eu tiver na agenda, eu clico no nome do paciente e vou direto para o prontuário daquele paciente.
-  - Observacoes: Solicitação da cliente: (DIA - Atendimentos / Valor recebido / Ag. de hoje / confirmações / Rota do dia / ocupação) (SEMANAL - Atendimentos (gráfico) / financeiro / cancelamento) (MENSAL - Financeiro (total em gráfico) / atendimentos concluídos media em gráfico / cancelamento (gráfico) / meta mensal financeira (porcentagem))
+- [ ] [prioridade: media] [Geral] Opção de anexos e geração de relátorios
+  - Contexto: Ter a opção de adicionar anexos no prontuário do paciente e também ter a opção de gerar PDFs de prontuários, evolução, histórico de atendimento.
+  - Criterios de aceite: No prontuário do meu paciente, eu consigo adicionar anexos e também gerar relátorios (PDF) de seu histórico de atendimento, prontuário e evolução.
+  - Observacoes:
 
 ## Em andamento
 
@@ -59,3 +57,13 @@ Este arquivo centraliza as tarefas para facilitar nosso fluxo em conjunto.
   - Entrega: bloqueio/evento suporta dia inteiro, inicio/fim e repetição semanal por dias selecionados.
 - [x] [prioridade: media] [evolução] Adicionar sinais vitais e filtro por paciente
   - Entrega: formulário de evolução com sinais vitais (início/fim) e novo filtro por paciente na listagem.
+- [x] [prioridade: alta] [anamnese] Bloco unico de texto editável
+  - Entrega: anamnese com seleção de paciente + editor único com negrito, itálico, sublinhado, lista e título.
+- [x] [prioridade: media] [dashboard] Atualização de métricas e direcionamento
+  - Entrega: dashboard com métricas de dia/semana/mês, meta financeira mensal e link para prontuário na lista de hoje.
+- [x] [prioridade: alta] [evolução] Filtro por nome abaixo do título
+  - Entrega: filtro movido abaixo do título da evolução e pesquisa por nome digitado.
+- [x] [prioridade: media] [dashboard] Ajustes
+  - Entrega: removidos os cards "Reavaliações sugeridas" e "Base ativa" do dashboard.
+- [x] [prioridade: media] [Status] Regra para concluir atendimento
+  - Entrega: status "Concluído" agora só pode ser salvo quando houver evolução do paciente na mesma data do atendimento.

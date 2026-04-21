@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
 import { X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -34,6 +35,17 @@ type DialogContentProps = React.ComponentPropsWithoutRef<typeof DialogPrimitive.
   showCloseButton?: boolean;
 };
 
+function hasDialogTitleNode(node: React.ReactNode): boolean {
+  if (!React.isValidElement(node)) return false;
+  const elementType = node.type as { displayName?: string; name?: string };
+  const displayName = elementType.displayName ?? elementType.name ?? "";
+  if (displayName.includes("DialogTitle") || displayName.includes("Title")) {
+    return true;
+  }
+  const childProps = (node.props as { children?: React.ReactNode }) ?? {};
+  return React.Children.toArray(childProps.children).some((child) => hasDialogTitleNode(child));
+}
+
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   DialogContentProps
@@ -49,6 +61,11 @@ const DialogContent = React.forwardRef<
       {...props}
     >
       {children}
+      {!React.Children.toArray(children).some((child) => hasDialogTitleNode(child)) ? (
+        <VisuallyHidden asChild>
+          <DialogPrimitive.Title>Janela de diálogo</DialogPrimitive.Title>
+        </VisuallyHidden>
+      ) : null}
       {showCloseButton ? (
         <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
           <X className="h-4 w-4" />

@@ -1,9 +1,13 @@
 import { z } from "zod";
+import { toLocalDateString } from "@/lib/date-utils";
 
 const text = (max: number) => z.string().trim().max(max, `Máximo de ${max} caracteres`);
 
 export const evolucaoFormSchema = z.object({
   patientId: z.string().min(1, "Selecione um paciente"),
+  dataSessao: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Informe uma data válida"),
   tipoSessao: z.string().min(1, "Selecione o tipo de sessão"),
   sinaisVitaisInicio: text(500),
   sinaisVitaisFim: text(500),
@@ -29,6 +33,7 @@ export type EvolucaoFormValues = z.infer<typeof evolucaoFormSchema>;
 export function emptyEvolucaoForm(pacienteIdFromUrl: string | null): EvolucaoFormValues {
   return {
     patientId: pacienteIdFromUrl ?? "",
+    dataSessao: toLocalDateString(new Date()),
     tipoSessao: "",
     sinaisVitaisInicio: "",
     sinaisVitaisFim: "",

@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useMockData } from "@/components/mock-data-provider";
 import { useClinicSettings } from "@/lib/clinic-settings";
 import { buildRouteForDate } from "@/lib/route-day";
-import { parseBRDate, toLocalDateString } from "@/lib/date-utils";
+import { startOfWeekMonday, toLocalDateString } from "@/lib/date-utils";
 import {
   countAppointmentsByWorkingWeekdays,
   formatWorkingDaysShort,
@@ -15,6 +15,14 @@ import {
 import { isSessionAppointment } from "@/lib/types";
 import { Users, Calendar, Clock, Activity, TrendingUp, Route, ExternalLink, BarChart3 } from "lucide-react";
 import { useMemo } from "react";
+
+function money(value: number): string {
+  return value.toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    maximumFractionDigits: 2,
+  });
+}
 
 export default function DashboardPage() {
   const { patients, appointments } = useMockData();
@@ -44,13 +52,6 @@ export default function DashboardPage() {
         return aptTime > now;
       });
 
-    const weekAgo = new Date();
-    weekAgo.setDate(weekAgo.getDate() - 7);
-    const pendingEvaluations = patients.filter((p) => {
-      const lastSession = parseBRDate(p.lastSession);
-      return lastSession < weekAgo && p.status === "active";
-    }).length;
-
     const weekBars = countAppointmentsByWorkingWeekdays(
       sessions,
       now,
@@ -59,6 +60,47 @@ export default function DashboardPage() {
     const isTodayWorking = isWorkingDateKey(today, settings.workingWeekdays);
     const workingDaysLabel = formatWorkingDaysShort(settings.workingWeekdays);
     const maxSessions = Math.max(1, settings.maxSessionsPerDay);
+    const sessionPrice = Math.max(0, settings.sessionPrice || 0);
+
+    const receivedToday = todayAppointments.filter((apt) => apt.paymentStatus === "paid").length * sessionPrice;
+    const cancelledToday = todayAppointments.filter((apt) => apt.status === "cancelled").length;
+
+    const weekStart = startOfWeekMonday(now);
+    const weekEnd = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 6);
+    const weeklySessions = sessions.filter((apt) => {
+      const date = new Date(`${apt.date}T12:00:00`);
+      return date >= weekStart && date <= weekEnd;
+    });
+    const weeklyReceived = weeklySessions.filter((apt) => apt.paymentStatus === "paid").length * sessionPrice;
+    const weeklyCancelled = weeklySessions.filter((apt) => apt.status === "cancelled").length;
+
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const monthlySessions = sessions.filter((apt) => {
+      const date = new Date(`${apt.date}T12:00:00`);
+      return date >= monthStart && date <= monthEnd;
+    });
+    const monthlyReceived = monthlySessions.filter((apt) => apt.paymentStatus === "paid").length * sessionPrice;
+    const monthlyCompleted = monthlySessions.filter((apt) => apt.status === "completed").length;
+    const monthlyCancelled = monthlySessions.filter((apt) => apt.status === "cancelled").length;
+    const monthlyGoal = Math.max(1, settings.monthlyRevenueGoal || 0);
+    const monthlyGoalPct = Math.min(999, Math.round((monthlyReceived / monthlyGoal) * 100));
+
+    const monthWeekBuckets = [1, 2, 3, 4, 5].map((w) => ({
+      label: `S${w}`,
+      received: 0,
+      completed: 0,
+      cancelled: 0,
+    }));
+    for (const apt of monthlySessions) {
+      const date = new Date(`${apt.date}T12:00:00`);
+      const day = date.getDate();
+      const bucketIndex = Math.min(4, Math.floor((day - 1) / 7));
+      const bucket = monthWeekBuckets[bucketIndex];
+      if (apt.paymentStatus === "paid") bucket.received += sessionPrice;
+      if (apt.status === "completed") bucket.completed += 1;
+      if (apt.status === "cancelled") bucket.cancelled += 1;
+    }
 
     return {
       appointmentsToday: todayAppointments.length,
@@ -66,14 +108,30 @@ export default function DashboardPage() {
       activePatients,
       newPatientsThisMonth,
       nextAppointment,
-      pendingEvaluations,
       weekBars,
       today,
       isTodayWorking,
       workingDaysLabel,
       maxSessions,
+      receivedToday,
+      cancelledToday,
+      weeklyReceived,
+      weeklyCancelled,
+      monthlyReceived,
+      monthlyCompleted,
+      monthlyCancelled,
+      monthlyGoal,
+      monthlyGoalPct,
+      monthWeekBuckets,
     };
-  }, [patients, appointments, settings.workingWeekdays, settings.maxSessionsPerDay]);
+  }, [
+    patients,
+    appointments,
+    settings.workingWeekdays,
+    settings.maxSessionsPerDay,
+    settings.monthlyRevenueGoal,
+    settings.sessionPrice,
+  ]);
 
   const routeToday = useMemo(
     () => buildRouteForDate(metrics.today, appointments, patients),
@@ -155,6 +213,16 @@ export default function DashboardPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Valor recebido (dia)</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{money(metrics.receivedToday)}</div>
+            <p className="text-xs text-muted-foreground">Pagamentos marcados como pagos hoje</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Pacientes ativos</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -179,20 +247,6 @@ export default function DashboardPage() {
               {metrics.nextAppointment
                 ? `${metrics.nextAppointment.patientName} — ${metrics.nextAppointment.type}`
                 : "Nenhum agendamento confirmado restante hoje"}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Reavaliações sugeridas
-            </CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{metrics.pendingEvaluations}</div>
-            <p className="text-xs text-muted-foreground">
-              Ativos sem sessão há mais de 7 dias (mock)
             </p>
           </CardContent>
         </Card>
@@ -245,7 +299,9 @@ export default function DashboardPage() {
                 <div key={appointment.id} className="flex items-center justify-between gap-2">
                   <div className="space-y-1 min-w-0">
                     <p className="text-sm font-medium leading-none truncate">
-                      {appointment.patientName}
+                      <Link href={`/pacientes/${appointment.patientId}`} className="hover:underline">
+                        {appointment.patientName}
+                      </Link>
                     </p>
                     <p className="text-sm text-muted-foreground truncate">
                       {appointment.time} — {appointment.type}
@@ -331,7 +387,105 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Financeiro semanal</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold text-emerald-600">{money(metrics.weeklyReceived)}</p>
+            <p className="text-xs text-muted-foreground">Sessões pagas da semana atual</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Cancelamentos semanais</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold text-rose-600">{metrics.weeklyCancelled}</p>
+            <p className="text-xs text-muted-foreground">Sessões canceladas na semana</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Meta mensal financeira</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold text-violet-600">{metrics.monthlyGoalPct}%</p>
+            <p className="text-xs text-muted-foreground">
+              {money(metrics.monthlyReceived)} de {money(metrics.monthlyGoal)}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Financeiro mensal (gráfico)</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <div className="flex h-28 items-end gap-2">
+              {metrics.monthWeekBuckets.map((bucket) => {
+                const height = Math.max(8, (bucket.received / Math.max(metrics.monthlyGoal, 1)) * 120);
+                return (
+                  <div key={bucket.label} className="flex flex-1 flex-col items-center gap-1">
+                    <div className="w-full rounded-t bg-emerald-500/80" style={{ height: `${height}px` }} />
+                    <span className="text-[10px] text-muted-foreground">{bucket.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="text-xs text-muted-foreground">Total do mês: {money(metrics.monthlyReceived)}</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Concluídos no mês (gráfico)</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <div className="flex h-28 items-end gap-2">
+              {metrics.monthWeekBuckets.map((bucket) => {
+                const height = Math.max(8, bucket.completed * 14);
+                return (
+                  <div key={bucket.label} className="flex flex-1 flex-col items-center gap-1">
+                    <div className="w-full rounded-t bg-cyan-500/80" style={{ height: `${height}px` }} />
+                    <span className="text-[10px] text-muted-foreground">{bucket.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Total concluídos: {metrics.monthlyCompleted} sessão(ões)
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Cancelamentos no mês (gráfico)</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <div className="flex h-28 items-end gap-2">
+              {metrics.monthWeekBuckets.map((bucket) => {
+                const height = Math.max(8, bucket.cancelled * 14);
+                return (
+                  <div key={bucket.label} className="flex flex-1 flex-col items-center gap-1">
+                    <div className="w-full rounded-t bg-rose-500/80" style={{ height: `${height}px` }} />
+                    <span className="text-[10px] text-muted-foreground">{bucket.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Total cancelados: {metrics.monthlyCancelled} sessão(ões)
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -349,24 +503,6 @@ export default function DashboardPage() {
             <p className="text-xs text-muted-foreground">
               Confirmados entre os agendamentos de hoje
             </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Users className="h-4 w-4 text-blue-500" />
-              Base ativa
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
-              {patients.length === 0
-                ? 0
-                : Math.round((metrics.activePatients / patients.length) * 100)}
-              %
-            </div>
-            <p className="text-xs text-muted-foreground">Pacientes ativos no total</p>
           </CardContent>
         </Card>
 

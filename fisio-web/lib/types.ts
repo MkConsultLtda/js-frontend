@@ -86,6 +86,7 @@ export interface Anamnese {
   patientId: number;
   patientName: string;
   dataColeta: string;
+  anamneseTexto?: string;
   queixaPrincipal: string;
   historiaDoenca: string;
   antecedentesFamiliares: string;
