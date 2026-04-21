@@ -145,7 +145,7 @@ export function PatientFormRows({ form: formProp, idPrefix }: PatientFormProps) 
       </div>
       <div className="grid grid-cols-4 items-start gap-4">
         <Label htmlFor={`${idPrefix}-dx`} className="text-right pt-2">
-          Diagnóstico
+          Diagnóstico clínico
         </Label>
         <div className="col-span-3 space-y-1">
           <Input

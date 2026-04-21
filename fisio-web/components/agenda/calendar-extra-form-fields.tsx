@@ -4,13 +4,6 @@ import { Controller, type Control, type FieldErrors } from "react-hook-form";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { FormFieldError } from "@/components/form-field-error";
 import type { CalendarExtraFormValues } from "@/lib/schemas/calendar-extra-form";
 import { cn } from "@/lib/utils";
@@ -28,6 +21,16 @@ export function CalendarExtraFormFields({
   idPrefix = "",
   titleLabel = "Título",
 }: Props) {
+  const weekdays = [
+    { label: "Dom", value: 0 },
+    { label: "Seg", value: 1 },
+    { label: "Ter", value: 2 },
+    { label: "Qua", value: 3 },
+    { label: "Qui", value: 4 },
+    { label: "Sex", value: 5 },
+    { label: "Sáb", value: 6 },
+  ] as const;
+
   return (
     <div className="grid gap-2 py-4">
       <div className="grid grid-cols-4 items-start gap-4">
@@ -94,28 +97,130 @@ export function CalendarExtraFormFields({
       </div>
 
       <div className="grid grid-cols-4 items-start gap-4">
-        <Label htmlFor={`${idPrefix}duration`} className={cn("text-right pt-2", errors.duration && "text-destructive")}>
-          Duração
+        <Label htmlFor={`${idPrefix}end-time`} className={cn("text-right pt-2", errors.endTime && "text-destructive")}>
+          Fim
         </Label>
         <div className="col-span-3 space-y-1">
           <Controller
-            name="duration"
+            name="endTime"
             control={control}
             render={({ field }) => (
-              <Select value={field.value} onValueChange={field.onChange}>
-                <SelectTrigger id={`${idPrefix}duration`}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="30">30 minutos</SelectItem>
-                  <SelectItem value="50">50 minutos</SelectItem>
-                  <SelectItem value="60">1 hora</SelectItem>
-                  <SelectItem value="90">1h 30min</SelectItem>
-                </SelectContent>
-              </Select>
+              <Input
+                id={`${idPrefix}end-time`}
+                type="time"
+                className={cn(errors.endTime && "border-destructive")}
+                {...field}
+              />
             )}
           />
-          <FormFieldError message={errors.duration?.message} id={`${idPrefix}duration-error`} />
+          <FormFieldError message={errors.endTime?.message} id={`${idPrefix}end-time-error`} />
+          <p className="text-[11px] text-muted-foreground">
+            Para bloquear o dia inteiro, marque a opção abaixo.
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-4 items-start gap-4">
+        <Label htmlFor={`${idPrefix}all-day`} className="text-right pt-2">
+          Dia inteiro
+        </Label>
+        <div className="col-span-3">
+          <Controller
+            name="isAllDay"
+            control={control}
+            render={({ field }) => (
+              <label className="inline-flex items-center gap-2 rounded-md border bg-muted/30 px-3 py-2 text-sm">
+                <input
+                  id={`${idPrefix}all-day`}
+                  type="checkbox"
+                  checked={field.value}
+                  onChange={(e) => field.onChange(e.target.checked)}
+                  className="h-4 w-4 rounded border-input"
+                />
+                Bloquear/ocupar dia inteiro (00:00 às 23:59)
+              </label>
+            )}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-4 items-start gap-4">
+        <Label htmlFor={`${idPrefix}repeat`} className="text-right pt-2">
+          Repetição
+        </Label>
+        <div className="col-span-3 space-y-2">
+          <Controller
+            name="repeatEnabled"
+            control={control}
+            render={({ field }) => (
+              <label className="inline-flex items-center gap-2 rounded-md border bg-muted/30 px-3 py-2 text-sm">
+                <input
+                  id={`${idPrefix}repeat`}
+                  type="checkbox"
+                  checked={field.value}
+                  onChange={(e) => field.onChange(e.target.checked)}
+                  className="h-4 w-4 rounded border-input"
+                />
+                Repetir semanalmente em dias selecionados
+              </label>
+            )}
+          />
+
+          <Controller
+            name="repeatWeekdays"
+            control={control}
+            render={({ field }) => (
+              <div className="flex flex-wrap gap-2">
+                {weekdays.map((weekday) => {
+                  const isSelected = field.value.includes(weekday.value);
+                  return (
+                    <button
+                      key={weekday.value}
+                      type="button"
+                      onClick={() => {
+                        if (isSelected) {
+                          field.onChange(field.value.filter((v) => v !== weekday.value));
+                          return;
+                        }
+                        field.onChange([...field.value, weekday.value].sort((a, b) => a - b));
+                      }}
+                      className={cn(
+                        "rounded-full border px-3 py-1 text-xs font-medium transition",
+                        isSelected
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border text-muted-foreground hover:bg-muted"
+                      )}
+                    >
+                      {weekday.label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          />
+          <FormFieldError
+            message={errors.repeatWeekdays?.message}
+            id={`${idPrefix}repeat-weekdays-error`}
+          />
+
+          <div className="space-y-1">
+            <Label htmlFor={`${idPrefix}repeat-until`} className="text-xs text-muted-foreground">
+              Repetir até
+            </Label>
+            <Controller
+              name="repeatUntil"
+              control={control}
+              render={({ field }) => (
+                <Input
+                  id={`${idPrefix}repeat-until`}
+                  type="date"
+                  className={cn(errors.repeatUntil && "border-destructive")}
+                  {...field}
+                />
+              )}
+            />
+            <FormFieldError message={errors.repeatUntil?.message} id={`${idPrefix}repeat-until-error`} />
+          </div>
         </div>
       </div>
 

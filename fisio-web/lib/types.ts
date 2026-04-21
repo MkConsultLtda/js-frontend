@@ -103,6 +103,8 @@ export interface Evolucao {
   patientName: string;
   dataSessao: string;
   tipoSessao: string;
+  sinaisVitaisInicio?: string;
+  sinaisVitaisFim?: string;
   objetivosSessao: string;
   atividadesRealizadas: string;
   respostaPaciente: string;

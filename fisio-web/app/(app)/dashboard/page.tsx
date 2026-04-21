@@ -13,7 +13,7 @@ import {
   isWorkingDateKey,
 } from "@/lib/schedule-utils";
 import { isSessionAppointment } from "@/lib/types";
-import { Users, Calendar, Clock, Activity, TrendingUp, Route, ExternalLink } from "lucide-react";
+import { Users, Calendar, Clock, Activity, TrendingUp, Route, ExternalLink, BarChart3 } from "lucide-react";
 import { useMemo } from "react";
 
 export default function DashboardPage() {
@@ -85,6 +85,22 @@ export default function DashboardPage() {
       .filter((apt) => isSessionAppointment(apt) && apt.date === metrics.today)
       .sort((a, b) => a.time.localeCompare(b.time));
   }, [appointments, metrics.today]);
+
+  const referralChartData = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const patient of patients) {
+      const key = patient.referralSource?.trim() || "Não informado";
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    const total = Math.max(1, patients.length);
+    return [...counts.entries()]
+      .map(([label, count]) => ({
+        label,
+        count,
+        percentage: Math.round((count / total) * 100),
+      }))
+      .sort((a, b) => b.count - a.count);
+  }, [patients]);
 
   return (
     <div className="p-8 space-y-8">
@@ -368,6 +384,36 @@ export default function DashboardPage() {
             <p className="text-xs text-muted-foreground">
               Referência: até {metrics.maxSessions} sessões/dia (Configurações)
             </p>
+          </CardContent>
+        </Card>
+
+        <Card className="md:col-span-3 border-primary/20">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-violet-500" />
+              Indicação de pacientes
+            </CardTitle>
+            <p className="text-xs text-muted-foreground">
+              Origem dos pacientes ativos e inativos cadastrados no sistema.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {referralChartData.map((item) => (
+              <div key={item.label} className="space-y-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-medium text-foreground">{item.label}</span>
+                  <span className="text-muted-foreground">
+                    {item.count} paciente(s) · {item.percentage}%
+                  </span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-violet-500/75 via-cyan-500/70 to-emerald-500/70"
+                    style={{ width: `${item.percentage}%` }}
+                  />
+                </div>
+              </div>
+            ))}
           </CardContent>
         </Card>
       </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -244,7 +245,17 @@ export function AgendaAppointmentList({
                           </span>
                           <span className="inline-flex items-center gap-1 min-w-0">
                             <User className="h-4 w-4 shrink-0" />
-                            <span className="truncate">{appointment.patientName}</span>
+                            {patient ? (
+                              <Link
+                                href={`/pacientes/${patient.id}`}
+                                className="truncate underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
+                                title={`Abrir prontuário de ${appointment.patientName}`}
+                              >
+                                {appointment.patientName}
+                              </Link>
+                            ) : (
+                              <span className="truncate">{appointment.patientName}</span>
+                            )}
                           </span>
                         </div>
                         <div className="flex flex-wrap items-center gap-2 text-sm">

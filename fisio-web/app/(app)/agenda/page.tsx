@@ -38,7 +38,14 @@ import {
   emptyCalendarExtraForm,
   type CalendarExtraFormValues,
 } from "@/lib/schemas/calendar-extra-form";
-import { parseLocalDate, toLocalDateString } from "@/lib/date-utils";
+import { addDays, parseLocalDate, toLocalDateString } from "@/lib/date-utils";
+import {
+  appointmentsOverlap,
+  calculateDurationFromTimeRange,
+  formatRange,
+  minutesToTime,
+} from "@/lib/agenda-scheduling";
+import { parseTimeToMinutes } from "@/lib/agenda-calendar-utils";
 import {
   closestWorkingDayInWeek,
   isWorkingDate,
@@ -48,6 +55,12 @@ import { isSessionAppointment, type Appointment } from "@/lib/types";
 import { ChevronDown, Plus } from "lucide-react";
 
 type AgendaViewMode = "month" | "week";
+type ScheduleCandidate = {
+  date: string;
+  time: string;
+  duration: number;
+  label: string;
+};
 
 export default function AgendaPage() {
   const {
@@ -92,6 +105,11 @@ export default function AgendaPage() {
   const [editingAppointment, setEditingAppointment] =
     React.useState<Appointment | null>(null);
   const [appointmentToDeleteId, setAppointmentToDeleteId] = React.useState<number | null>(
+    null
+  );
+  const [conflictDialogOpen, setConflictDialogOpen] = React.useState(false);
+  const [conflictDialogDescription, setConflictDialogDescription] = React.useState("");
+  const [pendingConflictAction, setPendingConflictAction] = React.useState<(() => void) | null>(
     null
   );
 
@@ -185,83 +203,227 @@ export default function AgendaPage() {
     setCurrentDate(parseLocalDate(dateKey));
   };
 
+  const findScheduleConflicts = React.useCallback(
+    (candidates: ScheduleCandidate[], ignoreAppointmentId?: number) => {
+      const activeAppointments = appointments.filter(
+        (existing) => existing.id !== ignoreAppointmentId && existing.status !== "cancelled"
+      );
+      const conflictSummaries: string[] = [];
+
+      for (const candidate of candidates) {
+        const conflicting = activeAppointments.filter(
+          (existing) =>
+            existing.date === candidate.date &&
+            appointmentsOverlap(
+              { time: candidate.time, duration: candidate.duration },
+              { time: existing.time, duration: existing.duration }
+            )
+        );
+
+        for (const existing of conflicting) {
+          conflictSummaries.push(
+            `${parseLocalDate(existing.date).toLocaleDateString("pt-BR")} · ${formatRange(
+              existing.time,
+              existing.duration
+            )} (${existing.patientName})`
+          );
+        }
+      }
+
+      return [...new Set(conflictSummaries)];
+    },
+    [appointments]
+  );
+
+  const executeWithConflictConfirmation = React.useCallback(
+    (params: {
+      candidates: ScheduleCandidate[];
+      onContinue: () => void;
+      ignoreAppointmentId?: number;
+      actionLabel: string;
+    }) => {
+      const conflicts = findScheduleConflicts(params.candidates, params.ignoreAppointmentId);
+      if (conflicts.length === 0) {
+        params.onContinue();
+        return;
+      }
+
+      const preview = conflicts.slice(0, 4).join("; ");
+      const suffix =
+        conflicts.length > 4 ? ` (+${conflicts.length - 4} conflito(s) adicional(is))` : "";
+      setConflictDialogDescription(
+        `${params.actionLabel} conflita com: ${preview}${suffix}. Deseja salvar mesmo assim?`
+      );
+      setPendingConflictAction(() => params.onContinue);
+      setConflictDialogOpen(true);
+    },
+    [findScheduleConflicts]
+  );
+
+  const buildExtraDates = React.useCallback((values: CalendarExtraFormValues): string[] => {
+    if (!values.repeatEnabled) return [values.date];
+    const endDate = values.repeatUntil || values.date;
+    const cursorStart = parseLocalDate(values.date);
+    const cursorEnd = parseLocalDate(endDate);
+    const selectedWeekdays = new Set(values.repeatWeekdays);
+    const dates: string[] = [];
+
+    for (
+      let cursor = new Date(cursorStart.getFullYear(), cursorStart.getMonth(), cursorStart.getDate());
+      cursor <= cursorEnd;
+      cursor = addDays(cursor, 1)
+    ) {
+      if (selectedWeekdays.has(cursor.getDay())) {
+        dates.push(toLocalDateString(cursor));
+      }
+    }
+
+    return dates.length > 0 ? dates : [values.date];
+  }, []);
+
   const onCreateSessionSubmit = (values: AppointmentFormValues) => {
     const patient = patients.find((p) => p.id === parseInt(values.patientId, 10));
     if (!patient) return;
-
-    addAppointment({
-      kind: "session",
+    const duration = parseInt(values.duration, 10);
+    const payload = {
+      kind: "session" as const,
       patientId: patient.id,
       patientName: patient.name,
       date: values.date,
       time: values.time,
-      duration: parseInt(values.duration, 10),
+      duration,
       type: values.type,
       status: values.status,
       notes: values.notes?.trim() || undefined,
       paymentStatus: values.paymentStatus,
+    };
+
+    executeWithConflictConfirmation({
+      candidates: [{ date: values.date, time: values.time, duration, label: patient.name }],
+      actionLabel: "Este atendimento",
+      onContinue: () => {
+        addAppointment(payload);
+        setCreateOpen(false);
+        createForm.reset(emptyAppointmentForm(selectedDate));
+        toast.success("Agendamento criado.");
+      },
     });
-    setCreateOpen(false);
-    createForm.reset(emptyAppointmentForm(selectedDate));
-    toast.success("Agendamento criado.");
   };
 
   const onCreateExtraSubmit = (values: CalendarExtraFormValues) => {
     const kind = createKind === "block" ? "block" : "personal";
-    addAppointment({
+    const title = values.title.trim();
+    const duration = values.isAllDay
+      ? 24 * 60
+      : calculateDurationFromTimeRange(values.time, values.endTime);
+    if (!duration) {
+      toast.error("Informe um horário final maior que o inicial.");
+      return;
+    }
+
+    const dates = buildExtraDates(values);
+    const entries = dates.map((date) => ({
       kind,
       patientId: 0,
-      patientName: values.title.trim(),
-      date: values.date,
-      time: values.time,
-      duration: parseInt(values.duration, 10),
+      patientName: title,
+      date,
+      time: values.isAllDay ? "00:00" : values.time,
+      duration,
       type: kind === "block" ? "Bloqueio" : "Evento pessoal",
-      status: "confirmed",
+      status: "confirmed" as const,
       notes: values.notes?.trim() || undefined,
-      paymentStatus: "pending",
+      paymentStatus: "pending" as const,
+    }));
+
+    executeWithConflictConfirmation({
+      candidates: entries.map((entry) => ({
+        date: entry.date,
+        time: entry.time,
+        duration: entry.duration,
+        label: entry.patientName,
+      })),
+      actionLabel: "Este bloqueio/evento",
+      onContinue: () => {
+        for (const entry of entries) {
+          addAppointment(entry);
+        }
+        setCreateOpen(false);
+        createExtraForm.reset(emptyCalendarExtraForm(selectedDate));
+        toast.success(
+          kind === "block"
+            ? entries.length > 1
+              ? `${entries.length} bloqueios criados.`
+              : "Horário bloqueado."
+            : entries.length > 1
+              ? `${entries.length} eventos adicionados.`
+              : "Evento adicionado."
+        );
+      },
     });
-    setCreateOpen(false);
-    createExtraForm.reset(emptyCalendarExtraForm(selectedDate));
-    toast.success(kind === "block" ? "Horário bloqueado." : "Evento adicionado.");
   };
 
   const onEditSessionSubmit = (values: AppointmentFormValues) => {
     if (!editingAppointment) return;
     const patient = patients.find((p) => p.id === parseInt(values.patientId, 10));
     if (!patient) return;
-
-    updateAppointment({
+    const duration = parseInt(values.duration, 10);
+    const updated = {
       ...editingAppointment,
       patientId: patient.id,
       patientName: patient.name,
       date: values.date,
       time: values.time,
-      duration: parseInt(values.duration, 10),
+      duration,
       type: values.type,
       status: values.status,
       notes: values.notes?.trim() || undefined,
       paymentStatus: values.paymentStatus,
+    };
+
+    executeWithConflictConfirmation({
+      candidates: [{ date: updated.date, time: updated.time, duration: updated.duration, label: updated.patientName }],
+      ignoreAppointmentId: editingAppointment.id,
+      actionLabel: "Esta alteração",
+      onContinue: () => {
+        updateAppointment(updated);
+        setIsEditDialogOpen(false);
+        setEditingAppointment(null);
+        editForm.reset(emptyAppointmentForm(selectedDate));
+        toast.success("Agendamento atualizado.");
+      },
     });
-    setIsEditDialogOpen(false);
-    setEditingAppointment(null);
-    editForm.reset(emptyAppointmentForm(selectedDate));
-    toast.success("Agendamento atualizado.");
   };
 
   const onEditExtraSubmit = (values: CalendarExtraFormValues) => {
     if (!editingAppointment || isSessionAppointment(editingAppointment)) return;
-    updateAppointment({
+    const duration = values.isAllDay
+      ? 24 * 60
+      : calculateDurationFromTimeRange(values.time, values.endTime);
+    if (!duration) {
+      toast.error("Informe um horário final maior que o inicial.");
+      return;
+    }
+    const updated = {
       ...editingAppointment,
       patientName: values.title.trim(),
       date: values.date,
-      time: values.time,
-      duration: parseInt(values.duration, 10),
+      time: values.isAllDay ? "00:00" : values.time,
+      duration,
       notes: values.notes?.trim() || undefined,
+    };
+
+    executeWithConflictConfirmation({
+      candidates: [{ date: updated.date, time: updated.time, duration: updated.duration, label: updated.patientName }],
+      ignoreAppointmentId: editingAppointment.id,
+      actionLabel: "Esta alteração",
+      onContinue: () => {
+        updateAppointment(updated);
+        setIsEditDialogOpen(false);
+        setEditingAppointment(null);
+        editExtraForm.reset(emptyCalendarExtraForm(selectedDate));
+        toast.success("Registro atualizado.");
+      },
     });
-    setIsEditDialogOpen(false);
-    setEditingAppointment(null);
-    editExtraForm.reset(emptyCalendarExtraForm(selectedDate));
-    toast.success("Registro atualizado.");
   };
 
   const openEditModal = (appointment: Appointment) => {
@@ -278,11 +440,17 @@ export default function AgendaPage() {
         notes: appointment.notes ?? "",
       });
     } else {
+      const endMinutes = parseTimeToMinutes(appointment.time) + appointment.duration;
+      const isAllDay = appointment.time === "00:00" && appointment.duration >= 24 * 60 - 1;
       editExtraForm.reset({
         title: appointment.patientName,
         date: appointment.date,
-        time: appointment.time,
-        duration: String(appointment.duration) as CalendarExtraFormValues["duration"],
+        time: isAllDay ? "" : appointment.time,
+        endTime: isAllDay ? "" : minutesToTime(endMinutes),
+        isAllDay,
+        repeatEnabled: false,
+        repeatWeekdays: [],
+        repeatUntil: "",
         notes: appointment.notes ?? "",
       });
     }
@@ -518,6 +686,27 @@ export default function AgendaPage() {
           deleteAppointment(appointmentToDeleteId);
           toast.success("Registro excluído.");
           setAppointmentToDeleteId(null);
+        }}
+      />
+
+      <ConfirmDialog
+        open={conflictDialogOpen}
+        onOpenChange={(open) => {
+          setConflictDialogOpen(open);
+          if (!open) {
+            setPendingConflictAction(null);
+          }
+        }}
+        title="Conflito de horário detectado"
+        description={conflictDialogDescription}
+        confirmLabel="Salvar mesmo assim"
+        cancelLabel="Revisar horário"
+        variant="default"
+        onConfirm={() => {
+          const action = pendingConflictAction;
+          setPendingConflictAction(null);
+          if (!action) return;
+          action();
         }}
       />
 

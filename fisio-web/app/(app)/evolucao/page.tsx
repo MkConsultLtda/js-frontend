@@ -38,6 +38,9 @@ function EvolucaoPageContent() {
 
   const [isCreating, setIsCreating] = React.useState(false);
   const [editingEvolucao, setEditingEvolucao] = React.useState<Evolucao | null>(null);
+  const [selectedPatientFilter, setSelectedPatientFilter] = React.useState(
+    pacienteIdParam ?? "all"
+  );
 
   const form = useForm<EvolucaoFormValues>({
     resolver: zodResolver(evolucaoFormSchema),
@@ -54,28 +57,44 @@ function EvolucaoPageContent() {
   } = form;
 
   React.useEffect(() => {
-    if (editingEvolucao || !isCreating) return;
-    setValue("patientId", pacienteIdParam ?? "");
-  }, [pacienteIdParam, editingEvolucao, isCreating, setValue]);
+    setSelectedPatientFilter(pacienteIdParam ?? "all");
+  }, [pacienteIdParam]);
 
   const filteredEvolucoes = React.useMemo(() => {
-    if (!pacienteIdParam) return evolucoes;
-    const pid = Number(pacienteIdParam);
+    if (selectedPatientFilter === "all") return evolucoes;
+    const pid = Number(selectedPatientFilter);
     return evolucoes.filter((e) => e.patientId === pid);
-  }, [evolucoes, pacienteIdParam]);
+  }, [evolucoes, selectedPatientFilter]);
+
+  React.useEffect(() => {
+    if (editingEvolucao || !isCreating) return;
+    if (selectedPatientFilter !== "all") {
+      setValue("patientId", selectedPatientFilter);
+      return;
+    }
+    setValue("patientId", pacienteIdParam ?? "");
+  }, [pacienteIdParam, selectedPatientFilter, editingEvolucao, isCreating, setValue]);
 
   const onSubmit = (values: EvolucaoFormValues) => {
     const patient = patients.find((p) => p.id.toString() === values.patientId);
     if (!patient) return;
 
-    const { patientId: _pid, ...rest } = values;
     const base: Omit<Evolucao, "id"> = {
       patientId: patient.id,
       patientName: patient.name,
       dataSessao: editingEvolucao
         ? editingEvolucao.dataSessao
         : new Date().toLocaleDateString("pt-BR"),
-      ...rest,
+      tipoSessao: values.tipoSessao,
+      sinaisVitaisInicio: values.sinaisVitaisInicio.trim() || undefined,
+      sinaisVitaisFim: values.sinaisVitaisFim.trim() || undefined,
+      objetivosSessao: values.objetivosSessao,
+      atividadesRealizadas: values.atividadesRealizadas,
+      respostaPaciente: values.respostaPaciente,
+      dorPre: values.dorPre,
+      dorPos: values.dorPos,
+      observacoes: values.observacoes,
+      planoProximaSessao: values.planoProximaSessao,
     };
 
     if (editingEvolucao) {
@@ -86,7 +105,7 @@ function EvolucaoPageContent() {
     }
 
     setIsCreating(false);
-    reset(emptyEvolucaoForm(pacienteIdParam));
+    reset(emptyEvolucaoForm(selectedPatientFilter === "all" ? null : selectedPatientFilter));
   };
 
   const handleEdit = (evolucao: Evolucao) => {
@@ -94,6 +113,8 @@ function EvolucaoPageContent() {
     reset({
       patientId: evolucao.patientId.toString(),
       tipoSessao: evolucao.tipoSessao,
+      sinaisVitaisInicio: evolucao.sinaisVitaisInicio ?? "",
+      sinaisVitaisFim: evolucao.sinaisVitaisFim ?? "",
       objetivosSessao: evolucao.objetivosSessao,
       atividadesRealizadas: evolucao.atividadesRealizadas,
       respostaPaciente: evolucao.respostaPaciente,
@@ -108,7 +129,7 @@ function EvolucaoPageContent() {
   const closeForm = () => {
     setIsCreating(false);
     setEditingEvolucao(null);
-    reset(emptyEvolucaoForm(pacienteIdParam));
+    reset(emptyEvolucaoForm(selectedPatientFilter === "all" ? null : selectedPatientFilter));
   };
 
   const toggleCreate = () => {
@@ -116,7 +137,7 @@ function EvolucaoPageContent() {
       closeForm();
     } else {
       setEditingEvolucao(null);
-      reset(emptyEvolucaoForm(pacienteIdParam));
+      reset(emptyEvolucaoForm(selectedPatientFilter === "all" ? null : selectedPatientFilter));
       setIsCreating(true);
     }
   };
@@ -138,10 +159,30 @@ function EvolucaoPageContent() {
             </p>
           )}
         </div>
-        <Button type="button" onClick={toggleCreate}>
-          <TrendingUp className="h-4 w-4 mr-2" />
-          {isCreating ? "Cancelar" : "Novo registro"}
-        </Button>
+        <div className="flex flex-col gap-2 sm:items-end">
+          <div className="w-full sm:w-64">
+            <Label htmlFor="evo-filter-patient" className="mb-1 block text-xs text-muted-foreground">
+              Filtro de paciente
+            </Label>
+            <Select value={selectedPatientFilter} onValueChange={setSelectedPatientFilter}>
+              <SelectTrigger id="evo-filter-patient">
+                <SelectValue placeholder="Todos os pacientes" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os pacientes</SelectItem>
+                {patients.map((p) => (
+                  <SelectItem key={p.id} value={p.id.toString()}>
+                    {p.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button type="button" onClick={toggleCreate}>
+            <TrendingUp className="h-4 w-4 mr-2" />
+            {isCreating ? "Cancelar" : "Novo registro"}
+          </Button>
+        </div>
       </div>
 
       {isCreating && (
@@ -215,6 +256,41 @@ function EvolucaoPageContent() {
                     )}
                   />
                   <FormFieldError message={errors.tipoSessao?.message} id="evo-tipo-error" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label htmlFor="evo-sinais-inicio">Sinais vitais - início</Label>
+                  <Input
+                    id="evo-sinais-inicio"
+                    className={fieldClass(!!errors.sinaisVitaisInicio)}
+                    aria-invalid={!!errors.sinaisVitaisInicio}
+                    aria-describedby={
+                      errors.sinaisVitaisInicio ? "evo-sinais-inicio-error" : undefined
+                    }
+                    placeholder="Ex.: PA 130/80 · FC 76 · SpO2 98%"
+                    {...register("sinaisVitaisInicio")}
+                  />
+                  <FormFieldError
+                    message={errors.sinaisVitaisInicio?.message}
+                    id="evo-sinais-inicio-error"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="evo-sinais-fim">Sinais vitais - fim</Label>
+                  <Input
+                    id="evo-sinais-fim"
+                    className={fieldClass(!!errors.sinaisVitaisFim)}
+                    aria-invalid={!!errors.sinaisVitaisFim}
+                    aria-describedby={errors.sinaisVitaisFim ? "evo-sinais-fim-error" : undefined}
+                    placeholder="Ex.: PA 125/78 · FC 72 · SpO2 99%"
+                    {...register("sinaisVitaisFim")}
+                  />
+                  <FormFieldError
+                    message={errors.sinaisVitaisFim?.message}
+                    id="evo-sinais-fim-error"
+                  />
                 </div>
               </div>
 
@@ -391,6 +467,17 @@ function EvolucaoPageContent() {
                   <strong>Dor pós:</strong> {evolucao.dorPos}/10
                 </div>
               </div>
+              {(evolucao.sinaisVitaisInicio || evolucao.sinaisVitaisFim) && (
+                <div className="mb-4 grid grid-cols-1 gap-2 text-sm md:grid-cols-2">
+                  <div>
+                    <strong>Sinais vitais (início):</strong>{" "}
+                    {evolucao.sinaisVitaisInicio || "Não informado"}
+                  </div>
+                  <div>
+                    <strong>Sinais vitais (fim):</strong> {evolucao.sinaisVitaisFim || "Não informado"}
+                  </div>
+                </div>
+              )}
               <div className="mb-4">
                 <strong>Objetivos:</strong> {evolucao.objetivosSessao}
               </div>

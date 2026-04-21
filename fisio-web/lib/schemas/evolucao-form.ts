@@ -5,6 +5,8 @@ const text = (max: number) => z.string().trim().max(max, `Máximo de ${max} cara
 export const evolucaoFormSchema = z.object({
   patientId: z.string().min(1, "Selecione um paciente"),
   tipoSessao: z.string().min(1, "Selecione o tipo de sessão"),
+  sinaisVitaisInicio: text(500),
+  sinaisVitaisFim: text(500),
   objetivosSessao: text(4000).min(1, "Informe os objetivos da sessão"),
   atividadesRealizadas: text(8000).min(1, "Descreva as atividades realizadas"),
   respostaPaciente: text(4000).min(1, "Informe a resposta do paciente"),
@@ -28,6 +30,8 @@ export function emptyEvolucaoForm(pacienteIdFromUrl: string | null): EvolucaoFor
   return {
     patientId: pacienteIdFromUrl ?? "",
     tipoSessao: "",
+    sinaisVitaisInicio: "",
+    sinaisVitaisFim: "",
     objetivosSessao: "",
     atividadesRealizadas: "",
     respostaPaciente: "",

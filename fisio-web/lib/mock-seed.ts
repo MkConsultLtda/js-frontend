@@ -317,6 +317,8 @@ export function buildInitialEvolucoes(patients: Patient[]): Evolucao[] {
       patientName: patients.find((p) => p.id === 1)?.name ?? "Maria Silva",
       dataSessao: "18/03/2026",
       tipoSessao: "Fisioterapia Motora",
+      sinaisVitaisInicio: "PA 130/85 mmHg · FC 82 bpm · SpO2 98%",
+      sinaisVitaisFim: "PA 124/80 mmHg · FC 76 bpm · SpO2 99%",
       objetivosSessao: "Melhorar mobilidade lombar e reduzir dor",
       atividadesRealizadas: "Exercícios de alongamento, fortalecimento abdominal, RPG",
       respostaPaciente: "Boa resposta aos exercícios, relatou diminuição da dor",

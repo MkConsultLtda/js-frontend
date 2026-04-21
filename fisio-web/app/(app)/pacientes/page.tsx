@@ -18,7 +18,6 @@ import {
   Trash2,
   Edit,
   UserPlus,
-  BarChart3,
   GraduationCap,
   BriefcaseBusiness,
 } from "lucide-react";
@@ -103,22 +102,6 @@ export default function PacientesPage() {
     return matchesSearch && matchesStatus;
   });
 
-  const referralChartData = React.useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const patient of patients) {
-      const key = patient.referralSource?.trim() || "Não informado";
-      counts.set(key, (counts.get(key) ?? 0) + 1);
-    }
-    const total = Math.max(1, patients.length);
-    return [...counts.entries()]
-      .map(([label, count]) => ({
-        label,
-        count,
-        percentage: Math.round((count / total) * 100),
-      }))
-      .sort((a, b) => b.count - a.count);
-  }, [patients]);
-
   const onCreateSubmit = (data: PatientCreateFormValues) => {
     addPatient(patientFromCreateForm(data));
     setIsAddModalOpen(false);
@@ -191,33 +174,6 @@ export default function PacientesPage() {
           </DialogContent>
         </Dialog>
       </div>
-
-      <Card className="border-primary/20">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <BarChart3 className="h-4 w-4 text-primary" />
-            Origem dos pacientes (indicação)
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {referralChartData.map((item) => (
-            <div key={item.label} className="space-y-1">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-medium text-foreground">{item.label}</span>
-                <span className="text-muted-foreground">
-                  {item.count} paciente(s) · {item.percentage}%
-                </span>
-              </div>
-              <div className="h-2 rounded-full bg-muted overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-primary/80 via-violet-500/70 to-cyan-500/70"
-                  style={{ width: `${item.percentage}%` }}
-                />
-              </div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
 
       <div className="flex flex-col md:flex-row gap-4">
         <div className="relative flex-1">
@@ -297,7 +253,7 @@ export default function PacientesPage() {
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-sm">
                     <Activity className="h-4 w-4 text-primary shrink-0" />
-                    <span className="font-medium shrink-0">Diagnóstico:</span>
+                    <span className="font-medium shrink-0">Diagnóstico clínico:</span>
                     <span className="text-muted-foreground truncate">{patient.diagnosis}</span>
                   </div>
                   <div className="flex items-start gap-2 text-sm">
