@@ -34,6 +34,15 @@ import {
   User,
 } from "lucide-react";
 
+function endTimeLabel(start: string, durationMin: number): string {
+  const [h, m] = start.split(":").map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return start;
+  const total = h * 60 + m + durationMin;
+  const endHour = Math.floor((total % (24 * 60)) / 60);
+  const endMinute = total % 60;
+  return `${start} - ${String(endHour).padStart(2, "0")}:${String(endMinute).padStart(2, "0")}`;
+}
+
 type Props = {
   selectedDate: string;
   searchTerm: string;
@@ -118,7 +127,7 @@ export function AgendaAppointmentList({
         <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <CardTitle className="text-lg">Atendimentos do dia</CardTitle>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground leading-relaxed">
               {filteredAppointments.length} sessão(ões) com paciente em {dateLabel}. Bloqueios e eventos
               aparecem só na grade.
             </p>
@@ -162,28 +171,28 @@ export function AgendaAppointmentList({
         </CardHeader>
       </Card>
 
-      <Card>
+      <Card className="border-primary/15">
         <CardContent>
           <div className="mb-4 grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-lg border bg-muted/40 px-3 py-2">
+            <div className="rounded-lg border border-violet-200/70 bg-violet-50/60 px-3 py-2 dark:border-violet-500/40 dark:bg-violet-500/10">
               <p className="text-muted-foreground">Ocupação prevista</p>
               <p className="font-semibold">
                 {statusCounts.total}/{settings.maxSessionsPerDay} sessões
               </p>
             </div>
-            <div className="rounded-lg border bg-muted/40 px-3 py-2">
+            <div className="rounded-lg border border-cyan-200/70 bg-cyan-50/60 px-3 py-2 dark:border-cyan-500/40 dark:bg-cyan-500/10">
               <p className="text-muted-foreground">Confirmações</p>
               <p className="font-semibold">
                 {statusCounts.confirmed} confirmada(s) · {statusCounts.scheduled} agendada(s)
               </p>
             </div>
-            <div className="rounded-lg border bg-muted/40 px-3 py-2">
+            <div className="rounded-lg border border-emerald-200/70 bg-emerald-50/60 px-3 py-2 dark:border-emerald-500/40 dark:bg-emerald-500/10">
               <p className="text-muted-foreground">Finalização</p>
               <p className="font-semibold">
                 {statusCounts.completed} concluída(s) · {statusCounts.cancelled} cancelada(s)
               </p>
             </div>
-            <div className="rounded-lg border bg-muted/40 px-3 py-2">
+            <div className="rounded-lg border border-amber-200/70 bg-amber-50/60 px-3 py-2 dark:border-amber-500/40 dark:bg-amber-500/10">
               <p className="text-muted-foreground">Financeiro do dia</p>
               <p className="font-semibold">
                 {statusCounts.paid} pago(s) · {statusCounts.pendingPayment} pendente(s)
@@ -229,7 +238,9 @@ export function AgendaAppointmentList({
                         <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
                           <span className="inline-flex items-center gap-1">
                             <Clock className="h-4 w-4 shrink-0" />
-                            {appointment.time}
+                            <span className="tabular-nums">
+                              {endTimeLabel(appointment.time, appointment.duration)}
+                            </span>
                           </span>
                           <span className="inline-flex items-center gap-1 min-w-0">
                             <User className="h-4 w-4 shrink-0" />

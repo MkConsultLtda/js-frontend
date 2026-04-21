@@ -12,6 +12,8 @@ import {
   Phone,
   TrendingUp,
   User,
+  BriefcaseBusiness,
+  GraduationCap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,6 +33,14 @@ export default function PacienteProntuarioPage() {
 
   const patient = patients.find((p) => p.id === id);
 
+  const evolucoesRecentes = useMemo(() => {
+    if (!patient) return [];
+    return evolucoes
+      .filter((e) => e.patientId === id)
+      .sort((a, b) => b.dataSessao.localeCompare(a.dataSessao))
+      .slice(0, 5);
+  }, [evolucoes, id, patient]);
+
   if (!patient) {
     return (
       <div className="p-8 space-y-4">
@@ -47,13 +57,6 @@ export default function PacienteProntuarioPage() {
 
   const anamneseCount = anamneses.filter((a) => a.patientId === id).length;
   const evolucaoCount = evolucoes.filter((e) => e.patientId === id).length;
-
-  const evolucoesRecentes = useMemo(() => {
-    return evolucoes
-      .filter((e) => e.patientId === id)
-      .sort((a, b) => b.dataSessao.localeCompare(a.dataSessao))
-      .slice(0, 5);
-  }, [evolucoes, id]);
 
   const proximos = appointments
     .filter((a) => isSessionAppointment(a) && a.patientId === id)
@@ -111,7 +114,12 @@ export default function PacienteProntuarioPage() {
               Telefone
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-sm">{patient.phone || "—"}</CardContent>
+          <CardContent className="space-y-1 text-sm">
+            <p>{patient.phone || "—"}</p>
+            {patient.responsiblePhone ? (
+              <p className="text-muted-foreground">Responsável: {patient.responsiblePhone}</p>
+            ) : null}
+          </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
@@ -141,6 +149,30 @@ export default function PacienteProntuarioPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="text-sm">{patient.lastSession}</CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <BriefcaseBusiness className="h-4 w-4" />
+              Profissão
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm">{patient.profession || "—"}</CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <GraduationCap className="h-4 w-4" />
+              Escolaridade
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm">{patient.educationLevel || "—"}</CardContent>
+        </Card>
+        <Card className="md:col-span-2">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Indicação</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm">{patient.referralSource || "Não informado"}</CardContent>
         </Card>
       </div>
 

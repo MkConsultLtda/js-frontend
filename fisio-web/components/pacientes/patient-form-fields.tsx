@@ -4,6 +4,14 @@ import type { UseFormReturn } from "react-hook-form";
 import { FormFieldError } from "@/components/form-field-error";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { PATIENT_EDUCATION_OPTIONS, PATIENT_REFERRAL_OPTIONS } from "@/lib/constants";
 import type { PatientCreateFormValues, PatientEditFormValues } from "@/lib/schemas/patient-form";
 import { fetchViaCep } from "@/lib/viacep";
 import { cn } from "@/lib/utils";
@@ -117,6 +125,25 @@ export function PatientFormRows({ form: formProp, idPrefix }: PatientFormProps) 
         </div>
       </div>
       <div className="grid grid-cols-4 items-start gap-4">
+        <Label htmlFor={`${idPrefix}-responsible-phone`} className="text-right pt-2">
+          Telefone responsável
+        </Label>
+        <div className="col-span-3 space-y-1">
+          <Input
+            id={`${idPrefix}-responsible-phone`}
+            type="tel"
+            placeholder="Opcional"
+            className={fieldClass(!!err.responsiblePhone)}
+            aria-invalid={!!err.responsiblePhone}
+            {...register("responsiblePhone")}
+          />
+          <FormFieldError
+            message={err.responsiblePhone?.message}
+            id={`${idPrefix}-responsible-phone-error`}
+          />
+        </div>
+      </div>
+      <div className="grid grid-cols-4 items-start gap-4">
         <Label htmlFor={`${idPrefix}-dx`} className="text-right pt-2">
           Diagnóstico
         </Label>
@@ -128,6 +155,81 @@ export function PatientFormRows({ form: formProp, idPrefix }: PatientFormProps) 
             {...register("diagnosis")}
           />
           <FormFieldError message={err.diagnosis?.message} id={`${idPrefix}-dx-error`} />
+        </div>
+      </div>
+      <div className="grid grid-cols-4 items-start gap-4">
+        <Label htmlFor={`${idPrefix}-profession`} className="text-right pt-2">
+          Profissão
+        </Label>
+        <div className="col-span-3 space-y-1">
+          <Input
+            id={`${idPrefix}-profession`}
+            placeholder="Opcional"
+            className={fieldClass(!!err.profession)}
+            aria-invalid={!!err.profession}
+            {...register("profession")}
+          />
+          <FormFieldError message={err.profession?.message} id={`${idPrefix}-profession-error`} />
+        </div>
+      </div>
+      <div className="grid grid-cols-4 items-start gap-4">
+        <Label htmlFor={`${idPrefix}-education`} className="text-right pt-2">
+          Escolaridade
+        </Label>
+        <div className="col-span-3 space-y-1">
+          <Select
+            value={form.watch("educationLevel") || "none"}
+            onValueChange={(value) =>
+              setValue("educationLevel", value === "none" ? "" : value, { shouldValidate: true })
+            }
+          >
+            <SelectTrigger
+              id={`${idPrefix}-education`}
+              className={fieldClass(!!err.educationLevel)}
+              aria-invalid={!!err.educationLevel}
+            >
+              <SelectValue placeholder="Selecione (opcional)" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Não informado</SelectItem>
+              {PATIENT_EDUCATION_OPTIONS.map((item) => (
+                <SelectItem key={item} value={item}>
+                  {item}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <FormFieldError message={err.educationLevel?.message} id={`${idPrefix}-education-error`} />
+        </div>
+      </div>
+      <div className="grid grid-cols-4 items-start gap-4">
+        <Label htmlFor={`${idPrefix}-referral`} className="text-right pt-2">
+          Indicação
+        </Label>
+        <div className="col-span-3 space-y-1">
+          <Select
+            value={form.watch("referralSource") || "none"}
+            onValueChange={(value) =>
+              setValue("referralSource", value === "none" ? "" : value, { shouldValidate: true })
+            }
+          >
+            <SelectTrigger
+              id={`${idPrefix}-referral`}
+              className={fieldClass(!!err.referralSource)}
+              aria-invalid={!!err.referralSource}
+            >
+              <SelectValue placeholder="Selecione (opcional)" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Não informado</SelectItem>
+              {PATIENT_REFERRAL_OPTIONS.map((item) => (
+                <SelectItem key={item} value={item}>
+                  {item}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <FormFieldError message={err.referralSource?.message} id={`${idPrefix}-referral-error`} />
         </div>
       </div>
 

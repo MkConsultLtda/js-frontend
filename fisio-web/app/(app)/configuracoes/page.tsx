@@ -19,6 +19,8 @@ import {
   LogOut,
   RotateCcw,
   CalendarDays,
+  PlusCircle,
+  X,
 } from "lucide-react";
 import { normalizeWorkingWeekdays } from "@/lib/schedule-utils";
 
@@ -39,6 +41,8 @@ export default function ConfiguracoesPage() {
 
   const [draft, setDraft] = useState(settings);
   const [resetOpen, setResetOpen] = useState(false);
+  const [newDuration, setNewDuration] = useState("");
+  const [newType, setNewType] = useState("");
 
   useEffect(() => {
     setDraft(settings);
@@ -188,6 +192,132 @@ export default function ConfiguracoesPage() {
               <p className="text-xs text-muted-foreground">
                 Usado só como referência percentual no dashboard; não bloqueia novos agendamentos.
               </p>
+            </div>
+
+            <div className="space-y-3 rounded-md border bg-background p-3">
+              <Label className="text-sm font-medium">Durações de atendimento</Label>
+              <div className="flex flex-wrap gap-2">
+                {draft.appointmentDurations.map((duration) => (
+                  <span
+                    key={duration}
+                    className="inline-flex items-center gap-1 rounded-full bg-cyan-100 px-3 py-1 text-xs font-medium text-cyan-900 dark:bg-cyan-500/20 dark:text-cyan-200"
+                  >
+                    {duration === 60
+                      ? "1 hora"
+                      : duration === 90
+                        ? "1h30"
+                        : duration === 120
+                          ? "2 horas"
+                          : `${duration} min`}
+                    <button
+                      type="button"
+                      className="inline-flex h-4 w-4 items-center justify-center rounded-full hover:bg-cyan-200/70 dark:hover:bg-cyan-500/30"
+                      onClick={() =>
+                        setDraft((prev) => ({
+                          ...prev,
+                          appointmentDurations:
+                            prev.appointmentDurations.length <= 1
+                              ? prev.appointmentDurations
+                              : prev.appointmentDurations.filter((x) => x !== duration),
+                        }))
+                      }
+                      aria-label={`Remover duração ${duration} minutos`}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Input
+                  type="number"
+                  min={15}
+                  max={240}
+                  step={5}
+                  value={newDuration}
+                  onChange={(e) => setNewDuration(e.target.value)}
+                  placeholder="Ex.: 75"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => {
+                    const parsed = Math.round(Number(newDuration));
+                    if (!Number.isFinite(parsed) || parsed < 15 || parsed > 240) {
+                      toast.error("Informe uma duração entre 15 e 240 minutos.");
+                      return;
+                    }
+                    setDraft((prev) => ({
+                      ...prev,
+                      appointmentDurations: [...new Set([...prev.appointmentDurations, parsed])].sort(
+                        (a, b) => a - b
+                      ),
+                    }));
+                    setNewDuration("");
+                  }}
+                >
+                  <PlusCircle className="h-4 w-4" />
+                  Adicionar duração
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-3 rounded-md border bg-background p-3">
+              <Label className="text-sm font-medium">Tipos de atendimento</Label>
+              <div className="flex flex-wrap gap-2">
+                {draft.appointmentTypes.map((type) => (
+                  <span
+                    key={type}
+                    className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-3 py-1 text-xs font-medium text-violet-900 dark:bg-violet-500/20 dark:text-violet-200"
+                  >
+                    {type}
+                    <button
+                      type="button"
+                      className="inline-flex h-4 w-4 items-center justify-center rounded-full hover:bg-violet-200/70 dark:hover:bg-violet-500/30"
+                      onClick={() =>
+                        setDraft((prev) => ({
+                          ...prev,
+                          appointmentTypes:
+                            prev.appointmentTypes.length <= 1
+                              ? prev.appointmentTypes
+                              : prev.appointmentTypes.filter((x) => x !== type),
+                        }))
+                      }
+                      aria-label={`Remover tipo ${type}`}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Input
+                  value={newType}
+                  onChange={(e) => setNewType(e.target.value)}
+                  placeholder="Ex.: Ventosaterapia"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => {
+                    const trimmed = newType.trim();
+                    if (trimmed.length < 2) {
+                      toast.error("Digite um tipo de atendimento válido.");
+                      return;
+                    }
+                    setDraft((prev) => ({
+                      ...prev,
+                      appointmentTypes: [...new Set([...prev.appointmentTypes, trimmed])],
+                    }));
+                    setNewType("");
+                  }}
+                >
+                  <PlusCircle className="h-4 w-4" />
+                  Adicionar tipo
+                </Button>
+              </div>
             </div>
           </div>
 

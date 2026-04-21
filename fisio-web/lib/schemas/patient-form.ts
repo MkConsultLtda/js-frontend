@@ -30,6 +30,10 @@ export const patientCreateFormSchema = z.object({
     .min(1, "Informe o diagnóstico ou quadro clínico")
     .max(500, "Texto muito longo"),
   phone: z.string().trim().min(1, "Informe o telefone").max(40, "Telefone muito longo"),
+  responsiblePhone: z.string().trim().max(40, "Telefone do responsável muito longo"),
+  profession: z.string().trim().max(120, "Profissão muito longa"),
+  educationLevel: z.string().trim().max(120, "Escolaridade muito longa"),
+  referralSource: z.string().trim().max(120, "Indicação muito longa"),
   addressCep: cepDigits,
   addressLogradouro: z
     .string()

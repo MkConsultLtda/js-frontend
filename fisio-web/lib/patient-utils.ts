@@ -38,6 +38,11 @@ export function patientMatchesSearch(patient: Patient, q: string): boolean {
     patient.name.toLowerCase().includes(s) ||
     patient.diagnosis.toLowerCase().includes(s) ||
     patient.email.toLowerCase().includes(s) ||
+    (patient.profession ?? "").toLowerCase().includes(s) ||
+    (patient.educationLevel ?? "").toLowerCase().includes(s) ||
+    (patient.referralSource ?? "").toLowerCase().includes(s) ||
+    patient.phone.toLowerCase().includes(s) ||
+    (patient.responsiblePhone ?? "").toLowerCase().includes(s) ||
     addr.cidade.toLowerCase().includes(s) ||
     addr.bairro.toLowerCase().includes(s) ||
     addr.logradouro.toLowerCase().includes(s)

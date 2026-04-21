@@ -258,7 +258,7 @@ export function AgendaWeekView({
                               left: `calc(${leftPct}% + 2px)`,
                             }}
                           >
-                            <div className="font-semibold">{apt.time}</div>
+                            <div className="font-semibold tabular-nums">{apt.time}</div>
                             <div className="truncate font-medium">{apt.patientName}</div>
                             <div className="truncate opacity-80">{apt.type}</div>
                             <div className="text-[9px] opacity-70">{apt.duration} min</div>

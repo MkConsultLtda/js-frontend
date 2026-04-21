@@ -18,6 +18,9 @@ import {
   Trash2,
   Edit,
   UserPlus,
+  BarChart3,
+  GraduationCap,
+  BriefcaseBusiness,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -100,6 +103,22 @@ export default function PacientesPage() {
     return matchesSearch && matchesStatus;
   });
 
+  const referralChartData = React.useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const patient of patients) {
+      const key = patient.referralSource?.trim() || "Não informado";
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    const total = Math.max(1, patients.length);
+    return [...counts.entries()]
+      .map(([label, count]) => ({
+        label,
+        count,
+        percentage: Math.round((count / total) * 100),
+      }))
+      .sort((a, b) => b.count - a.count);
+  }, [patients]);
+
   const onCreateSubmit = (data: PatientCreateFormValues) => {
     addPatient(patientFromCreateForm(data));
     setIsAddModalOpen(false);
@@ -172,6 +191,33 @@ export default function PacientesPage() {
           </DialogContent>
         </Dialog>
       </div>
+
+      <Card className="border-primary/20">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <BarChart3 className="h-4 w-4 text-primary" />
+            Origem dos pacientes (indicação)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {referralChartData.map((item) => (
+            <div key={item.label} className="space-y-1">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-medium text-foreground">{item.label}</span>
+                <span className="text-muted-foreground">
+                  {item.count} paciente(s) · {item.percentage}%
+                </span>
+              </div>
+              <div className="h-2 rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-primary/80 via-violet-500/70 to-cyan-500/70"
+                  style={{ width: `${item.percentage}%` }}
+                />
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
 
       <div className="flex flex-col md:flex-row gap-4">
         <div className="relative flex-1">
@@ -266,6 +312,33 @@ export default function PacientesPage() {
                     <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
                     <span>{patient.phone}</span>
                   </div>
+                  {patient.responsiblePhone ? (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span className="text-muted-foreground">
+                        Responsável: {patient.responsiblePhone}
+                      </span>
+                    </div>
+                  ) : null}
+                  {patient.profession ? (
+                    <div className="flex items-center gap-2 text-sm">
+                      <BriefcaseBusiness className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span className="text-muted-foreground">{patient.profession}</span>
+                    </div>
+                  ) : null}
+                  {patient.educationLevel ? (
+                    <div className="flex items-center gap-2 text-sm">
+                      <GraduationCap className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span className="text-muted-foreground">{patient.educationLevel}</span>
+                    </div>
+                  ) : null}
+                  {patient.referralSource ? (
+                    <div className="text-xs">
+                      <span className="rounded-full bg-violet-100 px-2 py-1 text-violet-800 dark:bg-violet-500/20 dark:text-violet-300">
+                        Indicação: {patient.referralSource}
+                      </span>
+                    </div>
+                  ) : null}
                   {patient.email ? (
                     <div className="flex items-center gap-2 text-sm min-w-0">
                       <Mail className="h-4 w-4 text-muted-foreground shrink-0" />

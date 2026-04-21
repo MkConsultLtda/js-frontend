@@ -12,7 +12,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { FormFieldError } from "@/components/form-field-error";
-import { SESSION_TYPES } from "@/lib/constants";
 import type { AppointmentFormValues } from "@/lib/schemas/appointment-form";
 import type { SessionStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -23,6 +22,8 @@ type Props = {
   control: Control<AppointmentFormValues>;
   errors: FieldErrors<AppointmentFormValues>;
   patients: PatientOption[];
+  durationOptions: number[];
+  typeOptions: string[];
   idPrefix?: string;
 };
 
@@ -34,6 +35,8 @@ export function AppointmentFormFields({
   control,
   errors,
   patients,
+  durationOptions,
+  typeOptions,
   idPrefix = "",
 }: Props) {
   return (
@@ -135,15 +138,25 @@ export function AppointmentFormFields({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="30">30 minutos</SelectItem>
-                  <SelectItem value="50">50 minutos</SelectItem>
-                  <SelectItem value="60">1 hora</SelectItem>
-                  <SelectItem value="90">1h 30min</SelectItem>
+                  {durationOptions.map((minutes) => (
+                    <SelectItem key={minutes} value={String(minutes)}>
+                      {minutes === 60
+                        ? "1 hora"
+                        : minutes === 90
+                          ? "1h30"
+                          : minutes === 120
+                            ? "2 horas"
+                            : `${minutes} minutos`}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             )}
           />
           <FormFieldError message={errors.duration?.message} id={`${idPrefix}duration-error`} />
+          <p className="text-[11px] text-muted-foreground">
+            Horário final calculado automaticamente a partir da duração.
+          </p>
         </div>
       </div>
 
@@ -166,7 +179,7 @@ export function AppointmentFormFields({
                   <SelectValue placeholder="Tipo de sessão" />
                 </SelectTrigger>
                 <SelectContent>
-                  {SESSION_TYPES.map((t) => (
+                  {typeOptions.map((t) => (
                     <SelectItem key={t} value={t}>
                       {t}
                     </SelectItem>

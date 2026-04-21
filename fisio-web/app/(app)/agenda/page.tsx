@@ -61,6 +61,19 @@ export default function AgendaPage() {
 
   const { settings } = useClinicSettings();
   const patientOptions = patients.map((p) => ({ id: p.id, name: p.name }));
+  const durationOptions = React.useMemo(() => {
+    return settings.appointmentDurations.length > 0 ? settings.appointmentDurations : [60, 90, 120];
+  }, [settings.appointmentDurations]);
+  const typeOptions = React.useMemo(() => {
+    return settings.appointmentTypes.length > 0
+      ? settings.appointmentTypes
+      : [
+          "Avaliação fisioterapêutica",
+          "Fisioterapia",
+          "Liberação Miofascial",
+          "Drenagem linfática",
+        ];
+  }, [settings.appointmentTypes]);
   const workingWeekdays = React.useMemo(
     () => normalizeWorkingWeekdays(settings.workingWeekdays),
     [settings.workingWeekdays]
@@ -258,7 +271,7 @@ export default function AgendaPage() {
         patientId: appointment.patientId.toString(),
         date: appointment.date,
         time: appointment.time,
-        duration: String(appointment.duration) as AppointmentFormValues["duration"],
+        duration: String(appointment.duration),
         type: appointment.type,
         status: appointment.status,
         paymentStatus: appointment.paymentStatus ?? "pending",
@@ -419,6 +432,8 @@ export default function AgendaPage() {
                     control={createForm.control}
                     errors={createForm.formState.errors}
                     patients={patientOptions}
+                    durationOptions={durationOptions}
+                    typeOptions={typeOptions}
                     idPrefix="create-"
                   />
                   <DialogFooter className="gap-2 sm:gap-0">
@@ -536,6 +551,8 @@ export default function AgendaPage() {
                 control={editForm.control}
                 errors={editForm.formState.errors}
                 patients={patientOptions}
+                durationOptions={durationOptions}
+                typeOptions={typeOptions}
                 idPrefix="edit-"
               />
               <DialogFooter className="gap-2 sm:gap-0">

@@ -45,6 +45,10 @@ export interface Patient {
   cpf?: string;
   diagnosis: string;
   phone: string;
+  responsiblePhone?: string;
+  profession?: string;
+  educationLevel?: string;
+  referralSource?: string;
   address: PatientAddress;
   /** Exibição dd/mm/aaaa */
   lastSession: string;
