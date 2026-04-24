@@ -68,7 +68,7 @@ export function SidebarNav({ onNavigate, className, headerAction }: Props) {
       </nav>
       <div className="shrink-0 border-t border-sidebar-border p-4 space-y-3">
         <Link
-          href="/configuracoes"
+          href="/perfil"
           onClick={onNavigate}
           className="flex items-center gap-3 rounded-md p-1 -m-1 hover:bg-sidebar-accent/60 transition-colors"
         >

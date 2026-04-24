@@ -61,3 +61,17 @@ Este arquivo centraliza as tarefas para facilitar nosso fluxo em conjunto.
   - Entrega: card "Resumo: hoje, semana e mês" com sessões, concluídas, canceladas, evoluções (data da sessão), recebido e a receber; helper `brDateToIsoDate` em date-utils.
 - [x] [prioridade: media] [Geral] Anexos e relatórios PDF no prontuário
   - Entrega: anexos (PDF/imagem) no prontuário com persistência no mock; três PDFs (prontuário completo, só evolução, histórico de atendimentos).
+- [x] [prioridade: media] [qualidade] Revisar aplicação e levantar pontos de melhoria
+  - Entrega: `docs/auditoria-melhorias-frontend-2026-04-23.md` com matriz de melhorias (impacto, esforço, prioridade).
+- [x] [prioridade: baixa] [ux] Paleta / tema (preparação)
+  - Entrega: `docs/tema-cores-2026-04-23.md` com guia de onde ajustar tokens; cores finais a definir.
+- [x] [prioridade: media] [seguranca] Revisão de segurança (front)
+  - Entrega: `docs/seguranca-frontend-2026-04-23.md` (achados do mock, checklist, LGPD em alto nível).
+- [x] [prioridade: media] [api] Documentação de APIs necessárias ao frontend
+  - Entrega: `docs/api-requisitos-backend-2026-04-23.md` (recursos, métodos, erros, dependências).
+- [x] [prioridade: media] [compliance] CREFITO-10 e prontuário
+  - Entrega: `docs/compliance-crefito10-prontuario-2026-04-23.md` (síntese, referências oficiais, lacunas do sistema).
+- [x] [prioridade: media] [perfil] Perfil do fisioterapeuta
+  - Entrega: rota `/perfil`, `lib/user-profile.ts`, `lib/schemas/user-profile-form.ts`, sincronização de nome/telefone com `ClinicSettings`.
+- [x] [prioridade: media] [qualidade] Tratamento de erros
+  - Entrega: `docs/tratamento-erros-2026-04-23.md` + `app/(app)/error.tsx` (recuperação e log seguro no cliente).
