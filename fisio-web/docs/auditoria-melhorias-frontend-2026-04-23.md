@@ -14,6 +14,6 @@
 | M8 | Monorepo/CI | Lint + typecheck + build no pipeline. | P1 | S | |
 | M9 | LGPD | Política de retenção, base legal e DPO no produto; trilha de acesso a dados. | P1 | L | Com backend e jurídico. |
 
-**Itens técnicos já atendidos parcialmente:** `error.tsx` na área autenticada, documentação de erros e segurança (ver outros arquivos em `docs/`), tela de perfil local.
+**Itens técnicos já atendidos parcialmente:** `app/(app)/error.tsx`, `app/not-found.tsx` (404 amigável), `next.config.ts` (headers básicos), documentação de erros/segurança em `docs/`, tela de perfil local. Guia de backend: `api-requisitos-backend-2026-04-23.md` (inclui prompts para IA).
 
 **Próximo passo sugerido:** P1 (API + auth) alinhado ao documento `api-requisitos-backend-2026-04-23.md`.

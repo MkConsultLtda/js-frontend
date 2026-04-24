@@ -6,6 +6,8 @@
 
 - Centralizar **tokens** de cor (já hoje o projeto usa variáveis CSS com Tailwind v4: `app/globals.css` e classes `bg-primary`, `text-primary`, `sidebar` etc.).
 
+Há comentário de referência no início do bloco `:root` em `app/globals.css` apontando para este arquivo.
+
 ## Quando a cor for definida
 
 1. Ajustar em **`app/globals.css`** (ou o arquivo de tema ativo) as variáveis, por exemplo:

@@ -27,6 +27,11 @@
 - Definir **bases legais** (tratamento, consentimento quando aplicável) e prazo de retenção alinhado à norma profissional (ex.: prontuário, COFFITO).
 - Direitos do titular: acesso, correção, portabilidade, exclusão (onde permitido) — mapear **fluxos** na API.
 
-## 4. Conclusão
+## 4. Implementado no app Next (hardening leve)
+
+- **`next.config.ts`:** `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` restritiva para câmera/mic/geo. **CSP** deliberadamente não forçada aqui (exige ajuste fino com scripts inline do Next); avaliar `Content-Security-Policy` no proxy/CDN (Vercel) em produção.
+- **404 global:** `app/not-found.tsx` (links para início, dashboard, agenda).
+
+## 5. Conclusão
 
 O front atual é **intencionalmente** local para demonstração. A migração para produção exige arquitetura de confiança no servidor, transporte cifrado e políticas de acesso alinhadas ao conselho e à legislação vigente.

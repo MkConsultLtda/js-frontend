@@ -33,7 +33,8 @@ Abra [http://localhost:3000](http://localhost:3000). Rotas principais após logi
 | `/pacientes/[id]` | Prontuário resumido + atalhos para anamnese/evolução |
 | `/anamnese` | CRUD de anamneses; `?pacienteId=` filtra por paciente |
 | `/evolucao` | CRUD de evoluções; `?pacienteId=` filtra por paciente |
-| `/configuracoes` | Placeholder (clínica, notificações, privacidade) |
+| `/perfil` | Dados do fisioterapeuta (registro, contato, foto) — local |
+| `/configuracoes` | Clínica, duração/tipos de sessão, auditoria, reset do mock |
 
 ## O que já existe (funcional)
 
@@ -57,12 +58,24 @@ Isso evita dados duplicados entre páginas e facilita trocar a implementação p
 
 ---
 
+## Documentação (equipe e backend)
+
+| Documento | Conteúdo |
+|-----------|----------|
+| [`docs/api-requisitos-backend-2026-04-23.md`](docs/api-requisitos-backend-2026-04-23.md) | Rotas, convenções, **guia de criação do backend** (Spring, Postgres), **referências** e **prompts para colar na IA** ao iniciar o backend. |
+| [`docs/seguranca-frontend-2026-04-23.md`](docs/seguranca-frontend-2026-04-23.md) | CORS, storage, cookies, LGPD (visão front). |
+| [`docs/compliance-crefito10-prontuario-2026-04-23.md`](docs/compliance-crefito10-prontuario-2026-04-23.md) | Síntese regulatório-prontuário (não jurídico). |
+| [`docs/auditoria-melhorias-frontend-2026-04-23.md`](docs/auditoria-melhorias-frontend-2026-04-23.md) | Matriz de melhorias (impacto / esforço). |
+| [`docs/tema-cores-2026-04-23.md`](docs/tema-cores-2026-04-23.md) | Ajuste futuro de paleta (tokens em `app/globals.css`). |
+| [`docs/TODO.md`](docs/TODO.md) | Backlog colaborativo. |
+
 ## Como migrar para APIs REST
 
 A ideia é substituir gradualmente o **provider mock** por uma camada que chama o backend e, opcionalmente, usar **TanStack Query** para cache, loading e erro.
 
 ### 1. Contrato e ambiente
 
+- **Fonte de requisitos detalhada:** [`docs/api-requisitos-backend-2026-04-23.md`](docs/api-requisitos-backend-2026-04-23.md) (também com instruções para o backend e prompts de IA).
 - Definir **OpenAPI/Swagger** ou documento de endpoints alinhado ao backend.
 - Criar `.env.local` (não commitar secrets):
 

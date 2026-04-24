@@ -46,6 +46,7 @@
   --radius-4xl: calc(var(--radius) + 16px);
 }
 
+/* Tema: ajuste de paleta (primary, sidebar, etc.) — guia em docs/tema-cores-2026-04-23.md */
 :root {
   --radius: 0.625rem;
   --background: oklch(1 0 0);

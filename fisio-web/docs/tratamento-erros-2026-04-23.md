@@ -6,7 +6,7 @@
 |-------|-------------|----------------------|----------|
 | Formulários (Zod) | Validação | Mensagens no campo + Sonner (alguns fluxos) | Garantir `FormFieldError` + toast só para operações. |
 | Mock / storage | `localStorage` cheio, JSON inválido | Silently ignored em vários loads | Exibir aviso e fallback seguro. |
-| Rotas inexistentes | 404 | Página padrão Next | Página 404 amigável em `app/not-found` (revisar). |
+| Rotas inexistentes | 404 | `app/not-found.tsx` (links para início, dashboard, agenda) | Manter CTA alinhado ao menu. |
 | Exceção React (área /app) | Erro inesperado | **Tratado** por `app/(app)/error.tsx` (reset + link) | OK; evoluir com ID de suporte. |
 | Rede (futuro API) | 401, 409, 500 | Ainda N/A | Mapear `code` (ver `api-requisitos-backend`) + toast. |
 
@@ -21,12 +21,13 @@
 ## 3. O que foi implementado nesta leva
 
 - Arquivo **`app/(app)/error.tsx`**: bloco de recuperação (tentar de novo, ir ao dashboard) e `console.error` controlado.
+- Arquivo **`app/not-found.tsx`**: 404 com atalhos de navegação.
 - Documentação (este arquivo) e referência a códigos de API no repositório de requisitos.
 
 ## 4. Próximos passos técnicos
 
-- [ ] `app/not-found.tsx` com links úteis.
-- [ ] Hook `useApiMutation` com toast padrão e retry (idempotente).
+- [x] `app/not-found.tsx` com links úteis.
+- [ ] Hook `useApiMutation` com toast padrão e retry (idempotente) — após existir `lib/api-client`.
 - [ ] Integração com serviço de erros (Sentry etc.) com PII off.
 
 ## 5. Empty / loading (relacionado)

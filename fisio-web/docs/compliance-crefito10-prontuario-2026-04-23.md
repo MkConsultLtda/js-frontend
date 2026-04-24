@@ -36,4 +36,4 @@ Com base na **Res. COFFITO 414/2012** (e correlatas) e materiais oficiais/cartil
 
 O CREFITO-10 reforça a **fiscalização** e publica materiais e parâmetros; o **conteúdo mínimo** e a **responsabilidade** sobre prontuário vêm, em grande medida, das **resoluções do COFFITO** (414/2012, 415/2012, 555/2022, etc. — **confirmar** atualizações).
 
-**Ação:** time jurídico/Compliance valida; produto adiciona campos, assinaturas, logs e retenção **no backend**.
+**Ação:** time jurídico/Compliance valida; produto adiciona campos, assinaturas, logs e retenção **no backend** (requisitos de API em `api-requisitos-backend-2026-04-23.md`).
