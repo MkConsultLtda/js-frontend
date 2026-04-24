@@ -20,7 +20,7 @@ import {
   mockReducer,
   type MockState,
 } from "@/lib/mock-reducer";
-import type { Anamnese, Appointment, Evolucao, Patient } from "@/lib/types";
+import type { Anamnese, Appointment, Evolucao, Patient, PatientAttachment } from "@/lib/types";
 
 export type MockDataContextValue = MockState & {
   addPatient: (p: Omit<Patient, "id">) => void;
@@ -35,6 +35,8 @@ export type MockDataContextValue = MockState & {
   addEvolucao: (e: Omit<Evolucao, "id">) => void;
   updateEvolucao: (e: Evolucao) => void;
   deleteEvolucao: (id: number) => void;
+  addPatientAttachment: (a: Omit<PatientAttachment, "id">) => void;
+  deletePatientAttachment: (id: number) => void;
   resetMockDataToSeed: () => void;
   clearAuditLog: () => void;
 };
@@ -106,6 +108,14 @@ export function MockDataProvider({ children }: { children: ReactNode }) {
     dispatch({ type: "DELETE_EVOLUCAO", id });
   }, []);
 
+  const addPatientAttachment = useCallback((payload: Omit<PatientAttachment, "id">) => {
+    dispatch({ type: "ADD_PATIENT_ATTACHMENT", payload });
+  }, []);
+
+  const deletePatientAttachment = useCallback((id: number) => {
+    dispatch({ type: "DELETE_PATIENT_ATTACHMENT", id });
+  }, []);
+
   const resetMockDataToSeed = useCallback(() => {
     clearPersistedMockState();
     dispatch({ type: "RESET" });
@@ -130,6 +140,8 @@ export function MockDataProvider({ children }: { children: ReactNode }) {
       addEvolucao,
       updateEvolucao,
       deleteEvolucao,
+      addPatientAttachment,
+      deletePatientAttachment,
       resetMockDataToSeed,
       clearAuditLog,
     }),
@@ -147,6 +159,8 @@ export function MockDataProvider({ children }: { children: ReactNode }) {
       addEvolucao,
       updateEvolucao,
       deleteEvolucao,
+      addPatientAttachment,
+      deletePatientAttachment,
       resetMockDataToSeed,
       clearAuditLog,
     ]

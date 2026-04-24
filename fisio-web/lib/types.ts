@@ -114,3 +114,16 @@ export interface Evolucao {
   observacoes: string;
   planoProximaSessao: string;
 }
+
+/** Anexo no prontuário (arquivo em data URL) — armazenamento local (mock) */
+export interface PatientAttachment {
+  id: number;
+  patientId: number;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  /** ISO-8601 */
+  createdAt: string;
+  /** data:...;base64,... */
+  dataUrl: string;
+}

@@ -6,7 +6,15 @@ import {
   buildInitialHolidays,
   buildInitialPatients,
 } from "@/lib/mock-seed";
-import type { Anamnese, Appointment, AuditLogEntry, Evolucao, Holiday, Patient } from "@/lib/types";
+import type {
+  Anamnese,
+  Appointment,
+  AuditLogEntry,
+  Evolucao,
+  Holiday,
+  Patient,
+  PatientAttachment,
+} from "@/lib/types";
 import { isSessionAppointment } from "@/lib/types";
 
 export type MockState = {
@@ -15,6 +23,7 @@ export type MockState = {
   holidays: Holiday[];
   anamneses: Anamnese[];
   evolucoes: Evolucao[];
+  patientAttachments: PatientAttachment[];
   auditLog: AuditLogEntry[];
 };
 
@@ -33,6 +42,8 @@ export type MockAction =
   | { type: "ADD_EVOLUCAO"; payload: Omit<Evolucao, "id"> }
   | { type: "UPDATE_EVOLUCAO"; payload: Evolucao }
   | { type: "DELETE_EVOLUCAO"; id: number }
+  | { type: "ADD_PATIENT_ATTACHMENT"; payload: Omit<PatientAttachment, "id"> }
+  | { type: "DELETE_PATIENT_ATTACHMENT"; id: number }
   | { type: "CLEAR_AUDIT_LOG" };
 
 function auditEntry(message: string): AuditLogEntry {
@@ -59,6 +70,7 @@ export function createInitialMockState(): MockState {
     holidays: buildInitialHolidays(now),
     anamneses: buildInitialAnamneses(patients),
     evolucoes: buildInitialEvolucoes(patients),
+    patientAttachments: [],
     auditLog: [],
   };
 }
@@ -72,6 +84,7 @@ export function mockReducer(state: MockState, action: MockAction): MockState {
         holidays: action.payload.holidays ?? [],
         anamneses: action.payload.anamneses,
         evolucoes: action.payload.evolucoes,
+        patientAttachments: action.payload.patientAttachments ?? [],
         auditLog: action.payload.auditLog ?? [],
       };
     case "RESET": {
@@ -114,6 +127,7 @@ export function mockReducer(state: MockState, action: MockAction): MockState {
         appointments: state.appointments.filter((a) => a.patientId !== id),
         anamneses: state.anamneses.filter((a) => a.patientId !== id),
         evolucoes: state.evolucoes.filter((e) => e.patientId !== id),
+        patientAttachments: state.patientAttachments.filter((a) => a.patientId !== id),
       };
       return withAudit(
         next,
@@ -208,6 +222,28 @@ export function mockReducer(state: MockState, action: MockAction): MockState {
         evolucoes: state.evolucoes.filter((e) => e.id !== action.id),
       };
       return withAudit(next, "Evolução excluída");
+    }
+    case "ADD_PATIENT_ATTACHMENT": {
+      const id = nextNumericId(state.patientAttachments);
+      const next: MockState = {
+        ...state,
+        patientAttachments: [...state.patientAttachments, { ...action.payload, id }],
+      };
+      return withAudit(
+        next,
+        `Anexo adicionado ao prontuário: ${action.payload.fileName} (paciente #${action.payload.patientId})`
+      );
+    }
+    case "DELETE_PATIENT_ATTACHMENT": {
+      const att = state.patientAttachments.find((a) => a.id === action.id);
+      const next: MockState = {
+        ...state,
+        patientAttachments: state.patientAttachments.filter((a) => a.id !== action.id),
+      };
+      return withAudit(
+        next,
+        `Anexo removido${att ? `: ${att.fileName}` : ""} (prontuário)`
+      );
     }
     default:
       return state;

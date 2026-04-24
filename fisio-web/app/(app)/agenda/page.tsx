@@ -51,7 +51,7 @@ import {
   isWorkingDate,
   normalizeWorkingWeekdays,
 } from "@/lib/schedule-utils";
-import { isSessionAppointment, type Appointment } from "@/lib/types";
+import { isSessionAppointment, type Appointment, type CalendarEntryKind } from "@/lib/types";
 import { ChevronDown, Plus } from "lucide-react";
 
 type AgendaViewMode = "month" | "week";
@@ -328,7 +328,7 @@ export default function AgendaPage() {
   };
 
   const onCreateExtraSubmit = (values: CalendarExtraFormValues) => {
-    const kind = createKind === "block" ? "block" : "personal";
+    const kind: CalendarEntryKind = createKind === "block" ? "block" : "personal";
     const title = values.title.trim();
     const duration = values.isAllDay
       ? 24 * 60

@@ -4,6 +4,7 @@ import type {
   Appointment,
   CalendarEntryKind,
   Holiday,
+  PatientAttachment,
   SessionStatus,
 } from "@/lib/types";
 
@@ -93,6 +94,9 @@ export function normalizePersistedState(raw: unknown): MockState | null {
     holidays,
     anamneses: Array.isArray(raw.anamneses) ? (raw.anamneses as MockState["anamneses"]) : [],
     evolucoes: Array.isArray(raw.evolucoes) ? (raw.evolucoes as MockState["evolucoes"]) : [],
+    patientAttachments: Array.isArray(raw.patientAttachments)
+      ? (raw.patientAttachments as PatientAttachment[])
+      : [],
     auditLog: Array.isArray(raw.auditLog) ? (raw.auditLog as MockState["auditLog"]) : [],
   };
 }

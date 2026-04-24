@@ -103,9 +103,11 @@ export function RichTextEditor({
         if (event.key !== "Tab") return false;
         event.preventDefault();
         if (event.shiftKey) {
-          return view.dispatch(view.state.tr.insertText("    ")) || true;
+          view.dispatch(view.state.tr.insertText("    "));
+        } else {
+          view.dispatch(view.state.tr.insertText("    "));
         }
-        return view.dispatch(view.state.tr.insertText("    ")) || true;
+        return true;
       },
     },
     onUpdate: ({ editor: activeEditor }) => {

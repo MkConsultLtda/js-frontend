@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PatientProntuarioToolbar } from "@/components/pacientes/patient-prontuario-toolbar";
 import { useMockData } from "@/components/mock-data-provider";
 import { formatIsoDateToBR } from "@/lib/date-utils";
 import {
@@ -175,6 +176,8 @@ export default function PacienteProntuarioPage() {
           <CardContent className="text-sm">{patient.referralSource || "Não informado"}</CardContent>
         </Card>
       </div>
+
+      <PatientProntuarioToolbar patientId={id} />
 
       <Card>
         <CardHeader>

@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useMockData } from "@/components/mock-data-provider";
 import { useClinicSettings } from "@/lib/clinic-settings";
 import { buildRouteForDate } from "@/lib/route-day";
-import { startOfWeekMonday, toLocalDateString } from "@/lib/date-utils";
+import { brDateToIsoDate, startOfWeekMonday, toLocalDateString } from "@/lib/date-utils";
 import {
   countAppointmentsByWorkingWeekdays,
   formatWorkingDaysShort,
@@ -25,7 +25,7 @@ function money(value: number): string {
 }
 
 export default function DashboardPage() {
-  const { patients, appointments } = useMockData();
+  const { patients, appointments, evolucoes } = useMockData();
   const { settings } = useClinicSettings();
 
   const metrics = useMemo(() => {
@@ -67,15 +67,20 @@ export default function DashboardPage() {
 
     const weekStart = startOfWeekMonday(now);
     const weekEnd = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 6);
+    const weekStartIso = toLocalDateString(weekStart);
+    const weekEndIso = toLocalDateString(weekEnd);
     const weeklySessions = sessions.filter((apt) => {
       const date = new Date(`${apt.date}T12:00:00`);
       return date >= weekStart && date <= weekEnd;
     });
     const weeklyReceived = weeklySessions.filter((apt) => apt.paymentStatus === "paid").length * sessionPrice;
     const weeklyCancelled = weeklySessions.filter((apt) => apt.status === "cancelled").length;
+    const weeklyCompleted = weeklySessions.filter((apt) => apt.status === "completed").length;
 
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const monthStartIso = toLocalDateString(monthStart);
+    const monthEndIso = toLocalDateString(monthEnd);
     const monthlySessions = sessions.filter((apt) => {
       const date = new Date(`${apt.date}T12:00:00`);
       return date >= monthStart && date <= monthEnd;
@@ -102,6 +107,24 @@ export default function DashboardPage() {
       if (apt.status === "cancelled") bucket.cancelled += 1;
     }
 
+    const countEvolucoesInIsoRange = (startIso: string, endIso: string) =>
+      evolucoes.filter((ev) => {
+        const iso = brDateToIsoDate(ev.dataSessao);
+        return iso !== null && iso >= startIso && iso <= endIso;
+      }).length;
+
+    const evolucoesHoje = countEvolucoesInIsoRange(today, today);
+    const evolucoesSemana = countEvolucoesInIsoRange(weekStartIso, weekEndIso);
+    const evolucoesMes = countEvolucoesInIsoRange(monthStartIso, monthEndIso);
+
+    const todayCompleted = todayAppointments.filter((apt) => apt.status === "completed").length;
+    const pendingReceivable = (apts: typeof todayAppointments) =>
+      apts.filter((apt) => apt.status !== "cancelled" && apt.paymentStatus === "pending").length *
+      sessionPrice;
+    const receivableToday = pendingReceivable(todayAppointments);
+    const receivableWeek = pendingReceivable(weeklySessions);
+    const receivableMonth = pendingReceivable(monthlySessions);
+
     return {
       appointmentsToday: todayAppointments.length,
       confirmedToday,
@@ -117,16 +140,27 @@ export default function DashboardPage() {
       cancelledToday,
       weeklyReceived,
       weeklyCancelled,
+      weeklyCompleted,
       monthlyReceived,
       monthlyCompleted,
       monthlyCancelled,
       monthlyGoal,
       monthlyGoalPct,
       monthWeekBuckets,
+      evolucoesHoje,
+      evolucoesSemana,
+      evolucoesMes,
+      todayCompleted,
+      receivableToday,
+      receivableWeek,
+      receivableMonth,
+      weekSessionTotal: weeklySessions.length,
+      monthSessionTotal: monthlySessions.length,
     };
   }, [
     patients,
     appointments,
+    evolucoes,
     settings.workingWeekdays,
     settings.maxSessionsPerDay,
     settings.monthlyRevenueGoal,
@@ -251,6 +285,70 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Resumo: hoje, semana e mês</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Mesmos dados da Agenda e da{" "}
+            <Link href="/evolucao" className="text-primary underline-offset-4 hover:underline">
+              Evolução
+            </Link>{" "}
+            (mock local). A semana vai de segunda a domingo. As evoluções usam a{" "}
+            <strong>data da sessão</strong> informada no registro.
+          </p>
+        </CardHeader>
+        <CardContent className="overflow-x-auto">
+          <table className="w-full min-w-[520px] text-sm">
+            <thead>
+              <tr className="border-b text-left text-muted-foreground">
+                <th className="py-2 pr-4 font-medium">Métrica</th>
+                <th className="py-2 pr-4 font-medium">Hoje</th>
+                <th className="py-2 pr-4 font-medium">Semana</th>
+                <th className="py-2 font-medium">Mês</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="border-b border-border/60">
+                <td className="py-2 pr-4 text-muted-foreground">Sessões na agenda (total)</td>
+                <td className="py-2 pr-4 font-medium tabular-nums">{metrics.appointmentsToday}</td>
+                <td className="py-2 pr-4 font-medium tabular-nums">{metrics.weekSessionTotal}</td>
+                <td className="py-2 font-medium tabular-nums">{metrics.monthSessionTotal}</td>
+              </tr>
+              <tr className="border-b border-border/60">
+                <td className="py-2 pr-4 text-muted-foreground">Concluídas</td>
+                <td className="py-2 pr-4 font-medium tabular-nums">{metrics.todayCompleted}</td>
+                <td className="py-2 pr-4 font-medium tabular-nums">{metrics.weeklyCompleted}</td>
+                <td className="py-2 font-medium tabular-nums">{metrics.monthlyCompleted}</td>
+              </tr>
+              <tr className="border-b border-border/60">
+                <td className="py-2 pr-4 text-muted-foreground">Canceladas</td>
+                <td className="py-2 pr-4 font-medium tabular-nums">{metrics.cancelledToday}</td>
+                <td className="py-2 pr-4 font-medium tabular-nums">{metrics.weeklyCancelled}</td>
+                <td className="py-2 font-medium tabular-nums">{metrics.monthlyCancelled}</td>
+              </tr>
+              <tr className="border-b border-border/60">
+                <td className="py-2 pr-4 text-muted-foreground">Evoluções registradas</td>
+                <td className="py-2 pr-4 font-medium tabular-nums">{metrics.evolucoesHoje}</td>
+                <td className="py-2 pr-4 font-medium tabular-nums">{metrics.evolucoesSemana}</td>
+                <td className="py-2 font-medium tabular-nums">{metrics.evolucoesMes}</td>
+              </tr>
+              <tr className="border-b border-border/60">
+                <td className="py-2 pr-4 text-muted-foreground">Recebido (pagas)</td>
+                <td className="py-2 pr-4 font-medium tabular-nums">{money(metrics.receivedToday)}</td>
+                <td className="py-2 pr-4 font-medium tabular-nums">{money(metrics.weeklyReceived)}</td>
+                <td className="py-2 font-medium tabular-nums">{money(metrics.monthlyReceived)}</td>
+              </tr>
+              <tr>
+                <td className="py-2 pr-4 text-muted-foreground">A receber (pendentes, estimado)</td>
+                <td className="py-2 pr-4 font-medium tabular-nums">{money(metrics.receivableToday)}</td>
+                <td className="py-2 pr-4 font-medium tabular-nums">{money(metrics.receivableWeek)}</td>
+                <td className="py-2 font-medium tabular-nums">{money(metrics.receivableMonth)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
         <Card className="col-span-4">

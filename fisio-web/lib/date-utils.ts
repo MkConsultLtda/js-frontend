@@ -24,6 +24,12 @@ export function parseBRDate(date: string): Date {
   return new Date(y, m - 1, d);
 }
 
+/** dd/mm/aaaa → yyyy-mm-dd (quando o formato for válido) */
+export function brDateToIsoDate(br: string): string | null {
+  if (!/^\d{2}\/\d{2}\/\d{4}$/.test(br)) return null;
+  return toLocalDateString(parseBRDate(br));
+}
+
 export function addDays(date: Date, days: number): Date {
   const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
   d.setDate(d.getDate() + days);

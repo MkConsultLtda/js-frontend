@@ -22,16 +22,6 @@ Este arquivo centraliza as tarefas para facilitar nosso fluxo em conjunto.
 
 ## Backlog
 
-- [ ] [prioridade: media] [dashboard] Métricas mensais, semanais e diarias.
-  - Contexto: Baseado no que existe no sistema e em como a cliente trabalha, crie métricas no dashboard para que facilite a vida da minha cliente, como por exemplo, atendimentos realizados na semana, realizados no mes e etc. Com seu conhecimento, enriqueça as métricas que temos atualmente.
-  - Criterios de aceite: Ter métrias uteis para minha cliente, tanto no seu dia a dia quanto quando ela olhar semanalmente e mensalmente.
-  - Observacoes:
-
-- [ ] [prioridade: media] [Geral] Opção de anexos e geração de relátorios
-  - Contexto: Ter a opção de adicionar anexos no prontuário do paciente e também ter a opção de gerar PDFs de prontuários, evolução, histórico de atendimento.
-  - Criterios de aceite: No prontuário do meu paciente, eu consigo adicionar anexos e também gerar relátorios (PDF) de seu histórico de atendimento, prontuário e evolução.
-  - Observacoes:
-
 ## Em andamento
 
 - [ ] (adicione aqui tarefas que estao sendo executadas agora)
@@ -67,3 +57,7 @@ Este arquivo centraliza as tarefas para facilitar nosso fluxo em conjunto.
   - Entrega: removidos os cards "Reavaliações sugeridas" e "Base ativa" do dashboard.
 - [x] [prioridade: media] [Status] Regra para concluir atendimento
   - Entrega: status "Concluído" agora só pode ser salvo quando houver evolução do paciente na mesma data do atendimento.
+- [x] [prioridade: media] [dashboard] Métricas mensais, semanais e diárias
+  - Entrega: card "Resumo: hoje, semana e mês" com sessões, concluídas, canceladas, evoluções (data da sessão), recebido e a receber; helper `brDateToIsoDate` em date-utils.
+- [x] [prioridade: media] [Geral] Anexos e relatórios PDF no prontuário
+  - Entrega: anexos (PDF/imagem) no prontuário com persistência no mock; três PDFs (prontuário completo, só evolução, histórico de atendimentos).
