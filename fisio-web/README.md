@@ -62,6 +62,8 @@ Isso evita dados duplicados entre páginas e facilita trocar a implementação p
 
 | Documento | Conteúdo |
 |-----------|----------|
+| [`docs/operacao/README.md`](docs/operacao/README.md) | **LOCAL / produção**: TODOs, variáveis, *deploy* barato (Vercel, GitHub Actions), PostgreSQL. |
+| [`env.example`](env.example) | Modelo de variáveis (copiar para `.env.local`). |
 | [`docs/api-requisitos-backend-2026-04-23.md`](docs/api-requisitos-backend-2026-04-23.md) | Rotas, convenções, **guia de criação do backend** (Spring, Postgres), **referências** e **prompts para colar na IA** ao iniciar o backend. |
 | [`docs/seguranca-frontend-2026-04-23.md`](docs/seguranca-frontend-2026-04-23.md) | CORS, storage, cookies, LGPD (visão front). |
 | [`docs/compliance-crefito10-prontuario-2026-04-23.md`](docs/compliance-crefito10-prontuario-2026-04-23.md) | Síntese regulatório-prontuário (não jurídico). |
