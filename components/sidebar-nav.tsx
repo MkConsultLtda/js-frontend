@@ -5,10 +5,11 @@ import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { clearMockSessionCookie } from "@/lib/auth-session";
+import { clearAuthSession } from "@/lib/auth-session";
 import { useClinicSettings } from "@/lib/clinic-settings";
 import { APP_NAV, Activity } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 type Props = {
   /** Chamado após navegar (ex.: fechar drawer no mobile) */
@@ -85,10 +86,12 @@ export function SidebarNav({ onNavigate, className, headerAction }: Props) {
           variant="ghost"
           size="sm"
           className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground"
-          onClick={() => {
-            clearMockSessionCookie();
+          onClick={async () => {
+            await clearAuthSession();
             onNavigate?.();
             router.replace("/login");
+            router.refresh();
+            toast.message("Sessão encerrada.");
           }}
         >
           <LogOut className="h-4 w-4 shrink-0" />

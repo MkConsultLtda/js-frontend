@@ -110,7 +110,7 @@
 
 ### 1) Fonte de verdade no produto (frontend)
 
-- Modelos e campos esperados: `fisio-web/lib/types.ts` (e schemas em `fisio-web/lib/schemas/`).
+- Modelos e campos esperados: `lib/types.ts` (e schemas em `lib/schemas/` — repositório `js-frontend`).
 - Regras já espelhadas no cliente: conflito de horário, conclusão de atendimento com evolução na data, configuração da clínica em `ClinicSettings`.
 
 ### 2) Stack sugerida (alinhada ao time)
@@ -182,7 +182,7 @@ Este documento pode ser convertido em **OpenAPI 3.1** (YAML) após o time de bac
 
 ## Prompts para IA (Cursor / assistente)
 
-> Use **um prompt por vez**. Anexe o repositório do backend (ou a pasta) no contexto. Cole também o conteúdo (ou o path) de **`fisio-web/lib/types.ts`** e deste arquivo **`api-requisitos-backend-2026-04-23.md`**.
+> Use **um prompt por vez**. Anexe o repositório do backend (ou a pasta) no contexto. Cole também o conteúdo (ou o path) de **`lib/types.ts`** (repositório `js-frontend`) e deste arquivo **`api-requisitos-backend-2026-04-23.md`**.
 
 ### Prompt A — Bootstrap Spring Boot (MVP)
 
@@ -224,13 +224,13 @@ Implemente upload de anexos por patientId: metadados no PostgreSQL, binário em 
 ### Prompt F — OpenAPI + cliente TypeScript (opcional)
 
 ```text
-Gere o OpenAPI 3.1 (YAML) completo a partir dos controllers atuais (springdoc) e instruções para gerar um cliente TypeScript (orval ou openapi-generator) no monorepo ao lado de fisio-web, com baseURL em variável de ambiente NEXT_PUBLIC_API_URL.
+Gere o OpenAPI 3.1 (YAML) completo a partir dos controllers atuais (springdoc) e instruções para gerar um cliente TypeScript (orval ou openapi-generator) no repositório `js-frontend`, com baseURL em variável de ambiente `NEXT_PUBLIC_API_BASE_URL` (ou equivalente).
 ```
 
 ### Prompt G — Sessão com o repositório frontend aberto
 
 ```text
-Estou com o repositório js-frontend (Next) e vou conectar o fisio-web ao backend que você está gerando. Liste os arquivos que devo alterar no front primeiro (ex.: lib/api-client.ts, substituição do MockDataProvider, react-query) e a ordem de migração por tela: login → dashboard → pacientes → agenda → anamnese → evolução. Não reescreva o front inteiro; só um plano e snippets de integração.
+Estou com o repositório js-frontend (Next na raiz) e vou conectar o front ao backend que você está gerando. Liste os arquivos que devo alterar no front primeiro (ex.: lib/api-client.ts, substituição do MockDataProvider, react-query) e a ordem de migração por tela: login → dashboard → pacientes → agenda → anamnese → evolução. Não reescreva o front inteiro; só um plano e snippets de integração.
 ```
 
 ---

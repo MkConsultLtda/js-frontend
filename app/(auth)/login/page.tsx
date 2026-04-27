@@ -5,23 +5,45 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { setMockSessionCookie } from "@/lib/auth-session";
 import { useRouter, useSearchParams } from "next/navigation";
+import { toast } from "sonner";
 
 function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const from = searchParams.get("from");
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email && password) {
-      setMockSessionCookie();
+    if (!email || !password || loading) return;
+
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!res.ok) {
+        const err = (await res.json().catch(() => null)) as
+          | { message?: string }
+          | null;
+        throw new Error(err?.message || "Falha no login");
+      }
+
       const target =
         from && from.startsWith("/") && !from.startsWith("//") ? from : "/dashboard";
       router.replace(target);
+      router.refresh();
+      toast.success("Login realizado com sucesso.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Não foi possível entrar.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -29,7 +51,7 @@ function LoginForm() {
     <Card className="w-full max-w-md">
       <CardHeader className="text-center">
         <CardTitle className="text-2xl">FisioSystem</CardTitle>
-        <p className="text-muted-foreground">Entre na sua conta (sessão mock no navegador)</p>
+        <p className="text-muted-foreground">Entre na sua conta</p>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleLogin} className="space-y-4">
@@ -57,8 +79,8 @@ function LoginForm() {
               autoComplete="current-password"
             />
           </div>
-          <Button type="submit" className="w-full">
-            Entrar
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? "Entrando..." : "Entrar"}
           </Button>
         </form>
       </CardContent>
