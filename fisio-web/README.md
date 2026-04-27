@@ -1,6 +1,6 @@
 # FisioSystem (fisio-web)
 
-Frontend web para gestão de clínica de fisioterapia: agenda, pacientes, anamnese, evolução e dashboard. **Estado atual:** interface funcional com **dados mockados em memória** (sem backend). O objetivo é evoluir para consumo de **APIs REST** (ex.: Spring Boot + PostgreSQL).
+Frontend web para gestão de clínica de fisioterapia: agenda, pacientes, anamnese, evolução e dashboard. **Estado atual:** interface funcional com dados de domínio ainda mockados em memória, mas com autenticação via **cookies HttpOnly** já preparada para backend.
 
 ## Stack
 
@@ -26,7 +26,7 @@ Abra [http://localhost:3000](http://localhost:3000). Rotas principais após logi
 | Rota | Descrição |
 |------|-----------|
 | `/` | Landing |
-| `/login` | Login mock (qualquer e-mail/senha preenchidos redirecionam) |
+| `/login` | Login real via `POST /v1/auth/login` (proxy Next em `/api/auth/login`) |
 | `/dashboard` | Painel com métricas e agenda do dia |
 | `/agenda` | Calendário e CRUD de agendamentos |
 | `/pacientes` | Lista e CRUD de pacientes |
@@ -80,7 +80,8 @@ A ideia é substituir gradualmente o **provider mock** por uma camada que chama 
 - Criar `.env.local` (não commitar secrets):
 
   ```env
-  NEXT_PUBLIC_API_BASE_URL=https://api.exemplo.com
+  NEXT_PUBLIC_API_BASE_URL=http://localhost:8080/v1
+  BACKEND_API_URL=http://localhost:8080/v1
   ```
 
 - Implementar um **cliente HTTP** único (`lib/api/client.ts`), por exemplo `fetch` com:

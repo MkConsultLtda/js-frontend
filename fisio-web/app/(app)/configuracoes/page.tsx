@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useMockData } from "@/components/mock-data-provider";
-import { clearMockSessionCookie } from "@/lib/auth-session";
+import { clearAuthSession } from "@/lib/auth-session";
 import { useClinicSettings } from "@/lib/clinic-settings";
 import {
   Bell,
@@ -61,9 +61,10 @@ export default function ConfiguracoesPage() {
     toast.success("Preferências da clínica salvas neste navegador.");
   };
 
-  const logout = () => {
-    clearMockSessionCookie();
+  const logout = async () => {
+    await clearAuthSession();
     router.replace("/login");
+    router.refresh();
     toast.message("Sessão encerrada.");
   };
 
@@ -439,9 +440,9 @@ export default function ConfiguracoesPage() {
           </p>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
-          <Button type="button" variant="outline" className="gap-2" onClick={logout}>
+          <Button type="button" variant="outline" className="gap-2" onClick={() => void logout()}>
             <LogOut className="h-4 w-4" />
-            Sair (encerrar sessão mock)
+            Sair
           </Button>
         </CardContent>
       </Card>
