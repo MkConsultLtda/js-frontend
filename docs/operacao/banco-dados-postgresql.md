@@ -37,10 +37,34 @@ No repositório do *backend* já tens `docker-compose` com o serviço `db`. Cria
 3. **Sem** deixar `0.0.0.0/0` *open* na Internet se o fornecedor permitir *“private access only”* — idealmente a API acessa a DB por **rede privada** (mesma VPC) ou *allowlist* do *IP* do *Render/Fly* (varia com o plano *free*).  
 4. Criar **1 utilizador** de aplicação com o mínimo de privilégios (`CONNECT`, *CRUD* nas tabelas da aplicação).
 
+#### Neon — connection string ↔ JDBC para Spring Boot
+
+Neon mostra *connection string* no formato **`postgresql://` (driver *libpq*)**.  
+O Spring espera **`jdbc:postgresql://…`** nas variáveis **deste** projecto.
+
+| Valor Neon (painel) | Como mapear |
+|---------------------|------------|
+| URI `postgresql://USER:PASSWORD@HOST:5432/neondb?sslmode=require` | Não cries ficheiros com estas credenciais no Git. |
+| `DATABASE_URL` (Spring) | `jdbc:postgresql://HOST:5432/neondb?sslmode=require` — **sem `user/password` dentro da URL** se usares também `DATABASE_USERNAME` e `DATABASE_PASSWORD` (evita caracteres especiais na URL). |
+| `DATABASE_USERNAME` | mesmo *user* (ex.: `neondb_owner`) |
+| `DATABASE_PASSWORD` | *password* (mete na env / *secret*, nunca na repo). |
+
+Exemplo apenas de formato (host inventado):
+
+```bash
+DATABASE_URL=jdbc:postgresql://ep-xxxx.us-east-1.aws.neon.tech:5432/neondb?sslmode=require
+DATABASE_USERNAME=neondb_owner
+DATABASE_PASSWORD=<segredo apenas no PaaS ou .env local gitignored>
+```
+
+Se **partilhaste uma connection string por engano**, regenerea a palavra-passe ou o *role* no painel Neon (**Reset password**) e actualiza só os teus segredos.
+
+O backend com **`SPRING_PROFILES_ACTIVE=prod`** aplica **`application-prod.yml`**: *pool* Hikari e `prepareThreshold` amigável para **Neon *pooled*** (PgBouncer), *retries* do Flyway no arranque, e *health* actuator com Postgres. Opcionalmente ajustas `HIKARI_*` / `FLYWAY_*`/`PG_PREPARE_THRESHOLD` (`env.example`).
+
 #### Passos lógicos no *dashboard* do Neon (exemplo)
 
 - *Create project* → *Create database* (default costuma ser “main”).  
-- Copiar *user/password/host* → pôr no *secret* do PaaS como `DATABASE_PASSWORD`, etc.  
+- Copiar host, porta, BD, utilizador → montar JDBC como acima; *password* em `DATABASE_PASSWORD`.  
 - Testar: `psql` ou *SQL editor* *web* a correr `SELECT 1;`.
 
 ### Utilizador e permissões (recomendado em prod)
