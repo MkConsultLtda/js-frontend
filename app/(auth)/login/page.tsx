@@ -5,14 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
 function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
   const searchParams = useSearchParams();
   const from = searchParams.get("from");
 
@@ -26,6 +25,7 @@ function LoginForm() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
+        credentials: "same-origin",
       });
 
       if (!res.ok) {
@@ -37,9 +37,9 @@ function LoginForm() {
 
       const target =
         from && from.startsWith("/") && !from.startsWith("//") ? from : "/dashboard";
-      router.replace(target);
-      router.refresh();
-      toast.success("Login realizado com sucesso.");
+      // Navegação completa: garante que o pedido GET seguinte (middleware) já inclui os cookies HttpOnly.
+      // router.replace + refresh pode correr antes do browser consolidar Set-Cookie → loop /login ↔ /dashboard.
+      window.location.assign(target);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Não foi possível entrar.");
     } finally {
