@@ -1,0 +1,41 @@
+# Build + lint + test a cada push/PR (minutos do GitHub Free para repos privados; públicos têm mais)
+name: Frontend CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+  workflow_dispatch: {}
+
+concurrency:
+  group: frontend-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+        env:
+          # Evita falhas por variáveis ausentes (rotas usam env em build); valores fictícios.
+          NEXT_PUBLIC_API_BASE_URL: https://api.example.com/v1
+          BACKEND_API_URL: https://api.example.com/v1
