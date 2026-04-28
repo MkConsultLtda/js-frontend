@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -35,7 +34,6 @@ const WEEKDAY_OPTIONS: { value: number; label: string }[] = [
 ];
 
 export default function ConfiguracoesPage() {
-  const router = useRouter();
   const { settings, setSettings } = useClinicSettings();
   const { auditLog, clearAuditLog, resetMockDataToSeed } = useMockData();
 
@@ -63,9 +61,8 @@ export default function ConfiguracoesPage() {
 
   const logout = async () => {
     await clearAuthSession();
-    router.replace("/login");
-    router.refresh();
     toast.message("Sessão encerrada.");
+    window.location.assign("/login");
   };
 
   return (

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -28,7 +28,6 @@ function initials(name: string): string {
 
 export function SidebarNav({ onNavigate, className, headerAction }: Props) {
   const pathname = usePathname();
-  const router = useRouter();
   const { settings } = useClinicSettings();
 
   return (
@@ -89,9 +88,8 @@ export function SidebarNav({ onNavigate, className, headerAction }: Props) {
           onClick={async () => {
             await clearAuthSession();
             onNavigate?.();
-            router.replace("/login");
-            router.refresh();
             toast.message("Sessão encerrada.");
+            window.location.assign("/login");
           }}
         >
           <LogOut className="h-4 w-4 shrink-0" />

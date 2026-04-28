@@ -23,7 +23,18 @@ npm install
 npm run dev
 ```
 
+O script `dev` usa **Webpack** (`next dev --webpack`) para evitar *panics* do Turbopack no Windows em alguns setups. Para tentar **Turbopack** (mais rápido, se estiver estável): `npm run dev:turbo`.
+
 Abra [http://localhost:3000](http://localhost:3000). Rotas principais após **login** (API + cookies HttpOnly) ou acesso direto (se o *middleware* permitir):
+
+### Testar com o backend Java local (`msorquestrador-jf`)
+
+1. Postgres no ar (ex.: `docker compose up -d` no repositório do backend). Ajusta `DATABASE_PASSWORD` na API à senha do Postgres (com o compose por defeito: `teste0101`).
+2. Na pasta do backend: `mvn spring-boot:run -Dspring-boot.run.profiles=dev` (ver README do backend para variáveis e PowerShell).
+3. Neste repositório: copia [`env.example`](env.example) para `.env.local` (já contém `NEXT_PUBLIC_API_BASE_URL` e `BACKEND_API_URL` em `http://localhost:8080/v1`).
+4. `npm run dev` e acede a `/login`. Utilizador seed da API (BD vazia): **admin@clinica.local** / **Trocar@2026!dev** (ou a senha definida em `FISIO_DEV_ADMIN_PASSWORD` no backend antes do primeiro arranque).
+
+O login do browser chama o Next em `/api/auth/login`, que por sua vez fala com `POST /v1/auth/login` na API e grava tokens em cookies HttpOnly — não é preciso CORS para esse fluxo; a API continua a aceitar `http://localhost:3000` para chamadas diretas do browser no futuro.
 
 | Rota | Descrição |
 |------|-----------|

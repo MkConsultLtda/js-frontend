@@ -19,7 +19,7 @@ export default function Home() {
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4">
-            <Link href="/dashboard">
+            <Link href="/dashboard" prefetch={false}>
               <Button size="lg" className="w-full sm:w-auto">Acessar Dashboard</Button>
             </Link>
             <Link href="/login">
