@@ -244,10 +244,17 @@ export async function fetchEvolutionsForPatient(
 
 export async function fetchAggregatedEvolutions(patients: { id: number }[], from: string, to: string) {
   if (patients.length === 0) return [];
-  const chunks = await Promise.all(
+  const chunks = await Promise.allSettled(
     patients.map((p) => fetchEvolutionsForPatient(p.id, from, to)),
   );
-  return chunks.flat();
+  const fulfilled = chunks.filter((c): c is PromiseFulfilledResult<Evolucao[]> => c.status === "fulfilled");
+  const rejectedCount = chunks.length - fulfilled.length;
+  if (rejectedCount > 0) {
+    console.warn(
+      `[dashboard] ${rejectedCount} chamada(s) de evoluções falharam; mantendo métricas parciais.`,
+    );
+  }
+  return fulfilled.flatMap((c) => c.value);
 }
 
 export async function fetchAggregatedAnamneses(patients: { id: number }[]) {
