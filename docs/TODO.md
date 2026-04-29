@@ -22,6 +22,21 @@ Este arquivo centraliza as tarefas para facilitar nosso fluxo em conjunto.
 
 ## Backlog
 
+- [ ] [prioridade: alta] [seguranca] Fluxo de troca de senha do fisioterapeuta (backend + frontend)
+  - Contexto:
+    - Atualmente existe login/refresh/me, mas não há endpoint para alteração de senha pelo usuário autenticado.
+    - A documentação de operação já sinaliza essa lacuna.
+  - Criterios de aceite:
+    - Backend expõe endpoint autenticado `PATCH /v1/auth/password`.
+    - Requer `currentPassword`, `newPassword`, `confirmNewPassword` (ou validação equivalente no back).
+    - Valida senha atual, política mínima da nova senha e impede reutilização imediata.
+    - Salva novo hash com `BCrypt` e invalida sessão anterior (refresh antigo deixa de ser aceito).
+    - Frontend implementa tela de “Alterar senha” em `/perfil` com UX de sucesso/erro.
+    - Front trata `400/401/429` com mensagens claras e sem vazar detalhe sensível.
+    - Testes mínimos: unidade (regras de senha) + integração (endpoint feliz/erro).
+  - Observacoes:
+    - Priorizar implementação com baixo acoplamento e contrato estável para evoluir reset por e-mail no futuro.
+
 ## Em andamento
 
 - [ ] (adicione aqui tarefas que estao sendo executadas agora)
