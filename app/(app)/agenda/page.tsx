@@ -26,7 +26,17 @@ import { AgendaMonthView } from "@/components/agenda/agenda-month-view";
 import { AgendaWeekView } from "@/components/agenda/agenda-week-view";
 import { CalendarExtraFormFields } from "@/components/agenda/calendar-extra-form-fields";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { useMockData } from "@/components/mock-data-provider";
+import {
+  dtoAgendaPayloadSession,
+  emptyHolidayList,
+} from "@/lib/api/fisio-api";
+import {
+  useAggregateEvoluco,
+  useAppointmentRange,
+  useAgendaMutations,
+  usePatientsSearch,
+} from "@/lib/api/hooks/use-fisio";
+import { computeAgendaFetchRange } from "@/lib/agenda-api-range";
 import { useClinicSettings } from "@/lib/clinic-settings";
 import {
   appointmentFormSchema,
@@ -63,36 +73,6 @@ type ScheduleCandidate = {
 };
 
 export default function AgendaPage() {
-  const {
-    patients,
-    appointments,
-    evolucoes,
-    holidays,
-    addAppointment,
-    updateAppointment,
-    deleteAppointment,
-  } = useMockData();
-
-  const { settings } = useClinicSettings();
-  const patientOptions = patients.map((p) => ({ id: p.id, name: p.name }));
-  const durationOptions = React.useMemo(() => {
-    return settings.appointmentDurations.length > 0 ? settings.appointmentDurations : [60, 90, 120];
-  }, [settings.appointmentDurations]);
-  const typeOptions = React.useMemo(() => {
-    return settings.appointmentTypes.length > 0
-      ? settings.appointmentTypes
-      : [
-          "Avaliação fisioterapêutica",
-          "Fisioterapia",
-          "Liberação Miofascial",
-          "Drenagem linfática",
-        ];
-  }, [settings.appointmentTypes]);
-  const workingWeekdays = React.useMemo(
-    () => normalizeWorkingWeekdays(settings.workingWeekdays),
-    [settings.workingWeekdays]
-  );
-
   const [viewMode, setViewMode] = React.useState<AgendaViewMode>("month");
   const [currentDate, setCurrentDate] = React.useState(() => new Date());
   const [selectedDate, setSelectedDate] = React.useState(() =>
@@ -112,6 +92,56 @@ export default function AgendaPage() {
   const [conflictDialogDescription, setConflictDialogDescription] = React.useState("");
   const [pendingConflictAction, setPendingConflictAction] = React.useState<(() => void) | null>(
     null
+  );
+
+  const { settings } = useClinicSettings();
+
+  const range = React.useMemo(
+    () => computeAgendaFetchRange(currentDate, viewMode),
+    [currentDate, viewMode],
+  );
+
+  const { data: patientPage } = usePatientsSearch("");
+  const patients = patientPage?.content ?? [];
+
+  const { data: appointments = [] } = useAppointmentRange(range.from, range.to);
+
+  const evWindow = React.useMemo(
+    () => ({
+      from: `${currentDate.getFullYear()}-01-01`,
+      to: `${currentDate.getFullYear()}-12-31`,
+    }),
+    [currentDate],
+  );
+
+  const { data: evolucoes = [] } = useAggregateEvoluco(evWindow.from, evWindow.to, true);
+
+  const {
+    createAppointment,
+    replaceAppointment,
+    deleteAppointment,
+  } = useAgendaMutations(range.from, range.to);
+
+  const holidays = React.useMemo(() => emptyHolidayList(), []);
+
+  const patientOptions = patients.map((p) => ({ id: p.id, name: p.name }));
+
+  const durationOptions = React.useMemo(() => {
+    return settings.appointmentDurations.length > 0 ? settings.appointmentDurations : [60, 90, 120];
+  }, [settings.appointmentDurations]);
+  const typeOptions = React.useMemo(() => {
+    return settings.appointmentTypes.length > 0
+      ? settings.appointmentTypes
+      : [
+          "Avaliação fisioterapêutica",
+          "Fisioterapia",
+          "Liberação Miofascial",
+          "Drenagem linfática",
+        ];
+  }, [settings.appointmentTypes]);
+  const workingWeekdays = React.useMemo(
+    () => normalizeWorkingWeekdays(settings.workingWeekdays),
+    [settings.workingWeekdays],
   );
 
   const createForm = useForm<AppointmentFormValues>({
@@ -284,12 +314,14 @@ export default function AgendaPage() {
 
   const hasEvolucaoForAppointmentDate = React.useCallback(
     (patientId: number, isoDate: string) => {
-      const brDate = formatIsoDateToBR(isoDate);
       return evolucoes.some(
-        (ev) => ev.patientId === patientId && ev.dataSessao === brDate
+        (ev) =>
+          ev.patientId === patientId &&
+          (ev.dataSessao === isoDate ||
+            ev.dataSessao === formatIsoDateToBR(isoDate)),
       );
     },
-    [evolucoes]
+    [evolucoes],
   );
 
   const onCreateSessionSubmit = (values: AppointmentFormValues) => {
@@ -318,11 +350,15 @@ export default function AgendaPage() {
     executeWithConflictConfirmation({
       candidates: [{ date: values.date, time: values.time, duration, label: patient.name }],
       actionLabel: "Este atendimento",
-      onContinue: () => {
-        addAppointment(payload);
-        setCreateOpen(false);
-        createForm.reset(emptyAppointmentForm(selectedDate));
-        toast.success("Agendamento criado.");
+      onContinue: async () => {
+        try {
+          await createAppointment.mutateAsync(dtoAgendaPayloadSession(payload));
+          setCreateOpen(false);
+          createForm.reset(emptyAppointmentForm(selectedDate));
+          toast.success("Agendamento criado.");
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : "Não foi possível criar o agendamento.");
+        }
       },
     });
   };
@@ -360,21 +396,25 @@ export default function AgendaPage() {
         label: entry.patientName,
       })),
       actionLabel: "Este bloqueio/evento",
-      onContinue: () => {
-        for (const entry of entries) {
-          addAppointment(entry);
+      onContinue: async () => {
+        try {
+          for (const entry of entries) {
+            await createAppointment.mutateAsync(dtoAgendaPayloadSession(entry));
+          }
+          setCreateOpen(false);
+          createExtraForm.reset(emptyCalendarExtraForm(selectedDate));
+          toast.success(
+            kind === "block"
+              ? entries.length > 1
+                ? `${entries.length} bloqueios criados.`
+                : "Horário bloqueado."
+              : entries.length > 1
+                ? `${entries.length} eventos adicionados.`
+                : "Evento adicionado.",
+          );
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : "Não foi possível salvar.");
         }
-        setCreateOpen(false);
-        createExtraForm.reset(emptyCalendarExtraForm(selectedDate));
-        toast.success(
-          kind === "block"
-            ? entries.length > 1
-              ? `${entries.length} bloqueios criados.`
-              : "Horário bloqueado."
-            : entries.length > 1
-              ? `${entries.length} eventos adicionados.`
-              : "Evento adicionado."
-        );
       },
     });
   };
@@ -407,12 +447,19 @@ export default function AgendaPage() {
       candidates: [{ date: updated.date, time: updated.time, duration: updated.duration, label: updated.patientName }],
       ignoreAppointmentId: editingAppointment.id,
       actionLabel: "Esta alteração",
-      onContinue: () => {
-        updateAppointment(updated);
-        setIsEditDialogOpen(false);
-        setEditingAppointment(null);
-        editForm.reset(emptyAppointmentForm(selectedDate));
-        toast.success("Agendamento atualizado.");
+      onContinue: async () => {
+        try {
+          await replaceAppointment.mutateAsync({
+            id: editingAppointment.id,
+            body: dtoAgendaPayloadSession(updated),
+          });
+          setIsEditDialogOpen(false);
+          setEditingAppointment(null);
+          editForm.reset(emptyAppointmentForm(selectedDate));
+          toast.success("Agendamento atualizado.");
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : "Não foi possível atualizar.");
+        }
       },
     });
   };
@@ -439,12 +486,19 @@ export default function AgendaPage() {
       candidates: [{ date: updated.date, time: updated.time, duration: updated.duration, label: updated.patientName }],
       ignoreAppointmentId: editingAppointment.id,
       actionLabel: "Esta alteração",
-      onContinue: () => {
-        updateAppointment(updated);
-        setIsEditDialogOpen(false);
-        setEditingAppointment(null);
-        editExtraForm.reset(emptyCalendarExtraForm(selectedDate));
-        toast.success("Registro atualizado.");
+      onContinue: async () => {
+        try {
+          await replaceAppointment.mutateAsync({
+            id: editingAppointment!.id,
+            body: dtoAgendaPayloadSession(updated),
+          });
+          setIsEditDialogOpen(false);
+          setEditingAppointment(null);
+          editExtraForm.reset(emptyCalendarExtraForm(selectedDate));
+          toast.success("Registro atualizado.");
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : "Não foi possível atualizar.");
+        }
       },
     });
   };
@@ -482,15 +536,25 @@ export default function AgendaPage() {
 
   const handleTogglePayment = (appointment: Appointment) => {
     if (!isSessionAppointment(appointment)) return;
-    updateAppointment({
-      ...appointment,
-      paymentStatus: appointment.paymentStatus === "paid" ? "pending" : "paid",
-    });
-    toast.message(
-      appointment.paymentStatus === "paid"
-        ? "Marcado como pagamento pendente."
-        : "Marcado como pago."
-    );
+    const nextPaid = appointment.paymentStatus === "paid" ? "pending" : "paid";
+    void (async () => {
+      try {
+        await replaceAppointment.mutateAsync({
+          id: appointment.id,
+          body: dtoAgendaPayloadSession({
+            ...appointment,
+            paymentStatus: nextPaid,
+          }),
+        });
+        toast.message(
+          nextPaid === "pending"
+            ? "Marcado como pagamento pendente."
+            : "Marcado como pago.",
+        );
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Não foi possível atualizar pagamento.");
+      }
+    })();
   };
 
   React.useEffect(() => {
@@ -701,14 +765,18 @@ export default function AgendaPage() {
           if (!open) setAppointmentToDeleteId(null);
         }}
         title="Excluir registro da agenda?"
-        description="Esta ação não pode ser desfeita. O item será removido do mock local."
+        description="Esta ação não pode ser desfeita. O registro será removido no servidor (exclusão lógica)."
         confirmLabel="Excluir"
         variant="destructive"
-        onConfirm={() => {
+        onConfirm={async () => {
           if (appointmentToDeleteId == null) return;
-          deleteAppointment(appointmentToDeleteId);
-          toast.success("Registro excluído.");
-          setAppointmentToDeleteId(null);
+          try {
+            await deleteAppointment.mutateAsync(appointmentToDeleteId);
+            toast.success("Registro excluído.");
+            setAppointmentToDeleteId(null);
+          } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Não foi possível excluir.");
+          }
         }}
       />
 

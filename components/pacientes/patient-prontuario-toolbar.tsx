@@ -1,11 +1,16 @@
 "use client";
 
 import * as React from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { FileDown, Paperclip, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useMockData } from "@/components/mock-data-provider";
+import {
+  apiDeleteAttachment,
+  apiUploadAttachment,
+  fetchAttachmentsForPatient,
+} from "@/lib/api/fisio-api";
 import {
   downloadAtendimentosPdf,
   downloadEvolucaoPdf,
@@ -16,67 +21,102 @@ import {
   isAllowedAttachmentMime,
   MAX_PATIENT_ATTACHMENT_BYTES,
 } from "@/lib/patient-attachment-utils";
-
-const MAX_DATA_URL_LEN = 1_400_000;
+import type { Anamnese, Appointment, Evolucao, Patient } from "@/lib/types";
+import { isSessionAppointment } from "@/lib/types";
 
 type Props = {
+  patient: Patient;
   patientId: number;
+  appointments: Appointment[];
+  anamneses: Anamnese[];
+  evolucoes: Evolucao[];
 };
 
-export function PatientProntuarioToolbar({ patientId }: Props) {
-  const {
-    patients,
-    anamneses,
-    evolucoes,
-    appointments,
-    patientAttachments,
-    addPatientAttachment,
-    deletePatientAttachment,
-  } = useMockData();
+export function PatientProntuarioToolbar({
+  patient,
+  patientId,
+  appointments,
+  anamneses,
+  evolucoes,
+}: Props) {
+  const queryClient = useQueryClient();
+
+  const { data: patientAttachments = [] } = useQuery({
+    queryKey: ["patient-attachments", patientId],
+    queryFn: () => fetchAttachmentsForPatient(patientId),
+    staleTime: 10_000,
+  });
+
+  const uploadMutation = useMutation({
+    mutationFn: (file: File) => apiUploadAttachment(patientId, file),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["patient-attachments", patientId],
+      });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => apiDeleteAttachment(id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["patient-attachments", patientId],
+      });
+    },
+  });
+
+  const sortedAtt = React.useMemo(
+    () =>
+      [...patientAttachments].sort((a, b) =>
+        b.createdAt.localeCompare(a.createdAt),
+      ),
+    [patientAttachments],
+  );
+
   const fileRef = React.useRef<HTMLInputElement>(null);
-
-  const patient = patients.find((p) => p.id === patientId);
-  const myAna = anamneses.filter((a) => a.patientId === patientId);
-  const myEvo = evolucoes.filter((e) => e.patientId === patientId);
-  const myApt = appointments;
-  const myAtt = patientAttachments
-    .filter((a) => a.patientId === patientId)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-
-  if (!patient) return null;
 
   const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
     if (file.size > MAX_PATIENT_ATTACHMENT_BYTES) {
-      toast.error(`Arquivo muito grande. Tamanho máximo: ${formatBytes(MAX_PATIENT_ATTACHMENT_BYTES)}.`);
+      toast.error(
+        `Arquivo muito grande. Tamanho máximo: ${formatBytes(MAX_PATIENT_ATTACHMENT_BYTES)}.`,
+      );
       return;
     }
     if (!isAllowedAttachmentMime(file.type)) {
       toast.error("Formato não suportado. Use PDF, JPEG, PNG, GIF ou WebP.");
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      if (typeof dataUrl !== "string" || dataUrl.length > MAX_DATA_URL_LEN) {
-        toast.error("Arquivo excede o limite seguro de armazenamento local. Tente um arquivo menor.");
-        return;
+    void (async () => {
+      try {
+        await uploadMutation.mutateAsync(file);
+        toast.success("Upload concluído.");
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : "Não foi possível enviar o arquivo.",
+        );
       }
-      addPatientAttachment({
-        patientId,
-        fileName: file.name,
-        mimeType: file.type || "application/octet-stream",
-        sizeBytes: file.size,
-        createdAt: new Date().toISOString(),
-        dataUrl,
-      });
-      toast.success("Anexo adicionado ao prontuário.");
-    };
-    reader.onerror = () => toast.error("Não foi possível ler o arquivo.");
-    reader.readAsDataURL(file);
+    })();
   };
+
+  const handleDelete = async (attachmentId: number) => {
+    try {
+      await deleteMutation.mutateAsync(attachmentId);
+      toast.message("Anexo removido.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Não foi possível remover.");
+    }
+  };
+
+  const myAptForPatient = React.useMemo(
+    () =>
+      appointments.filter(
+        (a) => isSessionAppointment(a) && a.patientId === patientId,
+      ),
+    [appointments, patientId],
+  );
 
   return (
     <Card className="border-primary/20">
@@ -86,8 +126,8 @@ export function PatientProntuarioToolbar({ patientId }: Props) {
           Anexos e relatórios (PDF)
         </CardTitle>
         <p className="text-sm text-muted-foreground">
-          Anexos ficam salvos neste navegador (dados de demonstração). PDFs reúnem anamnese, evolução e
-          agendamentos deste paciente.
+          Anexos são armazenados no servidor (URL pré-assinada para download). PDFs combinam dados
+          carregados do backend para este paciente.
         </p>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -110,40 +150,52 @@ export function PatientProntuarioToolbar({ patientId }: Props) {
           </Button>
         </div>
 
-        {myAtt.length > 0 ? (
+        {sortedAtt.length > 0 ? (
           <ul className="space-y-2 text-sm">
-            {myAtt.map((a) => (
-              <li
-                key={a.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/70 px-3 py-2"
-              >
-                <div className="min-w-0">
-                  <p className="font-medium truncate">{a.fileName}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {formatBytes(a.sizeBytes)} · {new Date(a.createdAt).toLocaleString("pt-BR")}
-                  </p>
-                </div>
-                <div className="flex shrink-0 gap-1">
-                  <Button variant="ghost" size="sm" asChild>
-                    <a href={a.dataUrl} download={a.fileName} target="_blank" rel="noopener noreferrer">
-                      Abrir
-                    </a>
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive"
-                    onClick={() => {
-                      deletePatientAttachment(a.id);
-                      toast.message("Anexo removido.");
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </li>
-            ))}
+            {sortedAtt.map((a) => {
+              const url = a.downloadUrl;
+              return (
+                <li
+                  key={a.id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/70 px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <p className="font-medium truncate">{a.fileName}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatBytes(a.sizeBytes)} ·{" "}
+                      {new Date(a.createdAt).toLocaleString("pt-BR")}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 gap-1">
+                    {url ? (
+                      <Button variant="ghost" size="sm" asChild>
+                        <a
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          download={a.fileName}
+                        >
+                          Abrir
+                        </a>
+                      </Button>
+                    ) : (
+                      <Button variant="ghost" size="sm" disabled>
+                        Abrir
+                      </Button>
+                    )}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive"
+                      onClick={() => handleDelete(a.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         ) : (
           <p className="text-sm text-muted-foreground">Nenhum anexo ainda. Use o botão acima.</p>
@@ -158,7 +210,7 @@ export function PatientProntuarioToolbar({ patientId }: Props) {
               className="gap-2 w-fit"
               onClick={() => {
                 try {
-                  downloadProntuarioPdf(patient, myAna, myEvo, myApt);
+                  downloadProntuarioPdf(patient, anamneses, evolucoes, myAptForPatient);
                   toast.message("Download do prontuário iniciado.");
                 } catch {
                   toast.error("Falha ao gerar o PDF. Tente novamente.");
@@ -174,7 +226,7 @@ export function PatientProntuarioToolbar({ patientId }: Props) {
               className="gap-2 w-fit"
               onClick={() => {
                 try {
-                  downloadEvolucaoPdf(patient, myEvo);
+                  downloadEvolucaoPdf(patient, evolucoes);
                   toast.message("Download da evolução iniciado.");
                 } catch {
                   toast.error("Falha ao gerar o PDF. Tente novamente.");
@@ -190,7 +242,7 @@ export function PatientProntuarioToolbar({ patientId }: Props) {
               className="gap-2 w-fit"
               onClick={() => {
                 try {
-                  downloadAtendimentosPdf(patient, myApt);
+                  downloadAtendimentosPdf(patient, myAptForPatient);
                   toast.message("Download do histórico de atendimentos iniciado.");
                 } catch {
                   toast.error("Falha ao gerar o PDF. Tente novamente.");
