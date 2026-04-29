@@ -208,7 +208,7 @@ export function downloadAtendimentosPdf(patient: Patient, appointments: Appointm
   if (sessoes.length === 0) {
     y = writeBlock(doc, y, "Sessoes", "Nenhum agendamento para este paciente.");
   } else {
-    y = writeBlock(
+    writeBlock(
       doc,
       y,
       "Atendimentos",
