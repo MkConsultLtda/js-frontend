@@ -1,4 +1,6 @@
-# Análise de segurança estática (grátis em repos públicos; privados: ver limites do plano)
+# CodeQL: repos públicos gravam alertas na aba Security gratuitamente.
+# Repositórios privados exigem GitHub Advanced Security para enviar SARIF ao Code Scanning.
+# Mantemos upload: never para não falhar quando GHAS não estiver disponível no org/repo.
 name: CodeQL
 
 on:
@@ -43,3 +45,7 @@ jobs:
 
       - name: Perform Analysis
         uses: github/codeql-action/analyze@v3
+        with:
+          # Evita erro "Advanced Security must be enabled" ao subir SARIF em repo privado sem GHAS.
+          # Para publicar alertas na aba Security sem mudar esta flag, habilite Advanced Security ou torne o repo público.
+          upload: never
