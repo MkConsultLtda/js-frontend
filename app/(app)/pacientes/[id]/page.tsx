@@ -18,31 +18,39 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PatientProntuarioToolbar } from "@/components/pacientes/patient-prontuario-toolbar";
-import { useMockData } from "@/components/mock-data-provider";
+import { usePatientDetailBundle } from "@/lib/api/hooks/use-fisio";
 import { formatIsoDateToBR } from "@/lib/date-utils";
 import {
   ageFromBirthDateIso,
   formatAddressOneLine,
   formatCepDisplay,
 } from "@/lib/patient-utils";
-import { isSessionAppointment } from "@/lib/types";
+import { isSessionAppointment, type Evolucao } from "@/lib/types";
 
 export default function PacienteProntuarioPage() {
   const params = useParams();
-  const id = Number(params.id);
-  const { patients, anamneses, evolucoes, appointments } = useMockData();
+  const idNum = Number(params.id);
+  const { data: bundle, isLoading, error } = usePatientDetailBundle(
+    Number.isFinite(idNum) ? idNum : undefined,
+  );
 
-  const patient = patients.find((p) => p.id === id);
+  const patient = bundle?.patient;
+  const anamneses = bundle?.anamneses ?? [];
+  const evolucoes: Evolucao[] = useMemo(
+    () => bundle?.evolucoes ?? [],
+    [bundle],
+  );
+  const appointments = bundle?.appointments ?? [];
 
   const evolucoesRecentes = useMemo(() => {
     if (!patient) return [];
     return evolucoes
-      .filter((e) => e.patientId === id)
+      .filter((e) => e.patientId === idNum)
       .sort((a, b) => b.dataSessao.localeCompare(a.dataSessao))
       .slice(0, 5);
-  }, [evolucoes, id, patient]);
+  }, [evolucoes, idNum, patient]);
 
-  if (!patient) {
+  if (!Number.isFinite(idNum) || idNum <= 0) {
     return (
       <div className="p-8 space-y-4">
         <Button variant="ghost" asChild className="gap-2 w-fit">
@@ -51,16 +59,40 @@ export default function PacienteProntuarioPage() {
             Voltar
           </Link>
         </Button>
-        <p className="text-muted-foreground">Paciente não encontrado.</p>
+        <p className="text-muted-foreground">Identificador inválido.</p>
       </div>
     );
   }
 
-  const anamneseCount = anamneses.filter((a) => a.patientId === id).length;
-  const evolucaoCount = evolucoes.filter((e) => e.patientId === id).length;
+  if (isLoading) {
+    return (
+      <div className="p-8 text-muted-foreground">
+        Carregando prontuário…
+      </div>
+    );
+  }
+
+  if (error || !patient) {
+    return (
+      <div className="p-8 space-y-4">
+        <Button variant="ghost" asChild className="gap-2 w-fit">
+          <Link href="/pacientes">
+            <ArrowLeft className="h-4 w-4" />
+            Voltar
+          </Link>
+        </Button>
+        <p className="text-destructive">
+          Paciente não encontrado ou sem permissão para o recurso.
+        </p>
+      </div>
+    );
+  }
+
+  const anamneseCount = anamneses.filter((a) => a.patientId === idNum).length;
+  const evolucaoCount = evolucoes.filter((e) => e.patientId === idNum).length;
 
   const proximos = appointments
-    .filter((a) => isSessionAppointment(a) && a.patientId === id)
+    .filter((a) => isSessionAppointment(a) && a.patientId === idNum)
     .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))
     .slice(0, 3);
 
@@ -88,7 +120,7 @@ export default function PacienteProntuarioPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" asChild>
-            <Link href={`/agenda`}>Agenda</Link>
+            <Link href="/agenda">Agenda</Link>
           </Button>
         </div>
       </div>
@@ -177,7 +209,13 @@ export default function PacienteProntuarioPage() {
         </Card>
       </div>
 
-      <PatientProntuarioToolbar patientId={id} />
+      <PatientProntuarioToolbar
+        patient={patient}
+        patientId={idNum}
+        appointments={appointments}
+        anamneses={anamneses}
+        evolucoes={evolucoes}
+      />
 
       <Card>
         <CardHeader>
@@ -186,7 +224,7 @@ export default function PacienteProntuarioPage() {
             Evoluções recentes
           </CardTitle>
           <p className="text-sm text-muted-foreground">
-            Últimos registros mockados deste paciente (ordem por data da sessão).
+            Últimos registros deste paciente (ordem por data da sessão).
           </p>
         </CardHeader>
         <CardContent>
@@ -197,7 +235,10 @@ export default function PacienteProntuarioPage() {
               {evolucoesRecentes.map((e) => (
                 <li key={e.id} className="rounded-lg border border-border/70 p-3">
                   <p className="font-medium text-foreground">
-                    {e.dataSessao} · {e.tipoSessao}
+                    {/^\d{4}-\d{2}-\d{2}$/.test(e.dataSessao)
+                      ? formatIsoDateToBR(e.dataSessao)
+                      : e.dataSessao}{" "}
+                    · {e.tipoSessao}
                   </p>
                   <p className="text-muted-foreground line-clamp-2 mt-1">{e.objetivosSessao}</p>
                   <p className="text-xs text-muted-foreground mt-1">
@@ -208,7 +249,7 @@ export default function PacienteProntuarioPage() {
             </ul>
           )}
           <Button asChild variant="outline" className="mt-4">
-            <Link href={`/evolucao?pacienteId=${id}`}>Ver todas as evoluções</Link>
+            <Link href={`/evolucao?pacienteId=${idNum}`}>Ver todas as evoluções</Link>
           </Button>
         </CardContent>
       </Card>
@@ -221,12 +262,12 @@ export default function PacienteProntuarioPage() {
               Anamnese
             </CardTitle>
             <p className="text-sm text-muted-foreground">
-              {anamneseCount} registro(s) mockado(s) para este paciente
+              {anamneseCount} registro(s) para este paciente
             </p>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-2">
             <Button asChild>
-              <Link href={`/anamnese?pacienteId=${id}`}>Ver / editar anamneses</Link>
+              <Link href={`/anamnese?pacienteId=${idNum}`}>Ver / editar anamneses</Link>
             </Button>
           </CardContent>
         </Card>
@@ -238,12 +279,12 @@ export default function PacienteProntuarioPage() {
               Evolução
             </CardTitle>
             <p className="text-sm text-muted-foreground">
-              {evolucaoCount} registro(s) mockado(s) para este paciente
+              {evolucaoCount} registro(s) para este paciente
             </p>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-2">
             <Button asChild>
-              <Link href={`/evolucao?pacienteId=${id}`}>Ver / editar evoluções</Link>
+              <Link href={`/evolucao?pacienteId=${idNum}`}>Ver / editar evoluções</Link>
             </Button>
           </CardContent>
         </Card>
@@ -253,13 +294,13 @@ export default function PacienteProntuarioPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5" />
-            Próximos agendamentos (mock)
+            Próximos agendamentos
           </CardTitle>
         </CardHeader>
         <CardContent>
           {proximos.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Nenhum agendamento futuro encontrado para este paciente.
+              Nenhum agendamento encontrado neste período para este paciente.
             </p>
           ) : (
             <ul className="space-y-2 text-sm">

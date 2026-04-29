@@ -1,22 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ConfirmDialog } from "@/components/confirm-dialog";
-import { useMockData } from "@/components/mock-data-provider";
 import { clearAuthSession } from "@/lib/auth-session";
 import { useClinicSettings } from "@/lib/clinic-settings";
 import {
   Bell,
   Building2,
   Shield,
-  ScrollText,
   LogOut,
-  RotateCcw,
   CalendarDays,
   PlusCircle,
   X,
@@ -35,24 +31,14 @@ const WEEKDAY_OPTIONS: { value: number; label: string }[] = [
 
 export default function ConfiguracoesPage() {
   const { settings, setSettings } = useClinicSettings();
-  const { auditLog, clearAuditLog, resetMockDataToSeed } = useMockData();
 
   const [draft, setDraft] = useState(settings);
-  const [resetOpen, setResetOpen] = useState(false);
   const [newDuration, setNewDuration] = useState("");
   const [newType, setNewType] = useState("");
 
   useEffect(() => {
     setDraft(settings);
   }, [settings]);
-
-  const sortedAudit = useMemo(
-    () =>
-      [...auditLog].sort(
-        (a, b) => new Date(b.at).getTime() - new Date(a.at).getTime()
-      ),
-    [auditLog]
-  );
 
   const saveClinic = () => {
     setSettings(draft);
@@ -70,7 +56,8 @@ export default function ConfiguracoesPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Configurações</h1>
         <p className="text-muted-foreground">
-          Dados locais no navegador (mock). Com API, estes campos virão do backend.
+          Preferências de interface e agenda ficam apenas neste navegador até existir modelo de configuração
+          no servidor.
         </p>
       </div>
 
@@ -368,49 +355,6 @@ export default function ConfiguracoesPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
-            <ScrollText className="h-5 w-5" />
-            Trilha de auditoria (mock)
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Registro local das alterações em pacientes e agenda — base para LGPD quando houver API.
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {sortedAudit.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhum evento registrado ainda.</p>
-          ) : (
-            <ul className="max-h-64 space-y-2 overflow-y-auto rounded-md border p-3 text-sm">
-              {sortedAudit.map((entry) => (
-                <li key={entry.id} className="border-b border-border/50 pb-2 last:border-0">
-                  <time className="text-xs text-muted-foreground" dateTime={entry.at}>
-                    {new Date(entry.at).toLocaleString("pt-BR")}
-                  </time>
-                  <p className="mt-0.5">{entry.message}</p>
-                </li>
-              ))}
-            </ul>
-          )}
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => clearAuditLog()}>
-              Limpar trilha
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              size="sm"
-              className="gap-1"
-              onClick={() => setResetOpen(true)}
-            >
-              <RotateCcw className="h-4 w-4" />
-              Restaurar seed
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
             <Bell className="h-5 w-5" />
             Notificações
           </CardTitle>
@@ -432,8 +376,7 @@ export default function ConfiguracoesPage() {
             Privacidade e sessão
           </CardTitle>
           <p className="text-sm text-muted-foreground">
-            Evite dados reais de pacientes em ambiente público enquanto o protótipo roda só no
-            navegador.
+            Respeite a LGPD: use sessão segura e dispositivos confiáveis ao acessar dados clínicos.
           </p>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
@@ -444,18 +387,6 @@ export default function ConfiguracoesPage() {
         </CardContent>
       </Card>
 
-      <ConfirmDialog
-        open={resetOpen}
-        onOpenChange={setResetOpen}
-        title="Restaurar dados de exemplo?"
-        description="Isso apaga o mock persistido neste navegador (pacientes, agenda, anamneses, evoluções e trilha) e recarrega o conteúdo inicial de demonstração."
-        confirmLabel="Restaurar"
-        variant="destructive"
-        onConfirm={() => {
-          resetMockDataToSeed();
-          toast.success("Dados restaurados ao exemplo inicial.");
-        }}
-      />
     </div>
   );
 }

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { ACCESS_TOKEN_COOKIE } from "./lib/session-constants";
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const token = request.cookies.get(ACCESS_TOKEN_COOKIE)?.value;
   if (!token) {
     const login = new URL("/login", request.url);
@@ -20,5 +20,6 @@ export const config = {
     "/anamnese/:path*",
     "/evolucao/:path*",
     "/configuracoes/:path*",
+    "/perfil/:path*",
   ],
 };

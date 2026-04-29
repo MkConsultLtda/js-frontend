@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useMockData } from "@/components/mock-data-provider";
+import { useDashboardBundle } from "@/lib/api/hooks/use-fisio";
 import { useClinicSettings } from "@/lib/clinic-settings";
 import { buildRouteForDate } from "@/lib/route-day";
 import { brDateToIsoDate, startOfWeekMonday, toLocalDateString } from "@/lib/date-utils";
@@ -15,6 +15,7 @@ import {
 import { isSessionAppointment } from "@/lib/types";
 import { Users, Calendar, Clock, Activity, TrendingUp, Route, ExternalLink, BarChart3 } from "lucide-react";
 import { useMemo } from "react";
+import type { Appointment, Evolucao, Patient } from "@/lib/types";
 
 function money(value: number): string {
   return value.toLocaleString("pt-BR", {
@@ -25,7 +26,10 @@ function money(value: number): string {
 }
 
 export default function DashboardPage() {
-  const { patients, appointments, evolucoes } = useMockData();
+  const { data: dash, error: dashError } = useDashboardBundle();
+  const patients: Patient[] = useMemo(() => dash?.patients ?? [], [dash]);
+  const appointments: Appointment[] = useMemo(() => dash?.appointments ?? [], [dash]);
+  const evolucoes: Evolucao[] = useMemo(() => dash?.evolucoes ?? [], [dash]);
   const { settings } = useClinicSettings();
 
   const metrics = useMemo(() => {
@@ -109,7 +113,10 @@ export default function DashboardPage() {
 
     const countEvolucoesInIsoRange = (startIso: string, endIso: string) =>
       evolucoes.filter((ev) => {
-        const iso = brDateToIsoDate(ev.dataSessao);
+        const raw = ev.dataSessao;
+        const iso = /^\d{4}-\d{2}-\d{2}$/.test(raw)
+          ? raw
+          : brDateToIsoDate(raw);
         return iso !== null && iso >= startIso && iso <= endIso;
       }).length;
 
@@ -196,6 +203,11 @@ export default function DashboardPage() {
 
   return (
     <div className="p-8 space-y-8">
+      {dashError && (
+        <p className="text-sm text-destructive">
+          Não foi possível sincronizar todas as métricas com a API. Verifique sessão e BACKEND_API_URL.
+        </p>
+      )}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>

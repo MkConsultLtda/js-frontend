@@ -53,14 +53,17 @@ import {
 import { FormFieldError } from "@/components/form-field-error";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PatientFormRows } from "@/components/pacientes/patient-form-fields";
-import { useMockData } from "@/components/mock-data-provider";
+import {
+  dtoPatientCreateFromFormValues,
+  patientToReplaceBodyFromDomain,
+} from "@/lib/api/fisio-api";
+import { usePatientMutations, usePatientsSearch } from "@/lib/api/hooks/use-fisio";
 import {
   emptyPatientCreateFormValues,
-  patientFromCreateForm,
   patientFromEditForm,
   patientToEditFormValues,
 } from "@/lib/patient-form-map";
-import { ageFromBirthDateIso, formatCepDisplay, patientMatchesSearch } from "@/lib/patient-utils";
+import { ageFromBirthDateIso, formatCepDisplay } from "@/lib/patient-utils";
 import {
   patientCreateFormSchema,
   patientEditFormSchema,
@@ -71,9 +74,11 @@ import type { Patient } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 export default function PacientesPage() {
-  const { patients, addPatient, updatePatient, deletePatient } = useMockData();
-
   const [searchTerm, setSearchTerm] = React.useState("");
+  const { data: patientPage, isLoading, error } = usePatientsSearch(searchTerm);
+  const { createPatient, replacePatient, deletePatient } = usePatientMutations();
+  const patients = patientPage?.content ?? [];
+
   const [statusFilter, setStatusFilter] = React.useState<"all" | "active" | "inactive">(
     "all"
   );
@@ -96,17 +101,20 @@ export default function PacientesPage() {
   });
 
   const filteredPatients = patients.filter((patient) => {
-    const matchesSearch = patientMatchesSearch(patient, searchTerm.trim());
     const matchesStatus =
       statusFilter === "all" || patient.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    return matchesStatus;
   });
 
-  const onCreateSubmit = (data: PatientCreateFormValues) => {
-    addPatient(patientFromCreateForm(data));
-    setIsAddModalOpen(false);
-    addForm.reset(emptyPatientCreateFormValues);
-    toast.success("Paciente cadastrado.");
+  const onCreateSubmit = async (data: PatientCreateFormValues) => {
+    try {
+      await createPatient.mutateAsync(dtoPatientCreateFromFormValues(data));
+      setIsAddModalOpen(false);
+      addForm.reset(emptyPatientCreateFormValues);
+      toast.success("Paciente cadastrado.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Não foi possível cadastrar.");
+    }
   };
 
   const startEdit = (patient: Patient) => {
@@ -119,12 +127,20 @@ export default function PacientesPage() {
     editForm.reset(patientToEditFormValues(editingPatient));
   }, [editingPatient, isEditModalOpen, editForm]);
 
-  const onEditSubmit = (data: PatientEditFormValues) => {
+  const onEditSubmit = async (data: PatientEditFormValues) => {
     if (!editingPatient) return;
-    updatePatient(patientFromEditForm(editingPatient, data));
-    setIsEditModalOpen(false);
-    setEditingPatient(null);
-    toast.success("Paciente atualizado.");
+    try {
+      const updated = patientFromEditForm(editingPatient, data);
+      await replacePatient.mutateAsync({
+        id: updated.id,
+        body: patientToReplaceBodyFromDomain(updated),
+      });
+      setIsEditModalOpen(false);
+      setEditingPatient(null);
+      toast.success("Paciente atualizado.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Não foi possível salvar alterações.");
+    }
   };
 
   const dialogClass =
@@ -199,6 +215,15 @@ export default function PacientesPage() {
           </SelectContent>
         </Select>
       </div>
+
+      {error && (
+        <p className="text-sm text-destructive">
+          Não foi possível carregar os pacientes. Verifique sessão ou conexão com a API.
+        </p>
+      )}
+      {isLoading && patients.length === 0 && (
+        <p className="text-sm text-muted-foreground">Carregando pacientes…</p>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredPatients.map((patient) => {
@@ -407,14 +432,18 @@ export default function PacientesPage() {
           if (!open) setPatientToDeleteId(null);
         }}
         title="Excluir paciente?"
-        description="Serão removidos também os agendamentos, anamneses e evoluções vinculados a este paciente (dados mock locais)."
-        confirmLabel="Excluir tudo"
+        description="A exclusão é lógica no servidor — agendamentos e prontuário vinculados seguem as regras do backend."
+        confirmLabel="Excluir paciente"
         variant="destructive"
-        onConfirm={() => {
+        onConfirm={async () => {
           if (patientToDeleteId == null) return;
-          deletePatient(patientToDeleteId);
-          toast.success("Paciente e registros vinculados removidos.");
-          setPatientToDeleteId(null);
+          try {
+            await deletePatient.mutateAsync(patientToDeleteId);
+            toast.success("Paciente removido.");
+            setPatientToDeleteId(null);
+          } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Não foi possível excluir.");
+          }
         }}
       />
     </div>

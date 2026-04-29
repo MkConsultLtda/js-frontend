@@ -16,13 +16,6 @@ export interface Holiday {
   name: string;
 }
 
-/** Evento local para trilha de auditoria (LGPD / suporte) — mock até existir API */
-export interface AuditLogEntry {
-  id: string;
-  at: string;
-  message: string;
-}
-
 export type PatientStatus = "active" | "inactive";
 
 /** Endereço para atendimento domiciliar e correspondência */
@@ -102,6 +95,7 @@ export interface Evolucao {
   id: number;
   patientId: number;
   patientName: string;
+  /** yyyy-MM-dd da API — exibir com formatIsoDateToBR */
   dataSessao: string;
   tipoSessao: string;
   sinaisVitaisInicio?: string;
@@ -115,7 +109,7 @@ export interface Evolucao {
   planoProximaSessao: string;
 }
 
-/** Anexo no prontuário (arquivo em data URL) — armazenamento local (mock) */
+/** Anexo no prontuário: download via URL pré-assinada (backend) ou data URL só em cenários especiais */
 export interface PatientAttachment {
   id: number;
   patientId: number;
@@ -124,6 +118,8 @@ export interface PatientAttachment {
   sizeBytes: number;
   /** ISO-8601 */
   createdAt: string;
-  /** data:...;base64,... */
-  dataUrl: string;
+  /** URL temporária (S3/R2 pré-assinada) quando a API fornecer */
+  downloadUrl?: string;
+  /** data:... legado/local; opcional quando usa só backend */
+  dataUrl?: string;
 }

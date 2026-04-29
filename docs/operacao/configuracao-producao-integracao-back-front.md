@@ -221,3 +221,22 @@ Melhorias incrementais (quando volume subir):
 1. ativar varredura antimalware assíncrona em upload;
 2. versionar/rotacionar chaves de acesso do storage;
 3. definir política de retenção/arquivamento para reduzir custo em longo prazo.
+
+---
+
+## 11. `npm audit`: alerta transitivo `next -> postcss` (decisão técnica)
+
+Estado validado em `2026-04-29`:
+- Projeto em `next@16.2.4`.
+- `npm audit` ainda reporta `next -> postcss` com sugestão de "fix" para `next@9.3.3` (downgrade semântico inválido para o stack atual).
+- Árvore local indica dois `postcss`: um interno do Next (`8.4.31`) e outro de toolchain (`8.5.6` via Tailwind/Vite).
+
+Decisão:
+- **Não executar `npm audit fix --force`** para esse caso, pois a recomendação quebra compatibilidade da aplicação.
+- **Aceitar risco residual transitivo temporário** enquanto aguardamos correção oficial da cadeia do framework.
+- **Mitigação operacional ativa:** manter Next na última versão estável da major utilizada e revisar auditoria a cada upgrade de dependências.
+
+Checklist de acompanhamento:
+1. Em cada ciclo de atualização, rodar `npm audit --json`.
+2. Revalidar changelog/release notes do Next para correção efetiva do advisory de `postcss`.
+3. Quando houver correção confirmada sem downgrade incompatível, aplicar upgrade e repetir `lint + build`.
