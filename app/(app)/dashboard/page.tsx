@@ -205,7 +205,7 @@ export default function DashboardPage() {
     <div className="p-8 space-y-8">
       {dashError && (
         <p className="text-sm text-destructive">
-          Não foi possível sincronizar todas as métricas com a API. Verifique sessão e BACKEND_API_URL.
+          Não foi possível sincronizar parte das métricas com a API. Atualize a página e, se persistir, verifique a sessão.
         </p>
       )}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
