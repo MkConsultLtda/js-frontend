@@ -52,7 +52,9 @@ export function MockDataProvider({ children }: { children: ReactNode }) {
     if (loaded) {
       dispatch({ type: "HYDRATE", payload: loaded });
     }
-    setPersistReady(true);
+    queueMicrotask(() => {
+      setPersistReady(true);
+    });
   }, []);
 
   useEffect(() => {
