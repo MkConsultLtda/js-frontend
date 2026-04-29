@@ -17,6 +17,10 @@ import {
   emptyUserProfileForm,
   type UserProfileFormValues,
 } from "@/lib/schemas/user-profile-form";
+import {
+  changePasswordFormSchema,
+  type ChangePasswordFormValues,
+} from "@/lib/schemas/change-password-form";
 import { useUserProfile } from "@/lib/user-profile";
 import { MAX_PATIENT_ATTACHMENT_BYTES } from "@/lib/patient-attachment-utils";
 
@@ -55,6 +59,38 @@ export default function PerfilPage() {
     toast.success("Perfil salvo neste navegador. Nome e telefone foram alinhados às configurações da clínica.");
   };
 
+  const passwordForm = useForm<ChangePasswordFormValues>({
+    resolver: zodResolver(changePasswordFormSchema),
+    defaultValues: {
+      currentPassword: "",
+      newPassword: "",
+      confirmNewPassword: "",
+    },
+  });
+
+  const onPasswordSubmit = async (values: ChangePasswordFormValues) => {
+    const res = await fetch("/api/auth/password", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify(values),
+    });
+    if (!res.ok) {
+      const err = (await res.json().catch(() => null)) as
+        | { message?: string; code?: string }
+        | null;
+      if (res.status === 429) {
+        throw new Error(err?.message || "Muitas tentativas. Tente novamente em instantes.");
+      }
+      if (res.status === 401) {
+        throw new Error(err?.message || "Sessão expirada. Faça login novamente.");
+      }
+      throw new Error(err?.message || "Não foi possível alterar a senha.");
+    }
+    passwordForm.reset();
+    toast.success("Senha alterada com sucesso.");
+  };
+
   const onPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
@@ -87,6 +123,7 @@ export default function PerfilPage() {
     formState: { errors, isDirty },
   } = form;
   const photoUrl = watch("photoDataUrl");
+  const passwordState = passwordForm.formState;
 
   return (
     <div className="p-8 space-y-8 max-w-2xl">
@@ -193,6 +230,65 @@ export default function PerfilPage() {
               <FormFieldError message={errors.notes?.message} />
             </div>
             <input type="hidden" {...register("photoDataUrl")} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Segurança da conta</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div
+              className="space-y-4"
+            >
+              <div className="space-y-1">
+                <Label htmlFor="perfil-current-password">Senha atual</Label>
+                <Input
+                  id="perfil-current-password"
+                  type="password"
+                  autoComplete="current-password"
+                  {...passwordForm.register("currentPassword")}
+                  aria-invalid={!!passwordState.errors.currentPassword}
+                />
+                <FormFieldError message={passwordState.errors.currentPassword?.message} />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="perfil-new-password">Nova senha</Label>
+                <Input
+                  id="perfil-new-password"
+                  type="password"
+                  autoComplete="new-password"
+                  {...passwordForm.register("newPassword")}
+                  aria-invalid={!!passwordState.errors.newPassword}
+                />
+                <FormFieldError message={passwordState.errors.newPassword?.message} />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="perfil-confirm-password">Confirmar nova senha</Label>
+                <Input
+                  id="perfil-confirm-password"
+                  type="password"
+                  autoComplete="new-password"
+                  {...passwordForm.register("confirmNewPassword")}
+                  aria-invalid={!!passwordState.errors.confirmNewPassword}
+                />
+                <FormFieldError message={passwordState.errors.confirmNewPassword?.message} />
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={passwordState.isSubmitting}
+                onClick={passwordForm.handleSubmit(async (values) => {
+                  try {
+                    await onPasswordSubmit(values);
+                  } catch (err) {
+                    toast.error(err instanceof Error ? err.message : "Não foi possível alterar a senha.");
+                  }
+                })}
+              >
+                {passwordState.isSubmitting ? "Alterando..." : "Alterar senha"}
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
