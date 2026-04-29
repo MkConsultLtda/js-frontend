@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Suspense } from "react";
 import Link from "next/link";
+import { toast } from "sonner";
 import { useSearchParams } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,7 +19,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { FormFieldError } from "@/components/form-field-error";
-import { useMockData } from "@/components/mock-data-provider";
+import { anamneseRequestBody } from "@/lib/api/fisio-api";
+import {
+  useAggregateAnamneses,
+  useAnamneseMutations,
+  usePatientsSearch,
+} from "@/lib/api/hooks/use-fisio";
 import {
   anamneseFormSchema,
   emptyAnamneseForm,
@@ -55,7 +61,10 @@ function AnamnesePageContent() {
   const searchParams = useSearchParams();
   const pacienteIdParam = searchParams.get("pacienteId");
 
-  const { patients, anamneses, addAnamnese, updateAnamnese } = useMockData();
+  const { data: patientPage } = usePatientsSearch("");
+  const patients = patientPage?.content ?? [];
+  const { data: anamneses = [] } = useAggregateAnamneses(true);
+  const { createAnam, replaceAnam } = useAnamneseMutations();
 
   const [isCreating, setIsCreating] = React.useState(false);
   const [editingAnamnese, setEditingAnamnese] = React.useState<Anamnese | null>(null);
@@ -84,38 +93,42 @@ function AnamnesePageContent() {
     return anamneses.filter((a) => a.patientId === pid);
   }, [anamneses, pacienteIdParam]);
 
-  const onSubmit = (values: AnamneseFormValues) => {
+  const onSubmit = async (values: AnamneseFormValues) => {
     const patient = patients.find((p) => p.id.toString() === values.patientId);
     if (!patient) return;
 
     const normalizedHtml = normalizeAnamneseHtml(values.anamneseTexto);
-    const base: Omit<Anamnese, "id"> = {
-      patientId: patient.id,
-      patientName: patient.name,
-      dataColeta: editingAnamnese
-        ? editingAnamnese.dataColeta
-        : new Date().toLocaleDateString("pt-BR"),
-      anamneseTexto: normalizedHtml,
-      queixaPrincipal: "",
-      historiaDoenca: "",
-      antecedentesFamiliares: "",
-      medicamentos: "",
-      alergias: "",
-      habitosVida: "",
-      exameFisico: "",
-      diagnosticoFisioterapico: "",
-      objetivosTratamento: "",
-    };
-
-    if (editingAnamnese) {
-      updateAnamnese({ ...editingAnamnese, ...base, id: editingAnamnese.id });
+    try {
+      if (editingAnamnese) {
+        await replaceAnam.mutateAsync({
+          id: editingAnamnese.id,
+          body: anamneseRequestBody(
+            {
+              patientId: values.patientId,
+              anamneseTexto: normalizedHtml,
+            },
+            { dataColeta: editingAnamnese.dataColeta },
+          ),
+        });
+        toast.success("Anamnese atualizada.");
+      } else {
+        await createAnam.mutateAsync(
+          anamneseRequestBody(
+            {
+              patientId: values.patientId,
+              anamneseTexto: normalizedHtml,
+            },
+            null,
+          ),
+        );
+        toast.success("Anamnese registrada.");
+      }
       setEditingAnamnese(null);
-    } else {
-      addAnamnese(base);
+      setIsCreating(false);
+      reset(emptyAnamneseForm(pacienteIdParam));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Não foi possível salvar.");
     }
-
-    setIsCreating(false);
-    reset(emptyAnamneseForm(pacienteIdParam));
   };
 
   const handleEdit = (anamnese: Anamnese) => {

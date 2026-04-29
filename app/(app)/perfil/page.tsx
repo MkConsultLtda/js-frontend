@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { useForm } from "react-hook-form";
+import Image from "next/image";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { UserCircle, Save, Camera } from "lucide-react";
@@ -119,10 +120,12 @@ export default function PerfilPage() {
   const {
     register,
     handleSubmit,
-    watch,
     formState: { errors, isDirty },
   } = form;
-  const photoUrl = watch("photoDataUrl");
+  const photoUrl = useWatch({
+    control: form.control,
+    name: "photoDataUrl",
+  });
   const passwordState = passwordForm.formState;
 
   return (
@@ -145,9 +148,12 @@ export default function PerfilPage() {
           <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center">
             <div className="h-20 w-20 shrink-0 overflow-hidden rounded-full border bg-muted">
               {photoUrl ? (
-                <img
+                <Image
                   src={photoUrl}
                   alt=""
+                  width={80}
+                  height={80}
+                  unoptimized
                   className="h-full w-full object-cover"
                 />
               ) : (

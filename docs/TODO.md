@@ -22,20 +22,7 @@ Este arquivo centraliza as tarefas para facilitar nosso fluxo em conjunto.
 
 ## Backlog
 
-- [ ] [prioridade: alta] [seguranca] Fluxo de troca de senha do fisioterapeuta (backend + frontend)
-  - Contexto:
-    - Atualmente existe login/refresh/me, mas não há endpoint para alteração de senha pelo usuário autenticado.
-    - A documentação de operação já sinaliza essa lacuna.
-  - Criterios de aceite:
-    - Backend expõe endpoint autenticado `PATCH /v1/auth/password`.
-    - Requer `currentPassword`, `newPassword`, `confirmNewPassword` (ou validação equivalente no back).
-    - Valida senha atual, política mínima da nova senha e impede reutilização imediata.
-    - Salva novo hash com `BCrypt` e invalida sessão anterior (refresh antigo deixa de ser aceito).
-    - Frontend implementa tela de “Alterar senha” em `/perfil` com UX de sucesso/erro.
-    - Front trata `400/401/429` com mensagens claras e sem vazar detalhe sensível.
-    - Testes mínimos: unidade (regras de senha) + integração (endpoint feliz/erro).
-  - Observacoes:
-    - Priorizar implementação com baixo acoplamento e contrato estável para evoluir reset por e-mail no futuro.
+- [ ] (sem itens no momento)
 
 ## Em andamento
 
@@ -47,7 +34,28 @@ Este arquivo centraliza as tarefas para facilitar nosso fluxo em conjunto.
 
 ## Concluido
 
+- [x] [prioridade: alta] [seguranca] Endurecer CSP por rota (remover dependência de `'unsafe-inline'` quando possível)
+  - Entrega:
+    - `next.config.ts` com CSP por fonte (`/api/:path*` mais restrita e `/:path*` baseline).
+    - `script-src` sem `'unsafe-eval'` em produção; mantido apenas fora de produção.
+    - Build de produção validado com sucesso (`npm run build`) após ajuste.
+- [x] [prioridade: media] [seguranca] Revisar alerta transitivo `next -> postcss` no `npm audit` e definir mitigação
+  - Entrega:
+    - Auditoria executada em `2026-04-29` e decisão técnica registrada.
+    - Registro em `docs/operacao/configuracao-producao-integracao-back-front.md` com mitigação sem downgrade incompatível.
+- [x] [prioridade: media] [qualidade] Ajustar warnings do perfil (`watch`/`<img>`) para reduzir ruído no CI
+  - Entrega:
+    - `app/(app)/perfil/page.tsx`: troca de `watch` por `useWatch`.
+    - Substituição de `<img>` por `next/image` com `unoptimized` para preview local (`data URL`).
+    - Lint validado sem warnings/erros (`npm run lint`).
+
 - [x] Exemplo: criar documento base de TODO colaborativo
+- [x] [prioridade: alta] [seguranca] Fluxo de troca de senha do fisioterapeuta (backend + frontend)
+  - Entrega:
+    - Backend com endpoint autenticado `PATCH /v1/auth/password` (contrato alinhado com front para `400/401/429`).
+    - Frontend com alteração de senha em `/perfil` usando `/api/auth/password` e UX de sucesso/erro.
+    - Regras de senha no front validadas por `changePasswordFormSchema`.
+    - Teste de unidade no frontend: `lib/schemas/change-password-form.test.ts` (casos feliz, política, confirmação e reutilização).
 - [x] [prioridade: alta] [agenda] Direcionamento paciente na agenda
   - Entrega: nome do paciente em "Atendimentos do dia" agora abre o prontuario.
 - [x] [prioridade: baixa] [pacientes] Ajustar termo para "Diagnóstico clínico"

@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Suspense } from "react";
 import Link from "next/link";
+import { toast } from "sonner";
 import { useSearchParams } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -19,7 +20,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { FormFieldError } from "@/components/form-field-error";
-import { useMockData } from "@/components/mock-data-provider";
+import { evolucaoRequestBody } from "@/lib/api/fisio-api";
+import {
+  useAggregateEvoluco,
+  useEvolucoMutations,
+  usePatientsSearch,
+} from "@/lib/api/hooks/use-fisio";
 import { EVOLUCAO_TIPOS_SESSAO } from "@/lib/constants";
 import {
   evolucaoFormSchema,
@@ -27,21 +33,33 @@ import {
   type EvolucaoFormValues,
 } from "@/lib/schemas/evolucao-form";
 import { formatIsoDateToBR, parseBRDate, toLocalDateString } from "@/lib/date-utils";
-import type { Evolucao } from "@/lib/types";
+import type { Evolucao, Patient } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { TrendingUp, Save, Calendar, User } from "lucide-react";
 
-function toDateInputValue(brDate: string): string {
-  const isValidBr = /^\d{2}\/\d{2}\/\d{4}$/.test(brDate);
+function toDateInputValue(dateStr: string): string {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+  const isValidBr = /^\d{2}\/\d{2}\/\d{4}$/.test(dateStr);
   if (!isValidBr) return toLocalDateString(new Date());
-  return toLocalDateString(parseBRDate(brDate));
+  return toLocalDateString(parseBRDate(dateStr));
 }
 
 function EvolucaoPageContent() {
   const searchParams = useSearchParams();
   const pacienteIdParam = searchParams.get("pacienteId");
 
-  const { patients, evolucoes, addEvolucao, updateEvolucao } = useMockData();
+  const { data: patientPage } = usePatientsSearch("");
+  const patients: Patient[] = React.useMemo(
+    () => patientPage?.content ?? [],
+    [patientPage],
+  );
+  const y = React.useMemo(() => new Date().getFullYear(), []);
+  const evWindow = React.useMemo(
+    () => ({ from: `${y}-01-01`, to: `${y}-12-31` }),
+    [y],
+  );
+  const { data: evolucoes = [] } = useAggregateEvoluco(evWindow.from, evWindow.to, true);
+  const { createEvo, replaceEvo } = useEvolucoMutations(evWindow.from, evWindow.to);
 
   const [isCreating, setIsCreating] = React.useState(false);
   const [editingEvolucao, setEditingEvolucao] = React.useState<Evolucao | null>(null);
@@ -81,35 +99,26 @@ function EvolucaoPageContent() {
     setValue("patientId", pacienteIdParam ?? "");
   }, [pacienteIdParam, editingEvolucao, isCreating, setValue]);
 
-  const onSubmit = (values: EvolucaoFormValues) => {
+  const onSubmit = async (values: EvolucaoFormValues) => {
     const patient = patients.find((p) => p.id.toString() === values.patientId);
     if (!patient) return;
 
-    const base: Omit<Evolucao, "id"> = {
-      patientId: patient.id,
-      patientName: patient.name,
-      dataSessao: formatIsoDateToBR(values.dataSessao),
-      tipoSessao: values.tipoSessao,
-      sinaisVitaisInicio: values.sinaisVitaisInicio.trim() || undefined,
-      sinaisVitaisFim: values.sinaisVitaisFim.trim() || undefined,
-      objetivosSessao: values.objetivosSessao,
-      atividadesRealizadas: values.atividadesRealizadas,
-      respostaPaciente: values.respostaPaciente,
-      dorPre: values.dorPre,
-      dorPos: values.dorPos,
-      observacoes: values.observacoes,
-      planoProximaSessao: values.planoProximaSessao,
-    };
-
-    if (editingEvolucao) {
-      updateEvolucao({ ...editingEvolucao, ...base, id: editingEvolucao.id });
+    try {
+      if (editingEvolucao) {
+        await replaceEvo.mutateAsync({
+          id: editingEvolucao.id,
+          body: evolucaoRequestBody(values),
+        });
+      } else {
+        await createEvo.mutateAsync(evolucaoRequestBody(values));
+      }
       setEditingEvolucao(null);
-    } else {
-      addEvolucao(base);
+      setIsCreating(false);
+      reset(emptyEvolucaoForm(pacienteIdParam));
+      toast.success("Evolução salva.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Não foi possível salvar.");
     }
-
-    setIsCreating(false);
-    reset(emptyEvolucaoForm(pacienteIdParam));
   };
 
   const handleEdit = (evolucao: Evolucao) => {
@@ -466,7 +475,9 @@ function EvolucaoPageContent() {
                 </div>
                 <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                   <Calendar className="h-4 w-4" />
-                  {evolucao.dataSessao}
+                  {/^\d{4}-\d{2}-\d{2}$/.test(evolucao.dataSessao)
+                    ? formatIsoDateToBR(evolucao.dataSessao)
+                    : evolucao.dataSessao}
                   <Button variant="ghost" size="sm" className="h-8 px-2" asChild>
                     <Link href={`/pacientes/${evolucao.patientId}`}>Prontuário</Link>
                   </Button>
