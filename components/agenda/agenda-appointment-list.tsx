@@ -129,8 +129,9 @@ export function AgendaAppointmentList({
           <div>
             <CardTitle className="text-lg">Atendimentos do dia</CardTitle>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              {filteredAppointments.length} sessão(ões) com paciente em {dateLabel}. Bloqueios e eventos
-              aparecem só na grade.
+              {filteredAppointments.length} sessão(ões) com paciente em {dateLabel}. Bloqueios e eventos na
+              grade podem ser excluídos ao abrir o registro na semana ou mês e escolher &quot;Excluir da
+              agenda&quot;.
             </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">

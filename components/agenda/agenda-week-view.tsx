@@ -108,7 +108,7 @@ export function AgendaWeekView({
           role="presentation"
         >
           <div
-            className="min-h-0 flex-1 touch-pan-y overflow-y-auto overflow-x-auto overscroll-contain [scrollbar-gutter:stable] [-webkit-overflow-scrolling:touch]"
+            className="min-h-0 flex-1 touch-pan-x touch-pan-y overflow-y-auto overflow-x-auto overscroll-contain [scrollbar-gutter:stable] [-webkit-overflow-scrolling:touch]"
             role="region"
             aria-label="Grade semanal: 24 horas, role para ver todas"
             tabIndex={0}
