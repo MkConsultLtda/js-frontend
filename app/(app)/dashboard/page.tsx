@@ -26,7 +26,14 @@ function money(value: number): string {
 }
 
 export default function DashboardPage() {
-  const { data: dash, error: dashError } = useDashboardBundle();
+  const {
+    data: dash,
+    error: dashError,
+    isRefetchError,
+    isLoadingError,
+    refetch,
+    isFetching,
+  } = useDashboardBundle();
   const patients: Patient[] = useMemo(() => dash?.patients ?? [], [dash]);
   const appointments: Appointment[] = useMemo(() => dash?.appointments ?? [], [dash]);
   const evolucoes: Evolucao[] = useMemo(() => dash?.evolucoes ?? [], [dash]);
@@ -203,10 +210,29 @@ export default function DashboardPage() {
 
   return (
     <div className="p-8 space-y-8">
-      {dashError && (
-        <p className="text-sm text-destructive">
-          Não foi possível sincronizar parte das métricas com a API. Atualize a página e, se persistir, verifique a sessão.
-        </p>
+      {isRefetchError && dashError && (
+        <div
+          className="flex flex-col gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 sm:flex-row sm:items-center sm:justify-between"
+          role="status"
+        >
+          <p>
+            Não foi possível atualizar os dados em segundo plano (rede ou sessão). Os números abaixo podem estar
+            desatualizados.
+          </p>
+          <Button type="button" variant="outline" size="sm" className="shrink-0 border-amber-300" onClick={() => refetch()} disabled={isFetching}>
+            Tentar novamente
+          </Button>
+        </div>
+      )}
+      {!isRefetchError && isLoadingError && dashError && (
+        <div className="flex flex-col gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive sm:flex-row sm:items-center sm:justify-between">
+          <p>
+            Não foi possível carregar o painel. Verifique a conexão e a sessão (faça login de novo, se necessário).
+          </p>
+          <Button type="button" variant="outline" size="sm" className="shrink-0" onClick={() => refetch()} disabled={isFetching}>
+            Tentar novamente
+          </Button>
+        </div>
       )}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -247,10 +273,10 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Atendimentos hoje</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <Calendar className="h-4 w-4 text-chart-1" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{metrics.appointmentsToday}</div>
+            <div className="text-2xl font-bold text-chart-1">{metrics.appointmentsToday}</div>
             <p className="text-xs text-muted-foreground">
               {metrics.confirmedToday > 0 &&
                 `+${metrics.confirmedToday} confirmado${metrics.confirmedToday > 1 ? "s" : ""}`}
@@ -260,20 +286,20 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Valor recebido (dia)</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <TrendingUp className="h-4 w-4 text-chart-4" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{money(metrics.receivedToday)}</div>
+            <div className="text-2xl font-bold text-chart-4">{money(metrics.receivedToday)}</div>
             <p className="text-xs text-muted-foreground">Pagamentos marcados como pagos hoje</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Pacientes ativos</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <Users className="h-4 w-4 text-chart-2" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{metrics.activePatients}</div>
+            <div className="text-2xl font-bold text-chart-2">{metrics.activePatients}</div>
             <p className="text-xs text-muted-foreground">
               {metrics.newPatientsThisMonth > 0 &&
                 `+${metrics.newPatientsThisMonth} cadastro${metrics.newPatientsThisMonth > 1 ? "s" : ""} neste mês`}
@@ -283,10 +309,10 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Próximo paciente</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <Clock className="h-4 w-4 text-chart-3" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-bold text-chart-3">
               {metrics.nextAppointment ? metrics.nextAppointment.time : "--:--"}
             </div>
             <p className="text-xs text-muted-foreground">
@@ -302,12 +328,16 @@ export default function DashboardPage() {
         <CardHeader>
           <CardTitle className="text-base">Resumo: hoje, semana e mês</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Mesmos dados da Agenda e da{" "}
+            Os totais combinam a{" "}
+            <Link href="/agenda" className="text-primary underline-offset-4 hover:underline">
+              Agenda
+            </Link>
+            , a{" "}
             <Link href="/evolucao" className="text-primary underline-offset-4 hover:underline">
               Evolução
             </Link>{" "}
-            (mock local). A semana vai de segunda a domingo. As evoluções usam a{" "}
-            <strong>data da sessão</strong> informada no registro.
+            e os pacientes cadastrados. A semana considera segunda a domingo; evoluções usam a{" "}
+            <strong>data da sessão</strong> de cada registro.
           </p>
         </CardHeader>
         <CardContent className="overflow-x-auto">
@@ -323,39 +353,39 @@ export default function DashboardPage() {
             <tbody>
               <tr className="border-b border-border/60">
                 <td className="py-2 pr-4 text-muted-foreground">Sessões na agenda (total)</td>
-                <td className="py-2 pr-4 font-medium tabular-nums">{metrics.appointmentsToday}</td>
-                <td className="py-2 pr-4 font-medium tabular-nums">{metrics.weekSessionTotal}</td>
-                <td className="py-2 font-medium tabular-nums">{metrics.monthSessionTotal}</td>
+                <td className="py-2 pr-4 font-medium tabular-nums text-chart-1">{metrics.appointmentsToday}</td>
+                <td className="py-2 pr-4 font-medium tabular-nums text-chart-1">{metrics.weekSessionTotal}</td>
+                <td className="py-2 font-medium tabular-nums text-chart-1">{metrics.monthSessionTotal}</td>
               </tr>
               <tr className="border-b border-border/60">
                 <td className="py-2 pr-4 text-muted-foreground">Concluídas</td>
-                <td className="py-2 pr-4 font-medium tabular-nums">{metrics.todayCompleted}</td>
-                <td className="py-2 pr-4 font-medium tabular-nums">{metrics.weeklyCompleted}</td>
-                <td className="py-2 font-medium tabular-nums">{metrics.monthlyCompleted}</td>
+                <td className="py-2 pr-4 font-medium tabular-nums text-chart-1">{metrics.todayCompleted}</td>
+                <td className="py-2 pr-4 font-medium tabular-nums text-chart-1">{metrics.weeklyCompleted}</td>
+                <td className="py-2 font-medium tabular-nums text-chart-1">{metrics.monthlyCompleted}</td>
               </tr>
               <tr className="border-b border-border/60">
                 <td className="py-2 pr-4 text-muted-foreground">Canceladas</td>
-                <td className="py-2 pr-4 font-medium tabular-nums">{metrics.cancelledToday}</td>
-                <td className="py-2 pr-4 font-medium tabular-nums">{metrics.weeklyCancelled}</td>
-                <td className="py-2 font-medium tabular-nums">{metrics.monthlyCancelled}</td>
+                <td className="py-2 pr-4 font-medium tabular-nums text-chart-4">{metrics.cancelledToday}</td>
+                <td className="py-2 pr-4 font-medium tabular-nums text-chart-4">{metrics.weeklyCancelled}</td>
+                <td className="py-2 font-medium tabular-nums text-chart-4">{metrics.monthlyCancelled}</td>
               </tr>
               <tr className="border-b border-border/60">
                 <td className="py-2 pr-4 text-muted-foreground">Evoluções registradas</td>
-                <td className="py-2 pr-4 font-medium tabular-nums">{metrics.evolucoesHoje}</td>
-                <td className="py-2 pr-4 font-medium tabular-nums">{metrics.evolucoesSemana}</td>
-                <td className="py-2 font-medium tabular-nums">{metrics.evolucoesMes}</td>
+                <td className="py-2 pr-4 font-medium tabular-nums text-chart-2">{metrics.evolucoesHoje}</td>
+                <td className="py-2 pr-4 font-medium tabular-nums text-chart-2">{metrics.evolucoesSemana}</td>
+                <td className="py-2 font-medium tabular-nums text-chart-2">{metrics.evolucoesMes}</td>
               </tr>
               <tr className="border-b border-border/60">
                 <td className="py-2 pr-4 text-muted-foreground">Recebido (pagas)</td>
-                <td className="py-2 pr-4 font-medium tabular-nums">{money(metrics.receivedToday)}</td>
-                <td className="py-2 pr-4 font-medium tabular-nums">{money(metrics.weeklyReceived)}</td>
-                <td className="py-2 font-medium tabular-nums">{money(metrics.monthlyReceived)}</td>
+                <td className="py-2 pr-4 font-medium tabular-nums text-chart-4">{money(metrics.receivedToday)}</td>
+                <td className="py-2 pr-4 font-medium tabular-nums text-chart-4">{money(metrics.weeklyReceived)}</td>
+                <td className="py-2 font-medium tabular-nums text-chart-4">{money(metrics.monthlyReceived)}</td>
               </tr>
               <tr>
                 <td className="py-2 pr-4 text-muted-foreground">A receber (pendentes, estimado)</td>
-                <td className="py-2 pr-4 font-medium tabular-nums">{money(metrics.receivableToday)}</td>
-                <td className="py-2 pr-4 font-medium tabular-nums">{money(metrics.receivableWeek)}</td>
-                <td className="py-2 font-medium tabular-nums">{money(metrics.receivableMonth)}</td>
+                <td className="py-2 pr-4 font-medium tabular-nums text-chart-5">{money(metrics.receivableToday)}</td>
+                <td className="py-2 pr-4 font-medium tabular-nums text-chart-5">{money(metrics.receivableWeek)}</td>
+                <td className="py-2 font-medium tabular-nums text-chart-5">{money(metrics.receivableMonth)}</td>
               </tr>
             </tbody>
           </table>
@@ -391,7 +421,7 @@ export default function DashboardPage() {
                 })}
               </div>
               <p className="text-sm text-muted-foreground">
-                Agendamentos por dia nesta semana (dados mock compartilhados com a Agenda)
+                Quantidade de agendamentos por dia útil nesta semana (mesma base da Agenda).
               </p>
             </div>
           </CardContent>
@@ -420,12 +450,12 @@ export default function DashboardPage() {
                   <div
                     className={`shrink-0 text-xs px-2 py-1 rounded-full ${
                       appointment.status === "confirmed"
-                        ? "bg-sky-100 text-sky-900"
+                        ? "bg-chart-2/25 text-chart-3"
                         : appointment.status === "scheduled"
-                          ? "bg-amber-100 text-amber-900"
+                          ? "bg-chart-5/20 text-chart-5"
                           : appointment.status === "completed"
-                            ? "bg-emerald-100 text-emerald-900"
-                            : "bg-red-100 text-red-800 line-through"
+                            ? "bg-chart-1/20 text-chart-1"
+                            : "bg-destructive/15 text-destructive line-through"
                     }`}
                   >
                     {appointment.status === "confirmed"
@@ -503,7 +533,7 @@ export default function DashboardPage() {
             <CardTitle className="text-sm font-medium">Financeiro semanal</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-emerald-600">{money(metrics.weeklyReceived)}</p>
+            <p className="text-2xl font-bold text-chart-1">{money(metrics.weeklyReceived)}</p>
             <p className="text-xs text-muted-foreground">Sessões pagas da semana atual</p>
           </CardContent>
         </Card>
@@ -512,7 +542,7 @@ export default function DashboardPage() {
             <CardTitle className="text-sm font-medium">Cancelamentos semanais</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-rose-600">{metrics.weeklyCancelled}</p>
+            <p className="text-2xl font-bold text-chart-4">{metrics.weeklyCancelled}</p>
             <p className="text-xs text-muted-foreground">Sessões canceladas na semana</p>
           </CardContent>
         </Card>
@@ -521,7 +551,7 @@ export default function DashboardPage() {
             <CardTitle className="text-sm font-medium">Meta mensal financeira</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-violet-600">{metrics.monthlyGoalPct}%</p>
+            <p className="text-2xl font-bold text-chart-2">{metrics.monthlyGoalPct}%</p>
             <p className="text-xs text-muted-foreground">
               {money(metrics.monthlyReceived)} de {money(metrics.monthlyGoal)}
             </p>
@@ -540,7 +570,7 @@ export default function DashboardPage() {
                 const height = Math.max(8, (bucket.received / Math.max(metrics.monthlyGoal, 1)) * 120);
                 return (
                   <div key={bucket.label} className="flex flex-1 flex-col items-center gap-1">
-                    <div className="w-full rounded-t bg-emerald-500/80" style={{ height: `${height}px` }} />
+                    <div className="w-full rounded-t bg-chart-1/85" style={{ height: `${height}px` }} />
                     <span className="text-[10px] text-muted-foreground">{bucket.label}</span>
                   </div>
                 );
@@ -560,7 +590,7 @@ export default function DashboardPage() {
                 const height = Math.max(8, bucket.completed * 14);
                 return (
                   <div key={bucket.label} className="flex flex-1 flex-col items-center gap-1">
-                    <div className="w-full rounded-t bg-cyan-500/80" style={{ height: `${height}px` }} />
+                    <div className="w-full rounded-t bg-chart-2/85" style={{ height: `${height}px` }} />
                     <span className="text-[10px] text-muted-foreground">{bucket.label}</span>
                   </div>
                 );
@@ -582,7 +612,7 @@ export default function DashboardPage() {
                 const height = Math.max(8, bucket.cancelled * 14);
                 return (
                   <div key={bucket.label} className="flex flex-1 flex-col items-center gap-1">
-                    <div className="w-full rounded-t bg-rose-500/80" style={{ height: `${height}px` }} />
+                    <div className="w-full rounded-t bg-chart-4/85" style={{ height: `${height}px` }} />
                     <span className="text-[10px] text-muted-foreground">{bucket.label}</span>
                   </div>
                 );
@@ -599,12 +629,12 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-green-500" />
+              <TrendingUp className="h-4 w-4 text-chart-1" />
               Confirmações
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">
+            <div className="text-2xl font-bold text-chart-1">
               {Math.round(
                 (metrics.confirmedToday / Math.max(metrics.appointmentsToday, 1)) * 100
               )}
@@ -619,12 +649,12 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Activity className="h-4 w-4 text-purple-500" />
+              <Activity className="h-4 w-4 text-chart-3" />
               Ocupação
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-purple-600">
+            <div className="text-2xl font-bold text-chart-3">
               {Math.round((metrics.appointmentsToday / metrics.maxSessions) * 100)}%
             </div>
             <p className="text-xs text-muted-foreground">
@@ -636,7 +666,7 @@ export default function DashboardPage() {
         <Card className="md:col-span-3 border-primary/20">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <BarChart3 className="h-4 w-4 text-violet-500" />
+              <BarChart3 className="h-4 w-4 text-chart-2" />
               Indicação de pacientes
             </CardTitle>
             <p className="text-xs text-muted-foreground">
@@ -654,7 +684,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-muted">
                   <div
-                    className="h-full rounded-full bg-gradient-to-r from-violet-500/75 via-cyan-500/70 to-emerald-500/70"
+                    className="h-full rounded-full bg-gradient-to-r from-chart-1/80 via-chart-2/80 to-chart-4/80"
                     style={{ width: `${item.percentage}%` }}
                   />
                 </div>

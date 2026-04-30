@@ -52,10 +52,21 @@ export async function backendJson<T>(
     e.body = err ?? undefined;
     throw e;
   }
-  if (res.status === 204) {
+  if (res.status === 204 || res.status === 205) {
     return undefined as T;
   }
-  return (await res.json()) as T;
+  const text = await res.text();
+  const trimmed = text.trim();
+  if (trimmed.length === 0) {
+    return undefined as T;
+  }
+  try {
+    return JSON.parse(trimmed) as T;
+  } catch {
+    const e = new Error("Resposta inválida da API (não é JSON)") as Error & { status?: number };
+    e.status = res.status;
+    throw e;
+  }
 }
 
 export async function backendBlob(path: string, init?: RequestInit): Promise<Blob> {

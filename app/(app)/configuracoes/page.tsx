@@ -42,7 +42,7 @@ export default function ConfiguracoesPage() {
 
   const saveClinic = () => {
     setSettings(draft);
-    toast.success("Preferências da clínica salvas neste navegador.");
+    toast.success("Preferências da clínica salvas neste dispositivo.");
   };
 
   const logout = async () => {
@@ -56,8 +56,8 @@ export default function ConfiguracoesPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Configurações</h1>
         <p className="text-muted-foreground">
-          Preferências de interface e agenda ficam apenas neste navegador até existir modelo de configuração
-          no servidor.
+          Preferências de marca, dias de atendimento e metas do painel ficam guardadas neste navegador para
+          personalizar a experiência. Dados clínicos e agenda vivem na API.
         </p>
       </div>
 
@@ -116,8 +116,8 @@ export default function ConfiguracoesPage() {
               }
             />
             <p className="text-xs text-muted-foreground">
-              Referência para planejar a rota do dia; a agenda ainda não bloqueia horários
-              automaticamente.
+              Referência para o cálculo da rota do dia. A agenda não impede automaticamente sobreposição de
+              horários.
             </p>
           </div>
 
