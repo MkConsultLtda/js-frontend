@@ -150,6 +150,7 @@ export function PatientFormRows({ form: formProp, idPrefix }: PatientFormProps) 
         <div className="col-span-3 space-y-1">
           <Input
             id={`${idPrefix}-dx`}
+            placeholder="Opcional"
             className={fieldClass(!!err.diagnosis)}
             aria-invalid={!!err.diagnosis}
             {...register("diagnosis")}

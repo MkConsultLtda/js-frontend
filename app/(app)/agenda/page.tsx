@@ -90,9 +90,9 @@ export default function AgendaPage() {
   );
   const [conflictDialogOpen, setConflictDialogOpen] = React.useState(false);
   const [conflictDialogDescription, setConflictDialogDescription] = React.useState("");
-  const [pendingConflictAction, setPendingConflictAction] = React.useState<(() => void) | null>(
-    null
-  );
+  const [pendingConflictAction, setPendingConflictAction] = React.useState<
+    (() => void | Promise<void>) | null
+  >(null);
 
   const { settings } = useClinicSettings();
 
@@ -269,13 +269,13 @@ export default function AgendaPage() {
   const executeWithConflictConfirmation = React.useCallback(
     (params: {
       candidates: ScheduleCandidate[];
-      onContinue: () => void;
+      onContinue: (allowOverlap: boolean) => void | Promise<void>;
       ignoreAppointmentId?: number;
       actionLabel: string;
     }) => {
       const conflicts = findScheduleConflicts(params.candidates, params.ignoreAppointmentId);
       if (conflicts.length === 0) {
-        params.onContinue();
+        void Promise.resolve(params.onContinue(false));
         return;
       }
 
@@ -285,7 +285,7 @@ export default function AgendaPage() {
       setConflictDialogDescription(
         `${params.actionLabel} conflita com: ${preview}${suffix}. Deseja salvar mesmo assim?`
       );
-      setPendingConflictAction(() => params.onContinue);
+      setPendingConflictAction(() => () => params.onContinue(true));
       setConflictDialogOpen(true);
     },
     [findScheduleConflicts]
@@ -350,9 +350,12 @@ export default function AgendaPage() {
     executeWithConflictConfirmation({
       candidates: [{ date: values.date, time: values.time, duration, label: patient.name }],
       actionLabel: "Este atendimento",
-      onContinue: async () => {
+      onContinue: async (allowOverlap) => {
         try {
-          await createAppointment.mutateAsync(dtoAgendaPayloadSession(payload));
+          await createAppointment.mutateAsync({
+            body: dtoAgendaPayloadSession(payload),
+            allowOverlap,
+          });
           setCreateOpen(false);
           createForm.reset(emptyAppointmentForm(selectedDate));
           toast.success("Agendamento criado.");
@@ -396,10 +399,13 @@ export default function AgendaPage() {
         label: entry.patientName,
       })),
       actionLabel: "Este bloqueio/evento",
-      onContinue: async () => {
+      onContinue: async (allowOverlap) => {
         try {
           for (const entry of entries) {
-            await createAppointment.mutateAsync(dtoAgendaPayloadSession(entry));
+            await createAppointment.mutateAsync({
+              body: dtoAgendaPayloadSession(entry),
+              allowOverlap,
+            });
           }
           setCreateOpen(false);
           createExtraForm.reset(emptyCalendarExtraForm(selectedDate));
@@ -447,11 +453,12 @@ export default function AgendaPage() {
       candidates: [{ date: updated.date, time: updated.time, duration: updated.duration, label: updated.patientName }],
       ignoreAppointmentId: editingAppointment.id,
       actionLabel: "Esta alteração",
-      onContinue: async () => {
+      onContinue: async (allowOverlap) => {
         try {
           await replaceAppointment.mutateAsync({
             id: editingAppointment.id,
             body: dtoAgendaPayloadSession(updated),
+            allowOverlap,
           });
           setIsEditDialogOpen(false);
           setEditingAppointment(null);
@@ -486,11 +493,12 @@ export default function AgendaPage() {
       candidates: [{ date: updated.date, time: updated.time, duration: updated.duration, label: updated.patientName }],
       ignoreAppointmentId: editingAppointment.id,
       actionLabel: "Esta alteração",
-      onContinue: async () => {
+      onContinue: async (allowOverlap) => {
         try {
           await replaceAppointment.mutateAsync({
             id: editingAppointment!.id,
             body: dtoAgendaPayloadSession(updated),
+            allowOverlap,
           });
           setIsEditDialogOpen(false);
           setEditingAppointment(null);
@@ -797,7 +805,7 @@ export default function AgendaPage() {
           const action = pendingConflictAction;
           setPendingConflictAction(null);
           if (!action) return;
-          action();
+          void action();
         }}
       />
 
@@ -835,8 +843,23 @@ export default function AgendaPage() {
                 typeOptions={typeOptions}
                 idPrefix="edit-"
               />
-              <DialogFooter className="gap-2 sm:gap-0">
-                <Button type="submit">Salvar alterações</Button>
+              <DialogFooter className="flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-0">
+                {editingAppointment ? (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    className="w-full sm:order-first sm:w-auto"
+                    onClick={() => {
+                      setAppointmentToDeleteId(editingAppointment.id);
+                      setIsEditDialogOpen(false);
+                    }}
+                  >
+                    Excluir da agenda
+                  </Button>
+                ) : null}
+                <Button type="submit" className="w-full sm:ml-auto sm:w-auto">
+                  Salvar alterações
+                </Button>
               </DialogFooter>
             </form>
           ) : editingAppointment ? (
@@ -849,8 +872,21 @@ export default function AgendaPage() {
                   editingAppointment.kind === "block" ? "Motivo do bloqueio" : "Título do evento"
                 }
               />
-              <DialogFooter className="gap-2 sm:gap-0">
-                <Button type="submit">Salvar alterações</Button>
+              <DialogFooter className="flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-0">
+                <Button
+                  type="button"
+                  variant="destructive"
+                  className="w-full sm:order-first sm:w-auto"
+                  onClick={() => {
+                    setAppointmentToDeleteId(editingAppointment.id);
+                    setIsEditDialogOpen(false);
+                  }}
+                >
+                  Excluir da agenda
+                </Button>
+                <Button type="submit" className="w-full sm:ml-auto sm:w-auto">
+                  Salvar alterações
+                </Button>
               </DialogFooter>
             </form>
           ) : null}

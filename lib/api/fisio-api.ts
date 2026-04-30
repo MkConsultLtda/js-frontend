@@ -354,24 +354,34 @@ export async function apiDeletePatient(id: number): Promise<void> {
   await backendJson<void>(backendApiHref(`patients/${id}`), { method: "DELETE" });
 }
 
-export async function apiCreateAppointment(body: Record<string, unknown>): Promise<Appointment> {
-  const raw = await backendJson<AppointmentDto>(backendApiHref(`appointments`), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+export async function apiCreateAppointment(
+  body: Record<string, unknown>,
+  options?: { allowOverlap?: boolean },
+): Promise<Appointment> {
+  const raw = await backendJson<AppointmentDto>(
+    backendApiHref("appointments", options?.allowOverlap ? { allowOverlap: "true" } : undefined),
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    },
+  );
   return mapAppointmentFromApi(raw);
 }
 
 export async function apiReplaceAppointment(
   id: number,
   body: Record<string, unknown>,
+  options?: { allowOverlap?: boolean },
 ): Promise<Appointment> {
-  const raw = await backendJson<AppointmentDto>(backendApiHref(`appointments/${id}`), {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  const raw = await backendJson<AppointmentDto>(
+    backendApiHref(`appointments/${id}`, options?.allowOverlap ? { allowOverlap: "true" } : undefined),
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    },
+  );
   return mapAppointmentFromApi(raw);
 }
 
