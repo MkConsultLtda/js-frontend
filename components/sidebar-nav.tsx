@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { LogOut, PanelLeft, PanelLeftClose } from "lucide-react";
@@ -8,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { clearAuthSession } from "@/lib/auth-session";
 import { useClinicSettings } from "@/lib/clinic-settings";
 import { APP_NAV, Activity } from "@/lib/navigation";
+import { useUserProfile } from "@/lib/user-profile";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -39,6 +41,8 @@ export function SidebarNav({
 }: Props) {
   const pathname = usePathname();
   const { settings } = useClinicSettings();
+  const { profile } = useUserProfile();
+  const photoUrl = profile.photoDataUrl?.trim() ?? "";
 
   return (
     <div className={cn("flex h-full min-h-0 flex-col bg-sidebar text-sidebar-foreground", className)}>
@@ -115,9 +119,20 @@ export function SidebarNav({
             compact ? "justify-center" : "items-center gap-3",
           )}
         >
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
-            {initials(settings.therapistName)}
-          </div>
+          {photoUrl ? (
+            <Image
+              src={photoUrl}
+              alt={`Foto de ${settings.therapistName}`}
+              width={32}
+              height={32}
+              unoptimized
+              className="h-8 w-8 shrink-0 rounded-full object-cover"
+            />
+          ) : (
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+              {initials(settings.therapistName)}
+            </div>
+          )}
           {!compact && (
             <div className="min-w-0 text-left">
               <p className="truncate text-sm font-medium">{settings.therapistName}</p>

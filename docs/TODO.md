@@ -34,6 +34,16 @@ Este arquivo centraliza as tarefas para facilitar nosso fluxo em conjunto.
 
 ## Concluido
 
+- [x] [prioridade: alta] [area] Ajuste agenda (scroll lateral em tablet/celular)
+  - Entrega: `touch-pan-x` na área rolável da visão semanal (`agenda-week-view.tsx`) para o gesto horizontal não ser capturado só como vertical.
+- [x] [prioridade: alta] [area] Foto no menu lateral
+  - Entrega: `SidebarNav` usa `useUserProfile().photoDataUrl` com `next/image` (`unoptimized`); fallback continua sendo iniciais.
+- [x] [prioridade: alta] [area] Diagnóstico clínico opcional no cadastro
+  - Entrega: `patient-form.ts` sem `min(1)` em `diagnosis`; placeholder “Opcional” no campo; backend `PatientCreateRequest` aceita diagnóstico vazio/até 500 caracteres (`@Size`, sem `@NotBlank`).
+- [x] [prioridade: alta] [area] Excluir agendamento / bloqueio / evento
+  - Entrega: botão **Excluir da agenda** nos diálogos de edição (grade e lista já tinham fluxo para sessões); texto na lista orienta exclusão de bloqueios pela edição na grade.
+- [x] [prioridade: alta] [area] Conflito de horário com confirmação persistindo no servidor
+  - Entrega: `allowOverlap=true` em `POST/PUT /v1/appointments` (`AppointmentController`, `AgendaService`); front envia query após confirmação no diálogo de conflito (`fisio-api.ts`, `use-fisio.ts`, `agenda/page.tsx`).
 - [x] [prioridade: alta] [area] Endpoint para metricas do dash
   - Entrega: Backend `GET /v1/metrics/dashboard?from=&to=` (`DashboardMetricsController`, `DashboardMetricsService`, evoluções por clínica em `EvolutionJpaRepository`). Front: `fetchDashboardMetricsBundle` + `useDashboardBundle` passam a usar uma única chamada.
 - [x] [prioridade: alta] [area] Funcionalidade menu lateral

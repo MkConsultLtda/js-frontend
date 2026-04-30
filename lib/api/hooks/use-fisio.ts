@@ -166,12 +166,13 @@ export function useAgendaMutations(from: string, to: string) {
   };
 
   const createAppointment = useMutation({
-    mutationFn: apiCreateAppointment,
+    mutationFn: (input: { body: Record<string, unknown>; allowOverlap?: boolean }) =>
+      apiCreateAppointment(input.body, { allowOverlap: input.allowOverlap }),
     onSuccess: invalidate,
   });
   const replaceAppointment = useMutation({
-    mutationFn: ({ id, body }: { id: number; body: Record<string, unknown> }) =>
-      apiReplaceAppointment(id, body),
+    mutationFn: (input: { id: number; body: Record<string, unknown>; allowOverlap?: boolean }) =>
+      apiReplaceAppointment(input.id, input.body, { allowOverlap: input.allowOverlap }),
     onSuccess: invalidate,
   });
   const deleteAppointment = useMutation({
