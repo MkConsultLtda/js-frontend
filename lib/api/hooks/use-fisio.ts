@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import type { Appointment, Evolucao, Patient } from "@/lib/types";
+
 import {
   apiCreateAppointment,
   apiCreatePatient,
@@ -16,9 +18,40 @@ import {
   fetchAggregatedAnamneses,
   fetchAggregatedEvolutions,
   fetchAppointmentsRange,
+  fetchDashboardMetricsBundle,
   fetchPatientDetailBundle,
   fetchPatientPage,
 } from "@/lib/api/fisio-api";
+
+export type DashboardBundle = {
+  patients: Patient[];
+  appointments: Appointment[];
+  evolucoes: Evolucao[];
+};
+
+async function fetchDashboardBundle(): Promise<DashboardBundle> {
+  const anchor = new Date();
+  const y = anchor.getFullYear();
+  const from = `${y}-01-01`;
+  const to = `${y}-12-31`;
+  return fetchDashboardMetricsBundle(from, to);
+}
+
+async function fetchDashboardBundleWithSessionRecovery(): Promise<DashboardBundle> {
+  try {
+    return await fetchDashboardBundle();
+  } catch (e) {
+    const status = (e as Error & { status?: number }).status;
+    if (status === 401) {
+      const refreshRes = await fetch("/api/auth/refresh", {
+        method: "POST",
+        credentials: "include",
+      });
+      if (refreshRes.ok) return await fetchDashboardBundle();
+    }
+    throw e;
+  }
+}
 
 export const fisioKeys = {
   patients: (q: string) => ["patients", "list", q] as const,
@@ -51,20 +84,16 @@ export function usePatientsSearch(q: string) {
 export function useDashboardBundle() {
   return useQuery({
     queryKey: fisioKeys.dashboard,
-    queryFn: async () => {
-      const anchor = new Date();
-      const y = anchor.getFullYear();
-      const from = `${y}-01-01`;
-      const to = `${y}-12-31`;
-      const [patientPage, appointments] = await Promise.all([
-        fetchPatientPage({ size: 500 }),
-        fetchAppointmentsRange(from, to),
-      ]);
-      const patients = patientPage.content;
-      const evolucoes = await fetchAggregatedEvolutions(patients, from, to);
-      return { patients, appointments, evolucoes };
-    },
+    queryFn: fetchDashboardBundleWithSessionRecovery,
     staleTime: 30_000,
+    retry: (failureCount, error) => {
+      const status = (error as Error & { status?: number }).status;
+      if (status === 401) return false;
+      if (status === 408 || status === 429) return failureCount < 1;
+      if (status === 0 || status === undefined) return failureCount < 2;
+      return status >= 500 && failureCount < 2;
+    },
+    retryDelay: (i) => Math.min(800 * 2 ** i, 4000),
   });
 }
 

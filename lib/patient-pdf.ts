@@ -25,7 +25,7 @@ function newDoc(title: string): { doc: jsPDF; y: number } {
   let y = 18;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(15);
-  doc.text("FisioSystem (mock local)", MARGIN, y);
+  doc.text("FisioSystem", MARGIN, y);
   y += 8;
   doc.setFontSize(11);
   doc.text(title, MARGIN, y);

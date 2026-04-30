@@ -242,19 +242,70 @@ export async function fetchEvolutionsForPatient(
   return list.map(mapEvolucaoFromApi);
 }
 
+const EVOLUTION_AGG_CONCURRENCY = 8;
+
 export async function fetchAggregatedEvolutions(patients: { id: number }[], from: string, to: string) {
   if (patients.length === 0) return [];
-  const chunks = await Promise.allSettled(
-    patients.map((p) => fetchEvolutionsForPatient(p.id, from, to)),
-  );
-  const fulfilled = chunks.filter((c): c is PromiseFulfilledResult<Evolucao[]> => c.status === "fulfilled");
-  const rejectedCount = chunks.length - fulfilled.length;
+  const out: Evolucao[] = [];
+  let rejectedCount = 0;
+  for (let i = 0; i < patients.length; i += EVOLUTION_AGG_CONCURRENCY) {
+    const slice = patients.slice(i, i + EVOLUTION_AGG_CONCURRENCY);
+    const chunks = await Promise.allSettled(
+      slice.map((p) => fetchEvolutionsForPatient(p.id, from, to)),
+    );
+    for (const c of chunks) {
+      if (c.status === "fulfilled") out.push(...c.value);
+      else rejectedCount += 1;
+    }
+  }
   if (rejectedCount > 0) {
     console.warn(
       `[dashboard] ${rejectedCount} chamada(s) de evoluções falharam; mantendo métricas parciais.`,
     );
   }
-  return fulfilled.flatMap((c) => c.value);
+  return out;
+}
+
+/** Compatível com APIs Spring sem `GET /v1/metrics/dashboard`. */
+async function fetchDashboardBundleLegacy(
+  from: string,
+  to: string,
+): Promise<{ patients: Patient[]; appointments: Appointment[]; evolucoes: Evolucao[] }> {
+  const [patientPage, appointments] = await Promise.all([
+    fetchPatientPage({ size: 500 }),
+    fetchAppointmentsRange(from, to),
+  ]);
+  const patients = patientPage.content;
+  const evolucoes = await fetchAggregatedEvolutions(patients, from, to);
+  return { patients, appointments, evolucoes };
+}
+
+/**
+ * Preferência: `GET /v1/metrics/dashboard?from=&to=`.
+ * Se o upstream responder 404 (build antigo do backend local), faz o fluxo paralelo anterior.
+ */
+export async function fetchDashboardMetricsBundle(from: string, to: string): Promise<{
+  patients: Patient[];
+  appointments: Appointment[];
+  evolucoes: Evolucao[];
+}> {
+  type BundleDto = {
+    patients: PatientDto[];
+    appointments: AppointmentDto[];
+    evolucoes: EvolucaoDto[];
+  };
+  try {
+    const raw = await backendJson<BundleDto>(backendApiHref("metrics/dashboard", { from, to }));
+    return {
+      patients: raw.patients.map(mapPatientFromApi),
+      appointments: raw.appointments.map(mapAppointmentFromApi),
+      evolucoes: raw.evolucoes.map(mapEvolucaoFromApi),
+    };
+  } catch (e) {
+    const status = (e as Error & { status?: number }).status;
+    if (status === 404) return fetchDashboardBundleLegacy(from, to);
+    throw e;
+  }
 }
 
 export async function fetchAggregatedAnamneses(patients: { id: number }[]) {

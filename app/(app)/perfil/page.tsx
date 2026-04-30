@@ -57,7 +57,7 @@ export default function PerfilPage() {
       therapistName: values.fullName.trim(),
       therapistPhone: values.phone.trim(),
     });
-    toast.success("Perfil salvo neste navegador. Nome e telefone foram alinhados às configurações da clínica.");
+    toast.success("Perfil salvo neste dispositivo. Nome e telefone foram alinhados às configurações da clínica.");
   };
 
   const passwordForm = useForm<ChangePasswordFormValues>({
@@ -136,7 +136,8 @@ export default function PerfilPage() {
           Meu perfil
         </h1>
         <p className="text-muted-foreground">
-          Dados do fisioterapeuta (armazenados localmente). Com API, estes campos serão vinculados à sua conta.
+          Dados de exibição e preferências do profissional neste dispositivo. A alteração de senha é feita na sua
+          conta segura na API.
         </p>
       </div>
 

@@ -1,13 +1,36 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { startTransition, useEffect, useState, type ReactNode } from "react";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SessionKeepAlive } from "@/components/session-keep-alive";
 import { SidebarNav } from "@/components/sidebar-nav";
 import { cn } from "@/lib/utils";
 
+const SIDEBAR_COLLAPSED_KEY = "fisio:sidebar-collapsed";
+
 export function AppShell({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1") {
+        startTransition(() => setSidebarCollapsed(true));
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const setCollapsed = (next: boolean) => {
+    setSidebarCollapsed(next);
+    try {
+      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  };
 
   useEffect(() => {
     if (!mobileOpen) return;
@@ -29,8 +52,17 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex h-dvh max-h-dvh bg-background text-foreground">
-      <aside className="hidden w-64 shrink-0 border-r border-sidebar-border md:flex md:flex-col">
-        <SidebarNav />
+      <SessionKeepAlive />
+      <aside
+        className={cn(
+          "hidden shrink-0 border-r border-sidebar-border transition-[width] duration-200 md:flex md:flex-col",
+          sidebarCollapsed ? "md:w-[4.25rem]" : "md:w-64",
+        )}
+      >
+        <SidebarNav
+          compact={sidebarCollapsed}
+          onToggleCompact={() => setCollapsed(!sidebarCollapsed)}
+        />
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">

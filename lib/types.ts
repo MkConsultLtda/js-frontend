@@ -46,7 +46,7 @@ export interface Patient {
   /** Exibição dd/mm/aaaa */
   lastSession: string;
   status: PatientStatus;
-  /** Cadastro real — yyyy-mm-dd (mock até existir API) */
+  /** Data de cadastro — exibição em dd/mm/aaaa (origem yyyy-mm-dd na API) */
   registeredAt: string;
 }
 
