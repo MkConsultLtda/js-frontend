@@ -7,20 +7,8 @@ import {
   tryRecoverFromUnauthorizedWithRefresh,
   type TokenResponse,
 } from "@/lib/server/backend-access";
+import { filterUpstreamProxyHeaders } from "@/lib/server/upstream-proxy-headers";
 import { backendApiUrl } from "@/lib/server-auth";
-
-const HOP_BY_HOP = new Set([
-  "connection",
-  "keep-alive",
-  "proxy-authenticate",
-  "proxy-authorization",
-  "te",
-  "trailer",
-  "transfer-encoding",
-  "upgrade",
-  "host",
-  "content-length",
-]);
 
 function buildTargetUrl(pathSegments: string[], search: string): string {
   const base = backendApiUrl();
@@ -37,16 +25,6 @@ function forwardHeaders(req: NextRequest, accessToken: string): Headers {
   if (contentType) out.set("Content-Type", contentType);
   const acceptLanguage = req.headers.get("accept-language");
   if (acceptLanguage) out.set("Accept-Language", acceptLanguage);
-  return out;
-}
-
-function copyUpstreamHeaders(upstream: Response): Headers {
-  const out = new Headers();
-  upstream.headers.forEach((value, key) => {
-    const lower = key.toLowerCase();
-    if (HOP_BY_HOP.has(lower)) return;
-    out.set(key, value);
-  });
   return out;
 }
 
@@ -109,8 +87,9 @@ async function handler(req: NextRequest, ctx: { params: Promise<{ path: string[]
     }
   }
 
-  const headers = copyUpstreamHeaders(upstream);
-  const downstream = new NextResponse(upstream.body, {
+  const body = await upstream.arrayBuffer();
+  const headers = filterUpstreamProxyHeaders(upstream);
+  const downstream = new NextResponse(body, {
     status: upstream.status,
     statusText: upstream.statusText,
     headers,
