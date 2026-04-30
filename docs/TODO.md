@@ -22,7 +22,7 @@ Este arquivo centraliza as tarefas para facilitar nosso fluxo em conjunto.
 
 ## Backlog
 
-- [ ] (sem itens no momento)
+- [ ] (adicione novas tarefas aqui)
 
 ## Em andamento
 
@@ -34,6 +34,18 @@ Este arquivo centraliza as tarefas para facilitar nosso fluxo em conjunto.
 
 ## Concluido
 
+- [x] [prioridade: alta] [area] Endpoint para metricas do dash
+  - Entrega: Backend `GET /v1/metrics/dashboard?from=&to=` (`DashboardMetricsController`, `DashboardMetricsService`, evoluções por clínica em `EvolutionJpaRepository`). Front: `fetchDashboardMetricsBundle` + `useDashboardBundle` passam a usar uma única chamada.
+- [x] [prioridade: alta] [area] Funcionalidade menu lateral
+  - Entrega: `AppShell` + `SidebarNav` com modo compacto (ícones), persistência `localStorage` (`fisio:sidebar-collapsed`); mobile mantém drawer com abrir/fechar.
+- [x] [prioridade: alta] [area] Refresh do token
+  - Entrega: `SessionKeepAlive` em `AppShell` — `POST /api/auth/refresh` a cada 10 min e ao voltar à aba (`visibilitychange`).
+- [x] [prioridade: media] [area] Ajuste no visual do front
+  - Entrega: `app/globals.css` com paleta Olivine / Periwinkle / Feldgrau / Burnt Sienna / Field Drab; dashboard com `text-chart-*` e gráficos alinhados à marca.
+- [x] [prioridade: alta] [area] Analise arquivos repositorio.
+  - Entrega: varredura no código (sem `.env` commitado; docs só com placeholders); `.gitignore` reforçado com `Thumbs.db` e `.idea/`.
+- [x] [prioridade: alta] [area] Salva varias vezes o mesmo paciente.
+  - Entrega: `pacientes/page.tsx` — guarda `isPending`, botões desabilitados e texto “Salvando…” em criar e editar.
 - [x] [prioridade: alta] [seguranca] Endurecer CSP por rota (remover dependência de `'unsafe-inline'` quando possível)
   - Entrega:
     - `next.config.ts` com CSP por fonte (`/api/:path*` mais restrita e `/:path*` baseline).

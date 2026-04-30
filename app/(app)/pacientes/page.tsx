@@ -107,6 +107,7 @@ export default function PacientesPage() {
   });
 
   const onCreateSubmit = async (data: PatientCreateFormValues) => {
+    if (createPatient.isPending) return;
     try {
       await createPatient.mutateAsync(dtoPatientCreateFromFormValues(data));
       setIsAddModalOpen(false);
@@ -129,6 +130,7 @@ export default function PacientesPage() {
 
   const onEditSubmit = async (data: PatientEditFormValues) => {
     if (!editingPatient) return;
+    if (replacePatient.isPending) return;
     try {
       const updated = patientFromEditForm(editingPatient, data);
       await replacePatient.mutateAsync({
@@ -184,7 +186,9 @@ export default function PacientesPage() {
             >
               <PatientFormRows form={addForm} idPrefix="add" />
               <DialogFooter className="flex justify-end pt-2 sm:justify-end">
-                <Button type="submit">Salvar paciente</Button>
+                <Button type="submit" disabled={createPatient.isPending}>
+                  {createPatient.isPending ? "Salvando…" : "Salvar paciente"}
+                </Button>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -412,7 +416,9 @@ export default function PacientesPage() {
                 </div>
               </div>
               <DialogFooter className="flex justify-end pt-2 sm:justify-end">
-                <Button type="submit">Salvar alterações</Button>
+                <Button type="submit" disabled={replacePatient.isPending}>
+                  {replacePatient.isPending ? "Salvando…" : "Salvar alterações"}
+                </Button>
               </DialogFooter>
             </form>
           </DialogContent>

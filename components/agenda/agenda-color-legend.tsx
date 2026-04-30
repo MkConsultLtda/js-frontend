@@ -6,7 +6,7 @@ export function AgendaColorLegend() {
     { label: "Confirmado", className: "bg-cyan-200/80 border border-cyan-400/60" },
     { label: "Concluído", className: "bg-emerald-200/75 border border-emerald-400/60" },
     { label: "Cancelado", className: "bg-rose-100/80 border border-rose-400/60 line-through decoration-rose-600/70" },
-    { label: "Pessoal / trabalho", className: "bg-violet-300/55 border border-violet-400/60" },
+    { label: "Pessoal / Trabalho", className: "bg-violet-300/55 border border-violet-400/60" },
     { label: "Bloqueado", className: "bg-slate-300/70 border border-slate-400/60" },
   ];
 
