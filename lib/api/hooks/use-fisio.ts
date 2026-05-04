@@ -22,6 +22,7 @@ import {
   fetchPatientDetailBundle,
   fetchPatientPage,
 } from "@/lib/api/fisio-api";
+import { fetchAuthMe } from "@/lib/auth-me-api";
 
 export type DashboardBundle = {
   patients: Patient[];
@@ -67,7 +68,23 @@ export const fisioKeys = {
   evolutionsAgg: (from: string, to: string) => ["evolutions", from, to] as const,
   anamnesesAgg: ["anamneses", "aggregate"] as const,
   patient: (id: number) => ["patient", id] as const,
+  authMe: ["auth-me"] as const,
 };
+
+/** Perfil profissional persistido na API (nome, Crefito, título, telefone). */
+export function useAuthMe(enabled = true) {
+  return useQuery({
+    queryKey: fisioKeys.authMe,
+    queryFn: fetchAuthMe,
+    enabled,
+    staleTime: 60_000,
+    retry: (failureCount, error) => {
+      const status = (error as Error & { status?: number }).status;
+      if (status === 401) return false;
+      return failureCount < 2;
+    },
+  });
+}
 
 /** Pacientes paginados; `q` repassa ao parâmetro `q` da API Spring. */
 export function usePatientDetailBundle(pid: number | undefined) {

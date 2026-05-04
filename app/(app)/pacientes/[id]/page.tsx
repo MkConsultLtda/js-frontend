@@ -50,6 +50,18 @@ export default function PacienteProntuarioPage() {
       .slice(0, 5);
   }, [evolucoes, idNum, patient]);
 
+  const ultimaSessaoTexto = useMemo(() => {
+    if (!patient) return "—";
+    if (patient.lastSession?.trim()) return patient.lastSession;
+    const datas = evolucoes
+      .filter((e) => e.patientId === idNum)
+      .map((e) => e.dataSessao)
+      .filter(Boolean);
+    if (datas.length === 0) return "—";
+    const maxIso = datas.reduce((a, b) => (a >= b ? a : b));
+    return formatIsoDateToBR(maxIso);
+  }, [patient, evolucoes, idNum]);
+
   if (!Number.isFinite(idNum) || idNum <= 0) {
     return (
       <div className="p-8 space-y-4">
@@ -181,7 +193,7 @@ export default function PacienteProntuarioPage() {
               Última sessão
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-sm">{patient.lastSession}</CardContent>
+          <CardContent className="text-sm">{ultimaSessaoTexto}</CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">

@@ -1,14 +1,15 @@
-# Step-by-step — Assinatura em imagem, reversão de status e testes E2E/API (2026-05-04)
+# Step-by-step — Assinatura em texto no PDF, reversão de status e testes E2E/API (2026-05-04)
 
-## 1. Assinatura dedicada no perfil (imagem)
+## 1. Assinatura no PDF (somente texto)
 
-- **`lib/schemas/user-profile-form.ts`**: campo `signatureDataUrl` (data URL, mesmo limite da foto).
-- **`app/(app)/perfil/page.tsx`**: card “Assinatura para PDF”, upload/remover, persistência em `useUserProfile` / `localStorage` como os demais campos.
+- **`lib/patient-pdf.ts`**: `buildPdfSignatureLines` monta três linhas (nome, título/função, Crefito). Padrão fixo: *Dra. Julli Severina da Silva*, *Fisioterapeuta*, *Crefito 10/413693-F*; sobrescreve com `fullName`, `professionalTitle`, `crefitoNumber` do perfil (e nome da clínica se o perfil não tiver nome), como na logo só entra `photoDataUrl` no cabeçalho.
+- **`components/pacientes/patient-prontuario-toolbar.tsx`**: repassa `signatureLines` no `PdfBranding`.
+- **`app/(app)/perfil/page.tsx`**: sem upload de assinatura em imagem; título do campo de função alinhado ao PDF.
+- **`lib/user-profile.ts`**: ao ler `localStorage`, descarta a chave legada `signatureDataUrl` se existir.
 
-## 2. PDF com imagem de assinatura
+## 2. (Histórico) Assinatura em imagem — removido
 
-- **`lib/patient-pdf.ts`**: `PdfBranding.signatureImageDataUrl`; página final desenha texto do responsável e, se houver, imagem (PNG/JPEG) antes da linha.
-- **`components/pacientes/patient-prontuario-toolbar.tsx`**: repassa `profile.signatureDataUrl` para o branding.
+- Card de assinatura em imagem e `signatureDataUrl` foram retirados; a última página do PDF usa apenas texto.
 
 ## 3. Reverter `completed` na agenda ao excluir a última evolução do dia
 
@@ -33,5 +34,5 @@ Instalação local dos browsers: `npx playwright install`
 
 | Projeto | Arquivos |
 |---------|----------|
-| Frontend | `user-profile-form.ts`, `perfil/page.tsx`, `patient-pdf.ts`, `patient-prontuario-toolbar.tsx`, `package.json`, `playwright.config.ts`, `e2e/*`, `.gitignore` |
+| Frontend | `user-profile.ts`, `perfil/page.tsx`, `patient-pdf.ts`, `patient-prontuario-toolbar.tsx`, `package.json`, `playwright.config.ts`, `e2e/*`, `.gitignore` |
 | Backend | `EvolucaoService.java`, `EvolucaoAgendaCompletionIT.java` |

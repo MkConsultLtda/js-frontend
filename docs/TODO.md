@@ -49,7 +49,7 @@ Este arquivo centraliza as tarefas para facilitar nosso fluxo em conjunto.
 - [x] [prioridade: alta] [Geral] Correção de texto
   - Entrega: `spellCheck` na evolução e no `RichTextEditor` da anamnese.
 - [x] [prioridade: alta] [PDF] Geração de PDF
-  - Entrega: `PdfBranding` — cabeçalho com clínica/cor, logo (foto do perfil), página de assinatura do responsável (`patient-pdf.ts`, toolbar).
+  - Entrega: `PdfBranding` — cabeçalho com clínica/cor, logo (foto do perfil), página de assinatura em texto (nome, função, Crefito; padrão Dra. Julli Severina da Silva) (`patient-pdf.ts`, toolbar).
 
 - [x] [prioridade: alta] [area] Ajuste agenda (scroll lateral em tablet/celular)
   - Entrega: `touch-pan-x` na área rolável da visão semanal (`agenda-week-view.tsx`) para o gesto horizontal não ser capturado só como vertical.

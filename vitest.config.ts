@@ -5,6 +5,16 @@ export default defineConfig({
   test: {
     environment: "node",
     globals: false,
+    coverage: {
+      provider: "v8",
+      include: ["lib/auth-me-api.ts"],
+      thresholds: {
+        lines: 90,
+        functions: 90,
+        branches: 85,
+        statements: 90,
+      },
+    },
     /**
      * Playwright usa `*.spec.ts` em `e2e/` — não coletar esses arquivos no Vitest (evita
      * "test.describe() to be called here").

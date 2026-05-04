@@ -11,6 +11,25 @@ export function parseLocalDate(date: string): Date {
   return new Date(year, month - 1, day);
 }
 
+/**
+ * Normaliza datas vindas da API: string `yyyy-MM-dd` ou array `[ano, mês, dia]` (Jackson legado).
+ */
+export function isoDateFromJsonField(value: unknown): string {
+  if (typeof value === "string" && value.length >= 10) {
+    const d = value.substring(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+  }
+  if (Array.isArray(value) && value.length >= 3) {
+    const y = Number(value[0]);
+    const m = Number(value[1]);
+    const d = Number(value[2]);
+    if (Number.isFinite(y) && Number.isFinite(m) && Number.isFinite(d)) {
+      return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    }
+  }
+  return "";
+}
+
 /** yyyy-mm-dd → dd/mm/aaaa (exibição) */
 export function formatIsoDateToBR(iso: string): string {
   const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
