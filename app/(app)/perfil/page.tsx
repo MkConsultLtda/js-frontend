@@ -74,14 +74,18 @@ export default function PerfilPage() {
       });
       await queryClient.invalidateQueries({ queryKey: fisioKeys.authMe });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Não foi possível salvar o perfil na API.");
+      toast.error(
+        e instanceof Error
+          ? e.message
+          : "Não foi possível concluir a gravação. Verifique os dados e tente novamente.",
+      );
       return;
     }
     setSettings({
       therapistName: values.fullName.trim(),
       therapistPhone: values.phone.trim(),
     });
-    toast.success("Perfil salvo na API. Os dados aparecem em qualquer dispositivo com a mesma conta.");
+    toast.success("Alterações do perfil gravadas com sucesso.");
   };
 
   const passwordForm = useForm<ChangePasswordFormValues>({
@@ -105,15 +109,18 @@ export default function PerfilPage() {
         | { message?: string; code?: string }
         | null;
       if (res.status === 429) {
-        throw new Error(err?.message || "Muitas tentativas. Tente novamente em instantes.");
+        throw new Error(
+          err?.message ||
+            "Limite de tentativas excedido. Aguarde alguns instantes antes de solicitar nova alteração.",
+        );
       }
       if (res.status === 401) {
-        throw new Error(err?.message || "Sessão expirada. Faça login novamente.");
+        throw new Error(err?.message || "Sessão inválida ou expirada. Efetue login novamente.");
       }
-      throw new Error(err?.message || "Não foi possível alterar a senha.");
+      throw new Error(err?.message || "A alteração de senha não pôde ser concluída.");
     }
     passwordForm.reset();
-    toast.success("Senha alterada com sucesso.");
+    toast.success("Senha atualizada com sucesso.");
   };
 
   const onPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -121,18 +128,18 @@ export default function PerfilPage() {
     e.target.value = "";
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      toast.error("Selecione uma imagem (JPEG, PNG, etc.).");
+      toast.error("Utilize apenas arquivo de imagem (por exemplo JPEG ou PNG).");
       return;
     }
     if (file.size > MAX_PHOTO_BYTES) {
-      toast.error("Imagem muito grande. Use até cerca de 400 KB.");
+      toast.error("O arquivo excede o tamanho máximo permitido (aproximadamente 400 KB).");
       return;
     }
     const reader = new FileReader();
     reader.onload = () => {
       const dataUrl = reader.result as string;
       form.setValue("photoDataUrl", dataUrl, { shouldDirty: true });
-      toast.message("Foto atualizada (pré-visualização). Salve para enviar à API.");
+      toast.message("Pré-visualização da foto atualizada. Grave o perfil para persistir a alteração.");
     };
     reader.readAsDataURL(file);
   };
@@ -154,7 +161,7 @@ export default function PerfilPage() {
 
   if (meLoading) {
     return (
-      <div className="p-8 text-muted-foreground max-w-2xl">Carregando perfil da conta…</div>
+      <div className="p-8 text-muted-foreground max-w-2xl">Carregando informações do perfil…</div>
     );
   }
 
@@ -163,7 +170,7 @@ export default function PerfilPage() {
       <div className="p-8 max-w-2xl space-y-2">
         <h1 className="text-2xl font-bold">Meu perfil</h1>
         <p className="text-destructive">
-          Não foi possível carregar o perfil. Confirme se está autenticado e se a API está atualizada.
+          Não foi possível carregar os dados do perfil. Verifique a autenticação e a disponibilidade do serviço.
         </p>
       </div>
     );
@@ -176,16 +183,12 @@ export default function PerfilPage() {
           <UserCircle className="h-8 w-8 text-primary" />
           Meu perfil
         </h1>
-        <p className="text-muted-foreground">
-          Todos os campos abaixo (incluindo foto e observações) são armazenados na API e ficam disponíveis em qualquer
-          aparelho em que você entrar com esta conta. A alteração de senha também é feita na API.
-        </p>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Foto (opcional)</CardTitle>
+            <CardTitle className="text-base">Foto do perfil</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center">
             <div className="h-20 w-20 shrink-0 overflow-hidden rounded-full border bg-muted">
@@ -200,7 +203,7 @@ export default function PerfilPage() {
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center text-muted-foreground text-xs text-center p-1">
-                  Sem foto
+                  Nenhuma foto
                 </div>
               )}
             </div>
@@ -214,11 +217,11 @@ export default function PerfilPage() {
               />
               <Button type="button" variant="outline" className="gap-2" onClick={() => photoRef.current?.click()}>
                 <Camera className="h-4 w-4" />
-                Carregar imagem
+                Selecionar foto
               </Button>
               {photoUrl ? (
                 <Button type="button" variant="ghost" onClick={clearPhoto}>
-                  Remover
+                  Remover foto
                 </Button>
               ) : null}
             </div>
@@ -227,7 +230,7 @@ export default function PerfilPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Dados profissionais</CardTitle>
+            <CardTitle className="text-base">Dados profissionais e de contato</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-1">
@@ -239,7 +242,7 @@ export default function PerfilPage() {
               <Label htmlFor="perfil-crefito">Registro CREFITO</Label>
               <Input
                 id="perfil-crefito"
-                placeholder="ex.: 123456-F"
+                placeholder="Ex.: 123456-F"
                 {...register("crefitoNumber")}
                 aria-invalid={!!errors.crefitoNumber}
               />
@@ -264,17 +267,17 @@ export default function PerfilPage() {
               </div>
             </div>
             <div className="space-y-1">
-              <Label htmlFor="perfil-titulo">Título / função no PDF</Label>
+              <Label htmlFor="perfil-titulo">Título ou função (documentos PDF)</Label>
               <Input
                 id="perfil-titulo"
-                placeholder="ex.: Fisioterapeuta"
+                placeholder="Ex.: Fisioterapeuta"
                 {...register("professionalTitle")}
                 aria-invalid={!!errors.professionalTitle}
               />
               <FormFieldError message={errors.professionalTitle?.message} />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="perfil-obs">Observações (opcional)</Label>
+              <Label htmlFor="perfil-obs">Observações internas</Label>
               <Textarea id="perfil-obs" rows={3} {...register("notes")} />
               <FormFieldError message={errors.notes?.message} />
             </div>
@@ -284,7 +287,7 @@ export default function PerfilPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Segurança da conta</CardTitle>
+            <CardTitle className="text-base">Segurança e credenciais</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -329,11 +332,15 @@ export default function PerfilPage() {
                   try {
                     await onPasswordSubmit(values);
                   } catch (err) {
-                    toast.error(err instanceof Error ? err.message : "Não foi possível alterar a senha.");
+                    toast.error(
+                      err instanceof Error
+                        ? err.message
+                        : "A alteração de senha não pôde ser concluída. Tente novamente.",
+                    );
                   }
                 })}
               >
-                {passwordState.isSubmitting ? "Alterando..." : "Alterar senha"}
+                {passwordState.isSubmitting ? "Processando…" : "Alterar senha"}
               </Button>
             </div>
           </CardContent>
@@ -341,7 +348,7 @@ export default function PerfilPage() {
 
         <Button type="submit" className="gap-2" disabled={!isDirty || isSubmitting}>
           <Save className="h-4 w-4" />
-          {isSubmitting ? "Salvando…" : "Salvar perfil"}
+          {isSubmitting ? "Gravando…" : "Salvar alterações"}
         </Button>
       </form>
     </div>
