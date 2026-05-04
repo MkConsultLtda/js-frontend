@@ -309,7 +309,7 @@ export default function AgendaPage() {
       }
     }
 
-    return dates.length > 0 ? dates : [values.date];
+    return dates;
   }, []);
 
   const hasEvolucaoForAppointmentDate = React.useCallback(
@@ -378,6 +378,12 @@ export default function AgendaPage() {
     }
 
     const dates = buildExtraDates(values);
+    if (dates.length === 0) {
+      toast.error(
+        "Nenhum dia no período combina com os dias da semana marcados. Ajuste «Repetir até» ou use o atalho Seg–sex.",
+      );
+      return;
+    }
     const entries = dates.map((date) => ({
       kind,
       patientId: 0,
@@ -711,6 +717,8 @@ export default function AgendaPage() {
                   <CalendarExtraFormFields
                     control={createExtraForm.control}
                     errors={createExtraForm.formState.errors}
+                    setValue={createExtraForm.setValue}
+                    getValues={createExtraForm.getValues}
                     idPrefix="create-extra-"
                     titleLabel={createKind === "block" ? "Motivo do bloqueio" : "Título do evento"}
                   />
@@ -781,9 +789,9 @@ export default function AgendaPage() {
           try {
             await deleteAppointment.mutateAsync(appointmentToDeleteId);
             toast.success("Registro excluído.");
-            setAppointmentToDeleteId(null);
           } catch (err) {
             toast.error(err instanceof Error ? err.message : "Não foi possível excluir.");
+            throw err;
           }
         }}
       />
@@ -801,11 +809,11 @@ export default function AgendaPage() {
         confirmLabel="Salvar mesmo assim"
         cancelLabel="Revisar horário"
         variant="default"
-        onConfirm={() => {
+        onConfirm={async () => {
           const action = pendingConflictAction;
           setPendingConflictAction(null);
           if (!action) return;
-          void action();
+          await action();
         }}
       />
 
@@ -867,6 +875,8 @@ export default function AgendaPage() {
               <CalendarExtraFormFields
                 control={editExtraForm.control}
                 errors={editExtraForm.formState.errors}
+                setValue={editExtraForm.setValue}
+                getValues={editExtraForm.getValues}
                 idPrefix="edit-extra-"
                 titleLabel={
                   editingAppointment.kind === "block" ? "Motivo do bloqueio" : "Título do evento"

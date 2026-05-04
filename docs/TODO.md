@@ -34,6 +34,23 @@ Este arquivo centraliza as tarefas para facilitar nosso fluxo em conjunto.
 
 ## Concluido
 
+- [x] [prioridade: alta] [Agenda] Problema na exclusão de agendamento
+  - Entrega: `scheduleInvalidate` em `use-fisio.ts` (refetch não falha a mutation); `ConfirmDialog` aguarda `onConfirm` e mantém aberto em erro; pacientes com o mesmo fluxo.
+- [x] [prioridade: alta] [Geral] Exclusões
+  - Entrega: exclusão na UI de evolução e anamnese com confirmação; DELETE já no Spring.
+- [x] [prioridade: alta] [Agenda] Bloqueio de horario (vários dias)
+  - Entrega: atalho **Seg–sex nesta semana** + `fridayOfSameWorkWeek`; toast se o intervalo não contém nenhum dia selecionado.
+- [x] [prioridade: alta] [Agenda] Botão de evolução + concluir com evolução
+  - Entrega: botão Evolução na lista do dia; query `dataSessao` abre formulário; `EvolucaoService` marca sessões do paciente na data como `completed`.
+- [x] [prioridade: alta] [Evolução] Tipo sessão removido
+  - Entrega: front sem campo; payload `tipoSessao: "-"`; `EvolucaoRequest` opcional no backend.
+- [x] [prioridade: alta] [Paciente] Ultima sessão
+  - Entrega: `last_session` sincronizado com `MAX(data_sessao)` das evoluções (`EvolutionJpaRepository.findMaxDataSessaoByPatient` + `EvolucaoService`).
+- [x] [prioridade: alta] [Geral] Correção de texto
+  - Entrega: `spellCheck` na evolução e no `RichTextEditor` da anamnese.
+- [x] [prioridade: alta] [PDF] Geração de PDF
+  - Entrega: `PdfBranding` — cabeçalho com clínica/cor, logo (foto do perfil), página de assinatura do responsável (`patient-pdf.ts`, toolbar).
+
 - [x] [prioridade: alta] [area] Ajuste agenda (scroll lateral em tablet/celular)
   - Entrega: `touch-pan-x` na área rolável da visão semanal (`agenda-week-view.tsx`) para o gesto horizontal não ser capturado só como vertical.
 - [x] [prioridade: alta] [area] Foto no menu lateral

@@ -53,3 +53,9 @@ export function startOfWeekSunday(date: Date): Date {
   return d;
 }
 
+/** Sexta-feira da semana que começa na segunda que contém `isoDate` (yyyy-mm-dd). */
+export function fridayOfSameWorkWeek(isoDate: string): string {
+  const mon = startOfWeekMonday(parseLocalDate(isoDate));
+  return toLocalDateString(addDays(mon, 4));
+}
+

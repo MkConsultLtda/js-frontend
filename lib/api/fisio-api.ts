@@ -522,7 +522,7 @@ export function evolucaoRequestBody(values: EvolucaoFormValues): Record<string, 
   return {
     patientId: Number(values.patientId),
     dataSessao: values.dataSessao,
-    tipoSessao: values.tipoSessao,
+    tipoSessao: "-",
     sinaisVitaisInicio: values.sinaisVitaisInicio.trim() || "",
     sinaisVitaisFim: values.sinaisVitaisFim.trim() || "",
     objetivosSessao: values.objetivosSessao,

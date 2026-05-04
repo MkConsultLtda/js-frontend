@@ -4,6 +4,7 @@ import * as React from "react";
 import { Suspense } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useSearchParams } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -26,7 +27,6 @@ import {
   useEvolucoMutations,
   usePatientsSearch,
 } from "@/lib/api/hooks/use-fisio";
-import { EVOLUCAO_TIPOS_SESSAO } from "@/lib/constants";
 import {
   evolucaoFormSchema,
   emptyEvolucaoForm,
@@ -35,7 +35,7 @@ import {
 import { formatIsoDateToBR, parseBRDate, toLocalDateString } from "@/lib/date-utils";
 import type { Evolucao, Patient } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { TrendingUp, Save, Calendar, User } from "lucide-react";
+import { TrendingUp, Save, Calendar, User, Trash2 } from "lucide-react";
 
 function toDateInputValue(dateStr: string): string {
   if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
@@ -47,6 +47,7 @@ function toDateInputValue(dateStr: string): string {
 function EvolucaoPageContent() {
   const searchParams = useSearchParams();
   const pacienteIdParam = searchParams.get("pacienteId");
+  const dataSessaoParam = searchParams.get("dataSessao");
 
   const { data: patientPage } = usePatientsSearch("");
   const patients: Patient[] = React.useMemo(
@@ -59,11 +60,13 @@ function EvolucaoPageContent() {
     [y],
   );
   const { data: evolucoes = [] } = useAggregateEvoluco(evWindow.from, evWindow.to, true);
-  const { createEvo, replaceEvo } = useEvolucoMutations(evWindow.from, evWindow.to);
+  const { createEvo, replaceEvo, deleteEvo } = useEvolucoMutations(evWindow.from, evWindow.to);
 
   const [isCreating, setIsCreating] = React.useState(false);
   const [editingEvolucao, setEditingEvolucao] = React.useState<Evolucao | null>(null);
   const [patientNameFilter, setPatientNameFilter] = React.useState("");
+  const [evolucaoToDeleteId, setEvolucaoToDeleteId] = React.useState<number | null>(null);
+  const agendaPrefillDone = React.useRef(false);
 
   const form = useForm<EvolucaoFormValues>({
     resolver: zodResolver(evolucaoFormSchema),
@@ -87,6 +90,20 @@ function EvolucaoPageContent() {
     const patient = patients.find((p) => p.id === Number(pacienteIdParam));
     setPatientNameFilter(patient?.name ?? "");
   }, [pacienteIdParam, patients]);
+
+  React.useEffect(() => {
+    if (agendaPrefillDone.current) return;
+    if (!pacienteIdParam || !dataSessaoParam || !/^\d{4}-\d{2}-\d{2}$/.test(dataSessaoParam)) return;
+    if (!patients.some((p) => String(p.id) === pacienteIdParam)) return;
+    agendaPrefillDone.current = true;
+    setEditingEvolucao(null);
+    setIsCreating(true);
+    reset({
+      ...emptyEvolucaoForm(pacienteIdParam),
+      patientId: pacienteIdParam,
+      dataSessao: dataSessaoParam,
+    });
+  }, [dataSessaoParam, pacienteIdParam, patients, reset]);
 
   const filteredEvolucoes = React.useMemo(() => {
     const query = patientNameFilter.trim().toLowerCase();
@@ -126,7 +143,6 @@ function EvolucaoPageContent() {
     reset({
       patientId: evolucao.patientId.toString(),
       dataSessao: toDateInputValue(evolucao.dataSessao),
-      tipoSessao: evolucao.tipoSessao,
       sinaisVitaisInicio: evolucao.sinaisVitaisInicio ?? "",
       sinaisVitaisFim: evolucao.sinaisVitaisFim ?? "",
       objetivosSessao: evolucao.objetivosSessao,
@@ -240,6 +256,7 @@ function EvolucaoPageContent() {
                   <Input
                     id="evo-data-sessao"
                     type="date"
+                    spellCheck={false}
                     className={fieldClass(!!errors.dataSessao)}
                     aria-invalid={!!errors.dataSessao}
                     aria-describedby={errors.dataSessao ? "evo-data-sessao-error" : undefined}
@@ -249,38 +266,6 @@ function EvolucaoPageContent() {
                     message={errors.dataSessao?.message}
                     id="evo-data-sessao-error"
                   />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <Label htmlFor="evo-tipo">Tipo de sessão</Label>
-                  <Controller
-                    name="tipoSessao"
-                    control={control}
-                    render={({ field }) => (
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <SelectTrigger
-                          id="evo-tipo"
-                          className={fieldClass(!!errors.tipoSessao)}
-                          aria-invalid={!!errors.tipoSessao}
-                          aria-describedby={
-                            errors.tipoSessao ? "evo-tipo-error" : undefined
-                          }
-                        >
-                          <SelectValue placeholder="Selecione o tipo" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {EVOLUCAO_TIPOS_SESSAO.map((tipo) => (
-                            <SelectItem key={tipo} value={tipo}>
-                              {tipo}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  />
-                  <FormFieldError message={errors.tipoSessao?.message} id="evo-tipo-error" />
                 </div>
               </div>
 
@@ -321,7 +306,7 @@ function EvolucaoPageContent() {
 
               <div className="space-y-1">
                 <Label htmlFor="evo-objetivos">Objetivos da sessão</Label>
-                <Textarea
+                <Textarea spellCheck
                   id="evo-objetivos"
                   className={fieldClass(!!errors.objetivosSessao)}
                   aria-invalid={!!errors.objetivosSessao}
@@ -339,7 +324,7 @@ function EvolucaoPageContent() {
 
               <div className="space-y-1">
                 <Label htmlFor="evo-atividades">Atividades realizadas</Label>
-                <Textarea
+                <Textarea spellCheck
                   id="evo-atividades"
                   className={fieldClass(!!errors.atividadesRealizadas)}
                   aria-invalid={!!errors.atividadesRealizadas}
@@ -357,7 +342,7 @@ function EvolucaoPageContent() {
 
               <div className="space-y-1">
                 <Label htmlFor="evo-resposta">Resposta do paciente</Label>
-                <Textarea
+                <Textarea spellCheck
                   id="evo-resposta"
                   className={fieldClass(!!errors.respostaPaciente)}
                   aria-invalid={!!errors.respostaPaciente}
@@ -432,7 +417,7 @@ function EvolucaoPageContent() {
 
               <div className="space-y-1">
                 <Label htmlFor="evo-obs">Observações</Label>
-                <Textarea
+                <Textarea spellCheck
                   id="evo-obs"
                   placeholder="Observações gerais sobre a sessão"
                   {...register("observacoes")}
@@ -442,7 +427,7 @@ function EvolucaoPageContent() {
 
               <div className="space-y-1">
                 <Label htmlFor="evo-plano">Plano para próxima sessão</Label>
-                <Textarea
+                <Textarea spellCheck
                   id="evo-plano"
                   placeholder="Planejamento para a próxima sessão"
                   {...register("planoProximaSessao")}
@@ -483,7 +468,9 @@ function EvolucaoPageContent() {
                   </Button>
                 </div>
               </div>
-              <div className="text-sm text-muted-foreground">{evolucao.tipoSessao}</div>
+              {evolucao.tipoSessao && evolucao.tipoSessao !== "-" ? (
+                <div className="text-sm text-muted-foreground">{evolucao.tipoSessao}</div>
+              ) : null}
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-4">
@@ -511,13 +498,45 @@ function EvolucaoPageContent() {
               <div className="mb-4">
                 <strong>Atividades:</strong> {evolucao.atividadesRealizadas}
               </div>
-              <Button variant="outline" size="sm" onClick={() => handleEdit(evolucao)}>
-                Editar
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" size="sm" onClick={() => handleEdit(evolucao)}>
+                  Editar
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="text-destructive"
+                  onClick={() => setEvolucaoToDeleteId(evolucao.id)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ))}
       </div>
+
+      <ConfirmDialog
+        open={evolucaoToDeleteId !== null}
+        onOpenChange={(open) => {
+          if (!open) setEvolucaoToDeleteId(null);
+        }}
+        title="Excluir evolução?"
+        description="A exclusão é lógica no servidor. Atendimentos da agenda não são revertidos automaticamente."
+        confirmLabel="Excluir"
+        variant="destructive"
+        onConfirm={async () => {
+          if (evolucaoToDeleteId == null) return;
+          try {
+            await deleteEvo.mutateAsync(evolucaoToDeleteId);
+            toast.success("Evolução removida.");
+          } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Não foi possível excluir.");
+            throw err;
+          }
+        }}
+      />
 
       {filteredEvolucoes.length === 0 && (
         <p className="text-sm text-muted-foreground text-center py-8">

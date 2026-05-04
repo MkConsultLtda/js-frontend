@@ -446,9 +446,9 @@ export default function PacientesPage() {
           try {
             await deletePatient.mutateAsync(patientToDeleteId);
             toast.success("Paciente removido.");
-            setPatientToDeleteId(null);
           } catch (err) {
             toast.error(err instanceof Error ? err.message : "Não foi possível excluir.");
+            throw err;
           }
         }}
       />

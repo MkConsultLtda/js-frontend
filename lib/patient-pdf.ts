@@ -10,6 +10,15 @@ const LINE = 5;
 const PAGE_H = 297;
 const MAX_W = 180;
 
+/** Dados da clínica / profissional para cabeçalho e página de assinatura nos PDFs. */
+export type PdfBranding = {
+  clinicTitle: string;
+  therapistSignatureLine: string;
+  logoDataUrl?: string;
+  /** Assinatura manuscrita (data URL) na página final do PDF. */
+  signatureImageDataUrl?: string;
+};
+
 function fileSlugBase(name: string): string {
   return name
     .normalize("NFD")
@@ -20,15 +29,35 @@ function fileSlugBase(name: string): string {
     .slice(0, 48) || "paciente";
 }
 
-function newDoc(title: string): { doc: jsPDF; y: number } {
+function safeAddLogo(doc: jsPDF, dataUrl: string | undefined, yTop: number): void {
+  if (!dataUrl?.startsWith("data:image")) return;
+  const fmt: "PNG" | "JPEG" | null = dataUrl.includes("image/png")
+    ? "PNG"
+    : dataUrl.includes("image/jpeg") || dataUrl.includes("image/jpg")
+      ? "JPEG"
+      : null;
+  if (!fmt) return;
+  try {
+    const pageW = doc.internal.pageSize.getWidth();
+    doc.addImage(dataUrl, fmt, pageW - MARGIN - 26, yTop - 2, 22, 22);
+  } catch {
+    /* motor pode não aceitar o formato */
+  }
+}
+
+function newDoc(sectionTitle: string, branding?: PdfBranding): { doc: jsPDF; y: number } {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   let y = 18;
+  const brand = branding?.clinicTitle?.trim() || "FisioSystem";
+  safeAddLogo(doc, branding?.logoDataUrl, y);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(15);
-  doc.text("FisioSystem", MARGIN, y);
+  doc.setTextColor(45, 72, 58);
+  doc.text(brand, MARGIN, y);
+  doc.setTextColor(0, 0, 0);
   y += 8;
   doc.setFontSize(11);
-  doc.text(title, MARGIN, y);
+  doc.text(sectionTitle, MARGIN, y);
   y += 8;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
@@ -37,6 +66,42 @@ function newDoc(title: string): { doc: jsPDF; y: number } {
   y += 10;
   doc.setTextColor(0, 0, 0);
   return { doc, y };
+}
+
+function appendSignaturePage(doc: jsPDF, branding?: PdfBranding): void {
+  const line = branding?.therapistSignatureLine?.trim();
+  const sigImg = branding?.signatureImageDataUrl?.trim();
+  if (!line && !sigImg) return;
+  doc.addPage();
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.text("Responsavel tecnico", MARGIN, 28);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  let y = 38;
+  if (line) {
+    const wrapped = doc.splitTextToSize(line, MAX_W);
+    doc.text(wrapped, MARGIN, y);
+    y += wrapped.length * LINE + 6;
+  }
+  if (sigImg?.startsWith("data:image")) {
+    const fmt: "PNG" | "JPEG" | null = sigImg.includes("image/png")
+      ? "PNG"
+      : sigImg.includes("image/jpeg") || sigImg.includes("image/jpg")
+        ? "JPEG"
+        : null;
+    if (fmt) {
+      try {
+        doc.addImage(sigImg, fmt, MARGIN, y, 55, 22);
+        y += 26;
+      } catch {
+        /* ignorar formato não suportado */
+      }
+    }
+  }
+  doc.setDrawColor(45, 72, 58);
+  doc.line(MARGIN, y + 4, MARGIN + 78, y + 4);
+  doc.setDrawColor(0, 0, 0);
 }
 
 function ensureRoom(doc: jsPDF, y: number, need: number): number {
@@ -103,9 +168,16 @@ function anamneseBlock(a: Anamnese): string {
   return parts.join("\n\n");
 }
 
+function evolucaoTipoLine(e: Evolucao): string | null {
+  const t = e.tipoSessao?.trim();
+  if (!t || t === "-") return null;
+  return `Tipo de sessao: ${t}`;
+}
+
 function evolucaoBlock(e: Evolucao): string {
   return [
-    `Data da sessão: ${e.dataSessao} · Tipo: ${e.tipoSessao}`,
+    `Data da sessão: ${e.dataSessao}`,
+    evolucaoTipoLine(e),
     e.sinaisVitaisInicio || e.sinaisVitaisFim
       ? `Sinais vitais — início: ${e.sinaisVitaisInicio || "—"} | fim: ${e.sinaisVitaisFim || "—"}`
       : null,
@@ -138,9 +210,10 @@ export function downloadProntuarioPdf(
   patient: Patient,
   anamneses: Anamnese[],
   evolucoes: Evolucao[],
-  appointments: Appointment[]
+  appointments: Appointment[],
+  branding?: PdfBranding,
 ): void {
-  const { doc, y: y0 } = newDoc("Prontuario (resumo)");
+  const { doc, y: y0 } = newDoc("Prontuario (resumo)", branding);
   let y = y0;
   y = writeTitle(doc, y, "Identificacao");
   y = writeBlock(doc, y, "Paciente", patientHeaderLines(patient));
@@ -161,7 +234,11 @@ export function downloadProntuarioPdf(
     y = writeBlock(doc, y, "Registros", "Nenhuma evolucao para este paciente.");
   } else {
     for (const e of orderedEvo) {
-      y = writeBlock(doc, y, `Evolucao #${e.id} · ${e.dataSessao}`, evolucaoBlock(e));
+      const title =
+        e.tipoSessao && e.tipoSessao !== "-"
+          ? `Evolucao #${e.id} · ${e.dataSessao} · ${e.tipoSessao}`
+          : `Evolucao #${e.id} · ${e.dataSessao}`;
+      y = writeBlock(doc, y, title, evolucaoBlock(e));
     }
   }
 
@@ -180,11 +257,16 @@ export function downloadProntuarioPdf(
     );
   }
 
+  appendSignaturePage(doc, branding);
   doc.save(`prontuario-${fileSlugBase(patient.name)}.pdf`);
 }
 
-export function downloadEvolucaoPdf(patient: Patient, evolucoes: Evolucao[]): void {
-  const { doc, y: y0 } = newDoc("Relatorio de evolucao");
+export function downloadEvolucaoPdf(
+  patient: Patient,
+  evolucoes: Evolucao[],
+  branding?: PdfBranding,
+): void {
+  const { doc, y: y0 } = newDoc("Relatorio de evolucao", branding);
   let y = y0;
   y = writeBlock(doc, y, "Paciente", patientHeaderLines(patient));
   const ordered = [...evolucoes].sort((a, b) => b.dataSessao.localeCompare(a.dataSessao));
@@ -192,14 +274,23 @@ export function downloadEvolucaoPdf(patient: Patient, evolucoes: Evolucao[]): vo
     y = writeBlock(doc, y, "Evolucoes", "Nenhum registro.");
   } else {
     for (const e of ordered) {
-      y = writeBlock(doc, y, `Sessao ${e.dataSessao} · ${e.tipoSessao}`, evolucaoBlock(e));
+      const title =
+        e.tipoSessao && e.tipoSessao !== "-"
+          ? `Sessao ${e.dataSessao} · ${e.tipoSessao}`
+          : `Sessao ${e.dataSessao}`;
+      y = writeBlock(doc, y, title, evolucaoBlock(e));
     }
   }
+  appendSignaturePage(doc, branding);
   doc.save(`evolucao-${fileSlugBase(patient.name)}.pdf`);
 }
 
-export function downloadAtendimentosPdf(patient: Patient, appointments: Appointment[]): void {
-  const { doc, y: y0 } = newDoc("Historico de atendimentos");
+export function downloadAtendimentosPdf(
+  patient: Patient,
+  appointments: Appointment[],
+  branding?: PdfBranding,
+): void {
+  const { doc, y: y0 } = newDoc("Historico de atendimentos", branding);
   let y = y0;
   y = writeBlock(doc, y, "Paciente", patientHeaderLines(patient));
   const sessoes = appointments
@@ -215,5 +306,6 @@ export function downloadAtendimentosPdf(patient: Patient, appointments: Appointm
       sessoes.map(appointmentLine).filter(Boolean).join("\n\n")
     );
   }
+  appendSignaturePage(doc, branding);
   doc.save(`atendimentos-${fileSlugBase(patient.name)}.pdf`);
 }

@@ -15,7 +15,10 @@ import {
   downloadAtendimentosPdf,
   downloadEvolucaoPdf,
   downloadProntuarioPdf,
+  type PdfBranding,
 } from "@/lib/patient-pdf";
+import { useClinicSettings } from "@/lib/clinic-settings";
+import { useUserProfile } from "@/lib/user-profile";
 import {
   formatBytes,
   isAllowedAttachmentMime,
@@ -40,6 +43,26 @@ export function PatientProntuarioToolbar({
   evolucoes,
 }: Props) {
   const queryClient = useQueryClient();
+  const { settings } = useClinicSettings();
+  const { profile } = useUserProfile();
+
+  const pdfBranding = React.useMemo<PdfBranding>(() => {
+    const name = profile.fullName?.trim() || settings.therapistName?.trim() || "Profissional";
+    const cref = profile.crefitoNumber?.trim();
+    return {
+      clinicTitle: settings.clinicName?.trim() || "FisioSystem",
+      therapistSignatureLine: cref ? `${name} | CREFITO ${cref}` : name,
+      logoDataUrl: profile.photoDataUrl?.trim() || undefined,
+      signatureImageDataUrl: profile.signatureDataUrl?.trim() || undefined,
+    };
+  }, [
+    profile.crefitoNumber,
+    profile.fullName,
+    profile.photoDataUrl,
+    profile.signatureDataUrl,
+    settings.clinicName,
+    settings.therapistName,
+  ]);
 
   const { data: patientAttachments = [] } = useQuery({
     queryKey: ["patient-attachments", patientId],
@@ -210,7 +233,7 @@ export function PatientProntuarioToolbar({
               className="gap-2 w-fit"
               onClick={() => {
                 try {
-                  downloadProntuarioPdf(patient, anamneses, evolucoes, myAptForPatient);
+                  downloadProntuarioPdf(patient, anamneses, evolucoes, myAptForPatient, pdfBranding);
                   toast.message("Download do prontuário iniciado.");
                 } catch {
                   toast.error("Falha ao gerar o PDF. Tente novamente.");
@@ -226,7 +249,7 @@ export function PatientProntuarioToolbar({
               className="gap-2 w-fit"
               onClick={() => {
                 try {
-                  downloadEvolucaoPdf(patient, evolucoes);
+                  downloadEvolucaoPdf(patient, evolucoes, pdfBranding);
                   toast.message("Download da evolução iniciado.");
                 } catch {
                   toast.error("Falha ao gerar o PDF. Tente novamente.");
@@ -242,7 +265,7 @@ export function PatientProntuarioToolbar({
               className="gap-2 w-fit"
               onClick={() => {
                 try {
-                  downloadAtendimentosPdf(patient, myAptForPatient);
+                  downloadAtendimentosPdf(patient, myAptForPatient, pdfBranding);
                   toast.message("Download do histórico de atendimentos iniciado.");
                 } catch {
                   toast.error("Falha ao gerar o PDF. Tente novamente.");
