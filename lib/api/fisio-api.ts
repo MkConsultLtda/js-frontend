@@ -1,5 +1,5 @@
 import { backendApiHref, backendJson } from "@/lib/api/backend-client";
-import { brDateToIsoDate, formatIsoDateToBR, toLocalDateString } from "@/lib/date-utils";
+import { brDateToIsoDate, formatIsoDateToBR, isoDateFromJsonField, toLocalDateString } from "@/lib/date-utils";
 import type { AnamneseFormValues } from "@/lib/schemas/anamnese-form";
 import type { EvolucaoFormValues } from "@/lib/schemas/evolucao-form";
 import type { PatientCreateFormValues } from "@/lib/schemas/patient-form";
@@ -34,21 +34,20 @@ type AnamneseDto = Record<string, unknown>;
 
 type EvolucaoDto = Record<string, unknown>;
 
+function patientDtoDate(raw: PatientDto, camel: string, snake: string): string {
+  const v = raw[camel] ?? raw[snake];
+  return isoDateFromJsonField(v);
+}
+
 export function mapPatientFromApi(raw: PatientDto): Patient {
   const address = raw.address as Record<string, unknown> | undefined;
-  const lastIso =
-    typeof raw.lastSession === "string"
-      ? raw.lastSession.substring(0, 10)
-      : "";
-  const regIso =
-    typeof raw.registeredAt === "string"
-      ? raw.registeredAt.substring(0, 10)
-      : "";
+  const birthIso = patientDtoDate(raw, "birthDate", "birth_date");
+  const lastIso = patientDtoDate(raw, "lastSession", "last_session");
+  const regIso = patientDtoDate(raw, "registeredAt", "registered_at");
   return {
     id: Number(raw.id),
     name: String(raw.name ?? ""),
-    birthDate:
-      typeof raw.birthDate === "string" ? raw.birthDate.substring(0, 10) : "",
+    birthDate: birthIso,
     email: String(raw.email ?? ""),
     cpf: raw.cpf != null ? String(raw.cpf) : undefined,
     diagnosis: String(raw.diagnosis ?? ""),

@@ -4,8 +4,9 @@ import * as React from "react";
 import Image from "next/image";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { UserCircle, Save, Camera, PenLine } from "lucide-react";
+import { UserCircle, Save, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -22,23 +23,34 @@ import {
   changePasswordFormSchema,
   type ChangePasswordFormValues,
 } from "@/lib/schemas/change-password-form";
-import { useUserProfile } from "@/lib/user-profile";
 import { MAX_PATIENT_ATTACHMENT_BYTES } from "@/lib/patient-attachment-utils";
+import { fisioKeys, useAuthMe } from "@/lib/api/hooks/use-fisio";
+import { patchAuthProfile, type AuthMeResponse } from "@/lib/auth-me-api";
 
 const MAX_PHOTO_BYTES = Math.min(MAX_PATIENT_ATTACHMENT_BYTES, 400 * 1024);
 
+function valuesFromMe(me: AuthMeResponse): UserProfileFormValues {
+  return {
+    fullName: me.name,
+    crefitoNumber: me.crefito,
+    professionalEmail: me.professionalEmail?.trim() || me.email,
+    phone: me.phone ?? "",
+    professionalTitle: me.professionalTitle ?? "",
+    notes: me.notes ?? "",
+    photoDataUrl: me.photoDataUrl ?? "",
+  };
+}
+
 export default function PerfilPage() {
+  const queryClient = useQueryClient();
   const { settings, setSettings } = useClinicSettings();
-  const { profile, setProfile } = useUserProfile();
+  const { data: me, isLoading: meLoading, isError: meError } = useAuthMe();
   const photoRef = React.useRef<HTMLInputElement>(null);
-  const signatureRef = React.useRef<HTMLInputElement>(null);
 
   const mergedDefaults = React.useMemo((): UserProfileFormValues => {
-    const base = { ...emptyUserProfileForm(), ...profile };
-    if (!base.fullName.trim()) base.fullName = settings.therapistName;
-    if (!base.phone.trim()) base.phone = settings.therapistPhone;
-    return base;
-  }, [profile, settings.therapistName, settings.therapistPhone]);
+    if (!me) return emptyUserProfileForm();
+    return valuesFromMe(me);
+  }, [me]);
 
   const form = useForm<UserProfileFormValues>({
     resolver: zodResolver(userProfileFormSchema),
@@ -46,20 +58,30 @@ export default function PerfilPage() {
   });
 
   React.useEffect(() => {
-    form.reset(mergedDefaults);
-  }, [form, mergedDefaults]);
+    if (me) form.reset(valuesFromMe(me));
+  }, [me, form]);
 
-  const onSubmit = (values: UserProfileFormValues) => {
-    setProfile({
-      ...values,
-      photoDataUrl: values.photoDataUrl?.trim() || "",
-      signatureDataUrl: values.signatureDataUrl?.trim() || "",
-    });
+  const onSubmit = async (values: UserProfileFormValues) => {
+    try {
+      await patchAuthProfile({
+        name: values.fullName.trim(),
+        phone: values.phone.trim(),
+        crefito: values.crefitoNumber.trim(),
+        professionalTitle: values.professionalTitle.trim(),
+        professionalEmail: values.professionalEmail.trim(),
+        notes: values.notes.trim(),
+        photoDataUrl: values.photoDataUrl?.trim() || "",
+      });
+      await queryClient.invalidateQueries({ queryKey: fisioKeys.authMe });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Não foi possível salvar o perfil na API.");
+      return;
+    }
     setSettings({
       therapistName: values.fullName.trim(),
       therapistPhone: values.phone.trim(),
     });
-    toast.success("Perfil salvo neste dispositivo. Nome e telefone foram alinhados às configurações da clínica.");
+    toast.success("Perfil salvo na API. Os dados aparecem em qualquer dispositivo com a mesma conta.");
   };
 
   const passwordForm = useForm<ChangePasswordFormValues>({
@@ -110,7 +132,7 @@ export default function PerfilPage() {
     reader.onload = () => {
       const dataUrl = reader.result as string;
       form.setValue("photoDataUrl", dataUrl, { shouldDirty: true });
-      toast.message("Foto atualizada (pré-visualização). Salve para persistir.");
+      toast.message("Foto atualizada (pré-visualização). Salve para enviar à API.");
     };
     reader.readAsDataURL(file);
   };
@@ -119,45 +141,33 @@ export default function PerfilPage() {
     form.setValue("photoDataUrl", "", { shouldDirty: true });
   };
 
-  const onSignature = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      toast.error("Selecione uma imagem (JPEG, PNG, etc.).");
-      return;
-    }
-    if (file.size > MAX_PHOTO_BYTES) {
-      toast.error("Imagem muito grande. Use até cerca de 400 KB.");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      form.setValue("signatureDataUrl", dataUrl, { shouldDirty: true });
-      toast.message("Assinatura atualizada (pré-visualização). Salve para persistir.");
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const clearSignature = () => {
-    form.setValue("signatureDataUrl", "", { shouldDirty: true });
-  };
-
   const {
     register,
     handleSubmit,
-    formState: { errors, isDirty },
+    formState: { errors, isDirty, isSubmitting },
   } = form;
   const photoUrl = useWatch({
     control: form.control,
     name: "photoDataUrl",
   });
-  const signatureUrl = useWatch({
-    control: form.control,
-    name: "signatureDataUrl",
-  });
   const passwordState = passwordForm.formState;
+
+  if (meLoading) {
+    return (
+      <div className="p-8 text-muted-foreground max-w-2xl">Carregando perfil da conta…</div>
+    );
+  }
+
+  if (meError || !me) {
+    return (
+      <div className="p-8 max-w-2xl space-y-2">
+        <h1 className="text-2xl font-bold">Meu perfil</h1>
+        <p className="text-destructive">
+          Não foi possível carregar o perfil. Confirme se está autenticado e se a API está atualizada.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8 space-y-8 max-w-2xl">
@@ -167,8 +177,8 @@ export default function PerfilPage() {
           Meu perfil
         </h1>
         <p className="text-muted-foreground">
-          Dados de exibição e preferências do profissional neste dispositivo. A alteração de senha é feita na sua
-          conta segura na API.
+          Todos os campos abaixo (incluindo foto e observações) são armazenados na API e ficam disponíveis em qualquer
+          aparelho em que você entrar com esta conta. A alteração de senha também é feita na API.
         </p>
       </div>
 
@@ -217,52 +227,6 @@ export default function PerfilPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Assinatura para PDF (opcional)</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Imagem da sua assinatura usada na última página dos relatórios em PDF do prontuário. Fica só neste
-              dispositivo (localStorage), como a foto.
-            </p>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-start">
-            <div className="h-24 w-40 shrink-0 overflow-hidden rounded-md border bg-muted">
-              {signatureUrl ? (
-                <Image
-                  src={signatureUrl}
-                  alt=""
-                  width={160}
-                  height={96}
-                  unoptimized
-                  className="h-full w-full object-contain bg-white"
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-muted-foreground text-xs text-center p-2">
-                  Sem assinatura
-                </div>
-              )}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <input
-                ref={signatureRef}
-                type="file"
-                accept="image/*"
-                className="sr-only"
-                onChange={onSignature}
-              />
-              <Button type="button" variant="outline" className="gap-2" onClick={() => signatureRef.current?.click()}>
-                <PenLine className="h-4 w-4" />
-                Carregar assinatura
-              </Button>
-              {signatureUrl ? (
-                <Button type="button" variant="ghost" onClick={clearSignature}>
-                  Remover
-                </Button>
-              ) : null}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
             <CardTitle className="text-base">Dados profissionais</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -300,11 +264,12 @@ export default function PerfilPage() {
               </div>
             </div>
             <div className="space-y-1">
-              <Label htmlFor="perfil-titulo">Título / especialidade (opcional)</Label>
+              <Label htmlFor="perfil-titulo">Título / função no PDF</Label>
               <Input
                 id="perfil-titulo"
-                placeholder="ex.: Fisioterapia traumato-ortopédica"
+                placeholder="ex.: Fisioterapeuta"
                 {...register("professionalTitle")}
+                aria-invalid={!!errors.professionalTitle}
               />
               <FormFieldError message={errors.professionalTitle?.message} />
             </div>
@@ -314,7 +279,6 @@ export default function PerfilPage() {
               <FormFieldError message={errors.notes?.message} />
             </div>
             <input type="hidden" {...register("photoDataUrl")} />
-            <input type="hidden" {...register("signatureDataUrl")} />
           </CardContent>
         </Card>
 
@@ -323,9 +287,7 @@ export default function PerfilPage() {
             <CardTitle className="text-base">Segurança da conta</CardTitle>
           </CardHeader>
           <CardContent>
-            <div
-              className="space-y-4"
-            >
+            <div className="space-y-4">
               <div className="space-y-1">
                 <Label htmlFor="perfil-current-password">Senha atual</Label>
                 <Input
@@ -377,9 +339,9 @@ export default function PerfilPage() {
           </CardContent>
         </Card>
 
-        <Button type="submit" className="gap-2" disabled={!isDirty}>
+        <Button type="submit" className="gap-2" disabled={!isDirty || isSubmitting}>
           <Save className="h-4 w-4" />
-          Salvar perfil
+          {isSubmitting ? "Salvando…" : "Salvar perfil"}
         </Button>
       </form>
     </div>

@@ -10,13 +10,30 @@ const LINE = 5;
 const PAGE_H = 297;
 const MAX_W = 180;
 
+/**
+ * Monta as três linhas da assinatura no PDF a partir do perfil persistido na API (sem valores padrão).
+ * Retorna array vazio se faltar qualquer dado obrigatório.
+ */
+export function buildPdfSignatureLines(params: {
+  fullName: string;
+  professionalTitle: string;
+  crefitoNumber: string;
+}): string[] {
+  const name = params.fullName.trim();
+  const title = params.professionalTitle.trim();
+  const rawCref = params.crefitoNumber.trim();
+  if (!name || !title || !rawCref) return [];
+  const crefLine = /^crefito\s/i.test(rawCref) ? rawCref : `Crefito ${rawCref}`;
+  return [name, title, crefLine];
+}
+
 /** Dados da clínica / profissional para cabeçalho e página de assinatura nos PDFs. */
 export type PdfBranding = {
   clinicTitle: string;
-  therapistSignatureLine: string;
+  /** Três linhas: nome, titulo/função, registro Crefito (texto). */
+  signatureLines: string[];
+  /** Logo no cabeçalho (foto do perfil em data URL). */
   logoDataUrl?: string;
-  /** Assinatura manuscrita (data URL) na página final do PDF. */
-  signatureImageDataUrl?: string;
 };
 
 function fileSlugBase(name: string): string {
@@ -69,9 +86,8 @@ function newDoc(sectionTitle: string, branding?: PdfBranding): { doc: jsPDF; y: 
 }
 
 function appendSignaturePage(doc: jsPDF, branding?: PdfBranding): void {
-  const line = branding?.therapistSignatureLine?.trim();
-  const sigImg = branding?.signatureImageDataUrl?.trim();
-  if (!line && !sigImg) return;
+  const lines = (branding?.signatureLines ?? []).map((s) => s.trim()).filter(Boolean);
+  if (lines.length === 0) return;
   doc.addPage();
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
@@ -79,28 +95,20 @@ function appendSignaturePage(doc: jsPDF, branding?: PdfBranding): void {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   let y = 38;
-  if (line) {
-    const wrapped = doc.splitTextToSize(line, MAX_W);
-    doc.text(wrapped, MARGIN, y);
-    y += wrapped.length * LINE + 6;
-  }
-  if (sigImg?.startsWith("data:image")) {
-    const fmt: "PNG" | "JPEG" | null = sigImg.includes("image/png")
-      ? "PNG"
-      : sigImg.includes("image/jpeg") || sigImg.includes("image/jpg")
-        ? "JPEG"
-        : null;
-    if (fmt) {
-      try {
-        doc.addImage(sigImg, fmt, MARGIN, y, 55, 22);
-        y += 26;
-      } catch {
-        /* ignorar formato não suportado */
-      }
+  for (let i = 0; i < lines.length; i++) {
+    const isNameLine = i === 0;
+    if (isNameLine) {
+      doc.setFont("helvetica", "bold");
+    } else {
+      doc.setFont("helvetica", "normal");
     }
+    const wrapped = doc.splitTextToSize(lines[i], MAX_W);
+    doc.text(wrapped, MARGIN, y);
+    y += wrapped.length * LINE + (i === lines.length - 1 ? 6 : 2);
   }
+  doc.setFont("helvetica", "normal");
   doc.setDrawColor(45, 72, 58);
-  doc.line(MARGIN, y + 4, MARGIN + 78, y + 4);
+  doc.line(MARGIN, y + 2, MARGIN + 78, y + 2);
   doc.setDrawColor(0, 0, 0);
 }
 

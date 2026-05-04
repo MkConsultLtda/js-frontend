@@ -12,13 +12,14 @@ import {
   fetchAttachmentsForPatient,
 } from "@/lib/api/fisio-api";
 import {
+  buildPdfSignatureLines,
   downloadAtendimentosPdf,
   downloadEvolucaoPdf,
   downloadProntuarioPdf,
   type PdfBranding,
 } from "@/lib/patient-pdf";
+import { useAuthMe } from "@/lib/api/hooks/use-fisio";
 import { useClinicSettings } from "@/lib/clinic-settings";
-import { useUserProfile } from "@/lib/user-profile";
 import {
   formatBytes,
   isAllowedAttachmentMime,
@@ -44,25 +45,23 @@ export function PatientProntuarioToolbar({
 }: Props) {
   const queryClient = useQueryClient();
   const { settings } = useClinicSettings();
-  const { profile } = useUserProfile();
+  const { data: me } = useAuthMe();
 
   const pdfBranding = React.useMemo<PdfBranding>(() => {
-    const name = profile.fullName?.trim() || settings.therapistName?.trim() || "Profissional";
-    const cref = profile.crefitoNumber?.trim();
+    const sig =
+      me?.name && me.crefito && me.professionalTitle
+        ? buildPdfSignatureLines({
+            fullName: me.name,
+            professionalTitle: me.professionalTitle,
+            crefitoNumber: me.crefito,
+          })
+        : [];
     return {
       clinicTitle: settings.clinicName?.trim() || "FisioSystem",
-      therapistSignatureLine: cref ? `${name} | CREFITO ${cref}` : name,
-      logoDataUrl: profile.photoDataUrl?.trim() || undefined,
-      signatureImageDataUrl: profile.signatureDataUrl?.trim() || undefined,
+      logoDataUrl: me?.photoDataUrl?.trim() || undefined,
+      signatureLines: sig,
     };
-  }, [
-    profile.crefitoNumber,
-    profile.fullName,
-    profile.photoDataUrl,
-    profile.signatureDataUrl,
-    settings.clinicName,
-    settings.therapistName,
-  ]);
+  }, [me, settings.clinicName]);
 
   const { data: patientAttachments = [] } = useQuery({
     queryKey: ["patient-attachments", patientId],
