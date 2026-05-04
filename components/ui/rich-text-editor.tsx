@@ -28,6 +28,7 @@ type Props = {
   placeholder?: string;
   className?: string;
   ariaInvalid?: boolean;
+  spellCheck?: boolean;
 };
 
 type FontSizeChain = {
@@ -75,6 +76,7 @@ export function RichTextEditor({
   placeholder = "Digite aqui...",
   className,
   ariaInvalid = false,
+  spellCheck = false,
 }: Props) {
   const editor = useEditor({
     immediatelyRender: false,
@@ -98,6 +100,7 @@ export function RichTextEditor({
         class:
           "min-h-[220px] p-3 text-sm outline-none prose prose-sm max-w-none dark:prose-invert",
         "aria-invalid": ariaInvalid ? "true" : "false",
+        spellcheck: spellCheck ? "true" : "false",
       },
       handleKeyDown(view, event) {
         if (event.key !== "Tab") return false;

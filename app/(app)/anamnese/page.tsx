@@ -4,6 +4,7 @@ import * as React from "react";
 import { Suspense } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useSearchParams } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -31,7 +32,7 @@ import {
   type AnamneseFormValues,
 } from "@/lib/schemas/anamnese-form";
 import type { Anamnese } from "@/lib/types";
-import { FileText, Save, User } from "lucide-react";
+import { FileText, Save, User, Trash2 } from "lucide-react";
 
 function normalizeAnamneseHtml(raw: string): string {
   if (!raw.trim()) return "";
@@ -64,10 +65,11 @@ function AnamnesePageContent() {
   const { data: patientPage } = usePatientsSearch("");
   const patients = patientPage?.content ?? [];
   const { data: anamneses = [] } = useAggregateAnamneses(true);
-  const { createAnam, replaceAnam } = useAnamneseMutations();
+  const { createAnam, replaceAnam, deleteAnam } = useAnamneseMutations();
 
   const [isCreating, setIsCreating] = React.useState(false);
   const [editingAnamnese, setEditingAnamnese] = React.useState<Anamnese | null>(null);
+  const [anamneseToDeleteId, setAnamneseToDeleteId] = React.useState<number | null>(null);
 
   const form = useForm<AnamneseFormValues>({
     resolver: zodResolver(anamneseFormSchema),
@@ -224,6 +226,7 @@ function AnamnesePageContent() {
                       onChange={field.onChange}
                       placeholder="Escreva a anamnese completa. Use os botões para negrito, itálico, listas e títulos."
                       ariaInvalid={!!errors.anamneseTexto}
+                      spellCheck
                     />
                   )}
                 />
@@ -274,15 +277,45 @@ function AnamnesePageContent() {
                 className="prose prose-sm mt-4 max-w-none dark:prose-invert"
                 dangerouslySetInnerHTML={{ __html: legacyAnamneseToHtml(anamnese) }}
               />
-              <div className="mt-4">
+              <div className="mt-4 flex flex-wrap gap-2">
                 <Button variant="outline" size="sm" onClick={() => handleEdit(anamnese)}>
                   Editar
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="text-destructive"
+                  onClick={() => setAnamneseToDeleteId(anamnese.id)}
+                >
+                  <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
+
+      <ConfirmDialog
+        open={anamneseToDeleteId !== null}
+        onOpenChange={(open) => {
+          if (!open) setAnamneseToDeleteId(null);
+        }}
+        title="Excluir anamnese?"
+        description="A exclusão é lógica no servidor."
+        confirmLabel="Excluir"
+        variant="destructive"
+        onConfirm={async () => {
+          if (anamneseToDeleteId == null) return;
+          try {
+            await deleteAnam.mutateAsync(anamneseToDeleteId);
+            toast.success("Anamnese removida.");
+          } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Não foi possível excluir.");
+            throw err;
+          }
+        }}
+      />
 
       {filteredAnamneses.length === 0 && (
         <p className="text-sm text-muted-foreground text-center py-8">

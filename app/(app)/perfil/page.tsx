@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { UserCircle, Save, Camera } from "lucide-react";
+import { UserCircle, Save, Camera, PenLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -31,6 +31,7 @@ export default function PerfilPage() {
   const { settings, setSettings } = useClinicSettings();
   const { profile, setProfile } = useUserProfile();
   const photoRef = React.useRef<HTMLInputElement>(null);
+  const signatureRef = React.useRef<HTMLInputElement>(null);
 
   const mergedDefaults = React.useMemo((): UserProfileFormValues => {
     const base = { ...emptyUserProfileForm(), ...profile };
@@ -52,6 +53,7 @@ export default function PerfilPage() {
     setProfile({
       ...values,
       photoDataUrl: values.photoDataUrl?.trim() || "",
+      signatureDataUrl: values.signatureDataUrl?.trim() || "",
     });
     setSettings({
       therapistName: values.fullName.trim(),
@@ -117,6 +119,31 @@ export default function PerfilPage() {
     form.setValue("photoDataUrl", "", { shouldDirty: true });
   };
 
+  const onSignature = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Selecione uma imagem (JPEG, PNG, etc.).");
+      return;
+    }
+    if (file.size > MAX_PHOTO_BYTES) {
+      toast.error("Imagem muito grande. Use até cerca de 400 KB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      form.setValue("signatureDataUrl", dataUrl, { shouldDirty: true });
+      toast.message("Assinatura atualizada (pré-visualização). Salve para persistir.");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const clearSignature = () => {
+    form.setValue("signatureDataUrl", "", { shouldDirty: true });
+  };
+
   const {
     register,
     handleSubmit,
@@ -125,6 +152,10 @@ export default function PerfilPage() {
   const photoUrl = useWatch({
     control: form.control,
     name: "photoDataUrl",
+  });
+  const signatureUrl = useWatch({
+    control: form.control,
+    name: "signatureDataUrl",
   });
   const passwordState = passwordForm.formState;
 
@@ -186,6 +217,52 @@ export default function PerfilPage() {
 
         <Card>
           <CardHeader>
+            <CardTitle className="text-base">Assinatura para PDF (opcional)</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Imagem da sua assinatura usada na última página dos relatórios em PDF do prontuário. Fica só neste
+              dispositivo (localStorage), como a foto.
+            </p>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-start">
+            <div className="h-24 w-40 shrink-0 overflow-hidden rounded-md border bg-muted">
+              {signatureUrl ? (
+                <Image
+                  src={signatureUrl}
+                  alt=""
+                  width={160}
+                  height={96}
+                  unoptimized
+                  className="h-full w-full object-contain bg-white"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-muted-foreground text-xs text-center p-2">
+                  Sem assinatura
+                </div>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <input
+                ref={signatureRef}
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                onChange={onSignature}
+              />
+              <Button type="button" variant="outline" className="gap-2" onClick={() => signatureRef.current?.click()}>
+                <PenLine className="h-4 w-4" />
+                Carregar assinatura
+              </Button>
+              {signatureUrl ? (
+                <Button type="button" variant="ghost" onClick={clearSignature}>
+                  Remover
+                </Button>
+              ) : null}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
             <CardTitle className="text-base">Dados profissionais</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -237,6 +314,7 @@ export default function PerfilPage() {
               <FormFieldError message={errors.notes?.message} />
             </div>
             <input type="hidden" {...register("photoDataUrl")} />
+            <input type="hidden" {...register("signatureDataUrl")} />
           </CardContent>
         </Card>
 
