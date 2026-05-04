@@ -7,11 +7,9 @@ export const userProfileFormSchema = z.object({
   crefitoNumber: text(32).min(1, "Informe o registro no CREFITO (ex.: 123456-F)"),
   professionalEmail: z.string().trim().email("E-mail inválido").max(120),
   phone: text(32).min(1, "Informe um telefone profissional"),
-  professionalTitle: z.string().trim().max(80, "Máximo de 80 caracteres"),
+  professionalTitle: text(120).min(1, "Informe o título / função (aparece no PDF)"),
   notes: z.string().trim().max(500, "Máximo de 500 caracteres"),
   photoDataUrl: z.string().max(600_000),
-  /** Imagem da assinatura para PDF (data URL), opcional. */
-  signatureDataUrl: z.string().max(600_000),
 });
 
 export type UserProfileFormValues = z.infer<typeof userProfileFormSchema>;
@@ -25,6 +23,5 @@ export function emptyUserProfileForm(): UserProfileFormValues {
     professionalTitle: "",
     notes: "",
     photoDataUrl: "",
-    signatureDataUrl: "",
   };
 }
