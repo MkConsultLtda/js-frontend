@@ -249,9 +249,6 @@ export default function DashboardPage() {
           <Button variant="outline" asChild>
             <Link href="/pacientes">Novo paciente</Link>
           </Button>
-          <Button variant="ghost" size="sm" asChild className="text-muted-foreground">
-            <Link href="/configuracoes">Dias de atendimento</Link>
-          </Button>
         </div>
       </div>
 
