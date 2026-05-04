@@ -1,16 +1,26 @@
 "use client";
 
-import { Controller, type Control, type FieldErrors } from "react-hook-form";
+import {
+  Controller,
+  type Control,
+  type FieldErrors,
+  type UseFormGetValues,
+  type UseFormSetValue,
+} from "react-hook-form";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
 import { FormFieldError } from "@/components/form-field-error";
 import type { CalendarExtraFormValues } from "@/lib/schemas/calendar-extra-form";
+import { fridayOfSameWorkWeek } from "@/lib/date-utils";
 import { cn } from "@/lib/utils";
 
 type Props = {
   control: Control<CalendarExtraFormValues>;
   errors: FieldErrors<CalendarExtraFormValues>;
+  setValue: UseFormSetValue<CalendarExtraFormValues>;
+  getValues: UseFormGetValues<CalendarExtraFormValues>;
   idPrefix?: string;
   titleLabel?: string;
 };
@@ -18,6 +28,8 @@ type Props = {
 export function CalendarExtraFormFields({
   control,
   errors,
+  setValue,
+  getValues,
   idPrefix = "",
   titleLabel = "Título",
 }: Props) {
@@ -170,31 +182,49 @@ export function CalendarExtraFormFields({
             name="repeatWeekdays"
             control={control}
             render={({ field }) => (
-              <div className="flex flex-wrap gap-2">
-                {weekdays.map((weekday) => {
-                  const isSelected = field.value.includes(weekday.value);
-                  return (
-                    <button
-                      key={weekday.value}
-                      type="button"
-                      onClick={() => {
-                        if (isSelected) {
-                          field.onChange(field.value.filter((v) => v !== weekday.value));
-                          return;
-                        }
-                        field.onChange([...field.value, weekday.value].sort((a, b) => a - b));
-                      }}
-                      className={cn(
-                        "rounded-full border px-3 py-1 text-xs font-medium transition",
-                        isSelected
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-border text-muted-foreground hover:bg-muted"
-                      )}
-                    >
-                      {weekday.label}
-                    </button>
-                  );
-                })}
+              <div className="space-y-2">
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="h-8 text-xs"
+                    onClick={() => {
+                      const d = getValues("date");
+                      setValue("repeatEnabled", true, { shouldValidate: true });
+                      setValue("repeatWeekdays", [1, 2, 3, 4, 5], { shouldValidate: true });
+                      setValue("repeatUntil", fridayOfSameWorkWeek(d), { shouldValidate: true });
+                    }}
+                  >
+                    Seg–sex nesta semana
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {weekdays.map((weekday) => {
+                    const isSelected = field.value.includes(weekday.value);
+                    return (
+                      <button
+                        key={weekday.value}
+                        type="button"
+                        onClick={() => {
+                          if (isSelected) {
+                            field.onChange(field.value.filter((v) => v !== weekday.value));
+                            return;
+                          }
+                          field.onChange([...field.value, weekday.value].sort((a, b) => a - b));
+                        }}
+                        className={cn(
+                          "rounded-full border px-3 py-1 text-xs font-medium transition",
+                          isSelected
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border text-muted-foreground hover:bg-muted"
+                        )}
+                      >
+                        {weekday.label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             )}
           />

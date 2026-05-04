@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 
 import type { Appointment, Evolucao, Patient } from "@/lib/types";
 
@@ -50,6 +50,13 @@ async function fetchDashboardBundleWithSessionRecovery(): Promise<DashboardBundl
       if (refreshRes.ok) return await fetchDashboardBundle();
     }
     throw e;
+  }
+}
+
+/** Evita que `mutateAsync` rejeite após sucesso da API só porque o refetch pós-invalidate falhou. */
+function scheduleInvalidate(qc: QueryClient, tasks: Array<() => ReturnType<QueryClient["invalidateQueries"]>>) {
+  for (const t of tasks) {
+    void t().catch(() => undefined);
   }
 }
 
@@ -133,11 +140,12 @@ export function useAggregateEvoluco(from: string, to: string, enabled: boolean) 
 
 export function usePatientMutations() {
   const qc = useQueryClient();
-  const invalidate = async () => {
-    await qc.invalidateQueries({ queryKey: ["patients"] });
-    await qc.invalidateQueries({ queryKey: ["patient-bundle"] });
-    await qc.invalidateQueries({ queryKey: fisioKeys.dashboard });
-  };
+  const invalidate = () =>
+    scheduleInvalidate(qc, [
+      () => qc.invalidateQueries({ queryKey: ["patients"] }),
+      () => qc.invalidateQueries({ queryKey: ["patient-bundle"] }),
+      () => qc.invalidateQueries({ queryKey: fisioKeys.dashboard }),
+    ]);
 
   const createPatient = useMutation({
     mutationFn: apiCreatePatient,
@@ -158,12 +166,13 @@ export function usePatientMutations() {
 
 export function useAgendaMutations(from: string, to: string) {
   const qc = useQueryClient();
-  const invalidate = async () => {
-    await qc.invalidateQueries({ queryKey: ["appointments"] });
-    await qc.invalidateQueries({ queryKey: ["patient-bundle"] });
-    await qc.invalidateQueries({ queryKey: fisioKeys.dashboard });
-    await qc.invalidateQueries({ queryKey: fisioKeys.evolutionsAgg(from, to) });
-  };
+  const invalidate = () =>
+    scheduleInvalidate(qc, [
+      () => qc.invalidateQueries({ queryKey: ["appointments"] }),
+      () => qc.invalidateQueries({ queryKey: ["patient-bundle"] }),
+      () => qc.invalidateQueries({ queryKey: fisioKeys.dashboard }),
+      () => qc.invalidateQueries({ queryKey: fisioKeys.evolutionsAgg(from, to) }),
+    ]);
 
   const createAppointment = useMutation({
     mutationFn: (input: { body: Record<string, unknown>; allowOverlap?: boolean }) =>
@@ -185,11 +194,12 @@ export function useAgendaMutations(from: string, to: string) {
 
 export function useAnamneseMutations() {
   const qc = useQueryClient();
-  const invalidate = async () => {
-    await qc.invalidateQueries({ queryKey: ["anamneses"] });
-    await qc.invalidateQueries({ queryKey: ["patient-bundle"] });
-    await qc.invalidateQueries({ queryKey: fisioKeys.dashboard });
-  };
+  const invalidate = () =>
+    scheduleInvalidate(qc, [
+      () => qc.invalidateQueries({ queryKey: ["anamneses"] }),
+      () => qc.invalidateQueries({ queryKey: ["patient-bundle"] }),
+      () => qc.invalidateQueries({ queryKey: fisioKeys.dashboard }),
+    ]);
   const createAnam = useMutation({ mutationFn: apiCreateAnamnese, onSuccess: invalidate });
   const replaceAnam = useMutation({
     mutationFn: ({ id, body }: { id: number; body: Record<string, unknown> }) =>
@@ -202,13 +212,14 @@ export function useAnamneseMutations() {
 
 export function useEvolucoMutations(evFrom: string, evTo: string) {
   const qc = useQueryClient();
-  const invalidate = async () => {
-    await qc.invalidateQueries({ queryKey: ["evolutions"] });
-    await qc.invalidateQueries({ queryKey: ["patient-bundle"] });
-    await qc.invalidateQueries({ queryKey: fisioKeys.evolutionsAgg(evFrom, evTo) });
-    await qc.invalidateQueries({ queryKey: fisioKeys.dashboard });
-    await qc.invalidateQueries({ queryKey: ["appointments"] });
-  };
+  const invalidate = () =>
+    scheduleInvalidate(qc, [
+      () => qc.invalidateQueries({ queryKey: ["evolutions"] }),
+      () => qc.invalidateQueries({ queryKey: ["patient-bundle"] }),
+      () => qc.invalidateQueries({ queryKey: fisioKeys.evolutionsAgg(evFrom, evTo) }),
+      () => qc.invalidateQueries({ queryKey: fisioKeys.dashboard }),
+      () => qc.invalidateQueries({ queryKey: ["appointments"] }),
+    ]);
   const createEvo = useMutation({ mutationFn: apiCreateEvolution, onSuccess: invalidate });
   const replaceEvo = useMutation({
     mutationFn: ({ id, body }: { id: number; body: Record<string, unknown> }) =>

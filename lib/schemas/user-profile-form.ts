@@ -10,6 +10,8 @@ export const userProfileFormSchema = z.object({
   professionalTitle: z.string().trim().max(80, "Máximo de 80 caracteres"),
   notes: z.string().trim().max(500, "Máximo de 500 caracteres"),
   photoDataUrl: z.string().max(600_000),
+  /** Imagem da assinatura para PDF (data URL), opcional. */
+  signatureDataUrl: z.string().max(600_000),
 });
 
 export type UserProfileFormValues = z.infer<typeof userProfileFormSchema>;
@@ -23,5 +25,6 @@ export function emptyUserProfileForm(): UserProfileFormValues {
     professionalTitle: "",
     notes: "",
     photoDataUrl: "",
+    signatureDataUrl: "",
   };
 }

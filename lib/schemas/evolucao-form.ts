@@ -8,7 +8,6 @@ export const evolucaoFormSchema = z.object({
   dataSessao: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Informe uma data válida"),
-  tipoSessao: z.string().min(1, "Selecione o tipo de sessão"),
   sinaisVitaisInicio: text(500),
   sinaisVitaisFim: text(500),
   objetivosSessao: text(4000).min(1, "Informe os objetivos da sessão"),
@@ -34,7 +33,6 @@ export function emptyEvolucaoForm(pacienteIdFromUrl: string | null): EvolucaoFor
   return {
     patientId: pacienteIdFromUrl ?? "",
     dataSessao: toLocalDateString(new Date()),
-    tipoSessao: "",
     sinaisVitaisInicio: "",
     sinaisVitaisFim: "",
     objetivosSessao: "",

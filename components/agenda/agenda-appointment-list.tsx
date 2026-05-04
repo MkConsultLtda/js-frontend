@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { Appointment, Patient } from "@/lib/types";
+import { isSessionAppointment } from "@/lib/types";
 import type { ClinicSettings } from "@/lib/clinic-settings";
 import { parseLocalDate } from "@/lib/date-utils";
 import { formatAddressOneLine } from "@/lib/patient-utils";
@@ -32,6 +33,7 @@ import {
   MessageCircle,
   Search,
   Trash2,
+  TrendingUp,
   User,
 } from "lucide-react";
 
@@ -301,6 +303,17 @@ export function AgendaAppointmentList({
                             Mapa
                           </a>
                         </Button>
+                        {patient && isSessionAppointment(appointment) ? (
+                          <Button variant="outline" size="sm" asChild className="gap-1">
+                            <Link
+                              href={`/evolucao?pacienteId=${patient.id}&dataSessao=${encodeURIComponent(appointment.date)}`}
+                              title="Abrir evolução para esta sessão"
+                            >
+                              <TrendingUp className="h-4 w-4" />
+                              Evolução
+                            </Link>
+                          </Button>
+                        ) : null}
                         <Button
                           variant="outline"
                           size="sm"
