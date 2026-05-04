@@ -57,7 +57,7 @@ describe("fetchAuthMe", () => {
       }),
     );
     await expect(fetchAuthMe()).rejects.toMatchObject({
-      message: "Não foi possível carregar o perfil da conta.",
+      message: "Não foi possível obter os dados do perfil. Verifique a conexão ou autentique-se novamente.",
       status: 500,
     });
   });
@@ -137,7 +137,7 @@ describe("patchAuthProfile", () => {
         photoDataUrl: "",
       }),
     ).rejects.toMatchObject({
-      message: "Não foi possível salvar o perfil na API.",
+      message: "Não foi possível gravar as alterações do perfil. Tente novamente em instantes.",
       status: 502,
     });
   });
