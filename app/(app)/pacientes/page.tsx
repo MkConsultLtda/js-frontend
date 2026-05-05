@@ -146,7 +146,7 @@ export default function PacientesPage() {
   };
 
   const dialogClass =
-    "max-h-[90vh] overflow-y-auto w-[95vw] sm:max-w-2xl gap-0 py-6";
+    "max-h-[min(92dvh,calc(100dvh-2rem))] overflow-y-auto overscroll-y-contain w-[95vw] sm:max-w-2xl gap-0 py-6";
 
   return (
     <div className="p-8 space-y-6">
