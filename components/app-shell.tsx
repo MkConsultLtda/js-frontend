@@ -82,7 +82,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           <span className="min-w-0 truncate font-semibold">FisioSystem</span>
         </header>
 
-        <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">{children}</main>
+        <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden pb-[max(0.75rem,env(safe-area-inset-bottom))] [-webkit-overflow-scrolling:touch]">
+          {children}
+        </main>
       </div>
 
       <div

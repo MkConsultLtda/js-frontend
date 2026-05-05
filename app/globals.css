@@ -125,5 +125,7 @@
   }
   body {
     @apply bg-background text-foreground;
+    /* Evita cantos “presos” ao saltar entre barras do browser em mobile */
+    min-height: 100dvh;
   }
 }
