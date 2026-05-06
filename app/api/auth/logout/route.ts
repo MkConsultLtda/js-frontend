@@ -8,7 +8,7 @@ import {
 } from "@/lib/server-auth";
 import { resolveAccessTokenForBackendProxy, tryRecoverFromUnauthorizedWithRefresh } from "@/lib/server/backend-access";
 
-export async function POST() {
+export async function POST(req: Request) {
   const session = await resolveAccessTokenForBackendProxy();
   if (session.ok) {
     let upstream = await fetch(`${backendApiUrl()}/auth/logout`, {
@@ -34,14 +34,14 @@ export async function POST() {
   const res = NextResponse.json({ ok: true });
   res.cookies.set(ACCESS_TOKEN_COOKIE_NAME, "", {
     httpOnly: true,
-    secure: secureCookie(),
+    secure: secureCookie(req),
     sameSite: "lax",
     path: "/",
     maxAge: 0,
   });
   res.cookies.set(REFRESH_TOKEN_COOKIE_NAME, "", {
     httpOnly: true,
-    secure: secureCookie(),
+    secure: secureCookie(req),
     sameSite: "lax",
     path: "/",
     maxAge: 0,
