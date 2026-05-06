@@ -26,6 +26,7 @@ import { AgendaMonthView } from "@/components/agenda/agenda-month-view";
 import { AgendaWeekView } from "@/components/agenda/agenda-week-view";
 import { CalendarExtraFormFields } from "@/components/agenda/calendar-extra-form-fields";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { formatUserFacingApiError } from "@/lib/api/backend-client";
 import {
   dtoAgendaPayloadSession,
   emptyHolidayList,
@@ -376,7 +377,9 @@ export default function AgendaPage() {
           createForm.reset(emptyAppointmentForm(selectedDate));
           toast.success("Agendamento criado.");
         } catch (err) {
-          toast.error(err instanceof Error ? err.message : "Não foi possível criar o agendamento.");
+          toast.error(
+            formatUserFacingApiError(err, "Não foi possível criar o agendamento."),
+          );
         }
       },
     });
@@ -441,7 +444,7 @@ export default function AgendaPage() {
                 : "Evento adicionado.",
           );
         } catch (err) {
-          toast.error(err instanceof Error ? err.message : "Não foi possível salvar.");
+          toast.error(formatUserFacingApiError(err, "Não foi possível salvar."));
         }
       },
     });
@@ -487,7 +490,7 @@ export default function AgendaPage() {
           editForm.reset(emptyAppointmentForm(selectedDate));
           toast.success("Agendamento atualizado.");
         } catch (err) {
-          toast.error(err instanceof Error ? err.message : "Não foi possível atualizar.");
+          toast.error(formatUserFacingApiError(err, "Não foi possível atualizar."));
         }
       },
     });
@@ -527,7 +530,7 @@ export default function AgendaPage() {
           editExtraForm.reset(emptyCalendarExtraForm(selectedDate));
           toast.success("Registro atualizado.");
         } catch (err) {
-          toast.error(err instanceof Error ? err.message : "Não foi possível atualizar.");
+          toast.error(formatUserFacingApiError(err, "Não foi possível atualizar."));
         }
       },
     });
@@ -582,7 +585,7 @@ export default function AgendaPage() {
             : "Marcado como pago.",
         );
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Não foi possível atualizar pagamento.");
+        toast.error(formatUserFacingApiError(err, "Não foi possível atualizar pagamento."));
       }
     })();
   };
@@ -818,7 +821,7 @@ export default function AgendaPage() {
             await deleteAppointment.mutateAsync(appointmentToDeleteId);
             toast.success("Registro excluído.");
           } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Não foi possível excluir.");
+            toast.error(formatUserFacingApiError(err, "Não foi possível excluir."));
             throw err;
           }
         }}

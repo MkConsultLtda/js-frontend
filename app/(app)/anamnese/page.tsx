@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { FormFieldError } from "@/components/form-field-error";
+import { formatUserFacingApiError } from "@/lib/api/backend-client";
 import { anamneseRequestBody } from "@/lib/api/fisio-api";
 import {
   useAggregateAnamneses,
@@ -137,7 +138,7 @@ function AnamnesePageContent() {
       setIsCreating(false);
       reset(emptyAnamneseForm(pacienteIdParam));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Não foi possível salvar.");
+      toast.error(formatUserFacingApiError(err, "Não foi possível salvar."));
     }
   };
 
@@ -327,7 +328,7 @@ function AnamnesePageContent() {
             await deleteAnam.mutateAsync(anamneseToDeleteId);
             toast.success("Anamnese removida.");
           } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Não foi possível excluir.");
+            toast.error(formatUserFacingApiError(err, "Não foi possível excluir."));
             throw err;
           }
         }}

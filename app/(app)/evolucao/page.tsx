@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { FormFieldError } from "@/components/form-field-error";
+import { formatUserFacingApiError } from "@/lib/api/backend-client";
 import { evolucaoRequestBody } from "@/lib/api/fisio-api";
 import {
   useAggregateEvoluco,
@@ -142,7 +143,7 @@ function EvolucaoPageContent() {
       reset(emptyEvolucaoForm(pacienteIdParam));
       toast.success("Evolução salva.");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Não foi possível salvar.");
+      toast.error(formatUserFacingApiError(err, "Não foi possível salvar."));
     }
   };
 
@@ -548,7 +549,7 @@ function EvolucaoPageContent() {
             await deleteEvo.mutateAsync(evolucaoToDeleteId);
             toast.success("Evolução removida.");
           } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Não foi possível excluir.");
+            toast.error(formatUserFacingApiError(err, "Não foi possível excluir."));
             throw err;
           }
         }}

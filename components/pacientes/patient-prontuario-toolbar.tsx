@@ -7,6 +7,7 @@ import { FileDown, Paperclip, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { formatUserFacingApiError } from "@/lib/api/backend-client";
 import {
   apiDeleteAttachment,
   apiUploadAttachment,
@@ -119,7 +120,7 @@ export function PatientProntuarioToolbar({
         toast.success("Upload concluído.");
       } catch (err) {
         toast.error(
-          err instanceof Error ? err.message : "Não foi possível enviar o arquivo.",
+          formatUserFacingApiError(err, "Não foi possível enviar o arquivo."),
         );
       }
     })();
@@ -130,7 +131,7 @@ export function PatientProntuarioToolbar({
       await deleteMutation.mutateAsync(attachmentId);
       toast.message("Anexo removido.");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Não foi possível remover.");
+      toast.error(formatUserFacingApiError(err, "Não foi possível remover."));
     }
   };
 
