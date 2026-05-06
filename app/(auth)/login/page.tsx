@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { formatUserFacingApiError } from "@/lib/api/backend-client";
+import { formatUserFacingApiError, type ApiErrorBody } from "@/lib/api/backend-client";
 
 function safeRedirectFromQuery(): string {
   if (typeof window === "undefined") return "/dashboard";
@@ -33,10 +33,12 @@ function LoginForm() {
       });
 
       if (!res.ok) {
-        const err = (await res.json().catch(() => null)) as
-          | { message?: string }
-          | null;
-        throw new Error(err?.message || "Falha no login");
+        const payload = (await res.json().catch(() => null)) as ApiErrorBody | null;
+        const err = new Error(
+          payload?.message?.trim() || "Falha no login.",
+        ) as Error & { body?: ApiErrorBody };
+        err.body = payload ?? undefined;
+        throw err;
       }
 
       const target = safeRedirectFromQuery();
