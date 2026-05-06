@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { FileDown, Paperclip, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import {
   apiDeleteAttachment,
   apiUploadAttachment,
@@ -96,6 +97,7 @@ export function PatientProntuarioToolbar({
   );
 
   const fileRef = React.useRef<HTMLInputElement>(null);
+  const [attachmentToDeleteId, setAttachmentToDeleteId] = React.useState<number | null>(null);
 
   const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -210,7 +212,7 @@ export function PatientProntuarioToolbar({
                       variant="ghost"
                       size="sm"
                       className="text-destructive"
-                      onClick={() => handleDelete(a.id)}
+                      onClick={() => setAttachmentToDeleteId(a.id)}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -277,6 +279,21 @@ export function PatientProntuarioToolbar({
           </div>
         </div>
       </CardContent>
+      <ConfirmDialog
+        open={attachmentToDeleteId !== null}
+        onOpenChange={(open) => {
+          if (!open) setAttachmentToDeleteId(null);
+        }}
+        title="Excluir anexo?"
+        description="Essa ação remove o anexo do prontuário."
+        confirmLabel="Excluir anexo"
+        variant="destructive"
+        onConfirm={async () => {
+          if (attachmentToDeleteId == null) return;
+          await handleDelete(attachmentToDeleteId);
+          setAttachmentToDeleteId(null);
+        }}
+      />
     </Card>
   );
 }

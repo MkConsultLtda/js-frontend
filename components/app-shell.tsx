@@ -3,6 +3,7 @@
 import { startTransition, useEffect, useState, type ReactNode } from "react";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { SessionKeepAlive } from "@/components/session-keep-alive";
 import { SidebarNav } from "@/components/sidebar-nav";
 import { cn } from "@/lib/utils";
@@ -87,27 +88,11 @@ export function AppShell({ children }: { children: ReactNode }) {
         </main>
       </div>
 
-      <div
-        className={cn("fixed inset-0 z-50 md:hidden", mobileOpen ? "" : "pointer-events-none")}
-        aria-hidden={!mobileOpen}
-      >
-        <button
-          type="button"
-          className={cn(
-            "absolute inset-0 bg-black/50 transition-opacity",
-            mobileOpen ? "opacity-100" : "opacity-0"
-          )}
-          aria-label="Fechar menu"
-          tabIndex={mobileOpen ? 0 : -1}
-          onClick={() => setMobileOpen(false)}
-        />
-
-        <aside
+      <Dialog open={mobileOpen} onOpenChange={setMobileOpen}>
+        <DialogContent
+          showCloseButton={false}
           id="mobile-navigation"
-          className={cn(
-            "absolute inset-y-0 left-0 flex w-[min(18rem,88vw)] flex-col bg-sidebar shadow-xl transition-transform duration-200 ease-out",
-            mobileOpen ? "translate-x-0" : "-translate-x-full"
-          )}
+          className="md:hidden left-0 top-0 h-dvh max-h-dvh w-[min(18rem,88vw)] translate-x-0 translate-y-0 rounded-none border-r p-0 sm:left-0 sm:top-0 sm:h-dvh sm:w-[min(18rem,88vw)] sm:max-h-dvh sm:translate-x-0 sm:translate-y-0"
         >
           <SidebarNav
             onNavigate={() => setMobileOpen(false)}
@@ -124,8 +109,8 @@ export function AppShell({ children }: { children: ReactNode }) {
               </Button>
             }
           />
-        </aside>
-      </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
