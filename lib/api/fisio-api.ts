@@ -1,5 +1,11 @@
 import { backendApiHref, backendJson } from "@/lib/api/backend-client";
-import { brDateToIsoDate, formatIsoDateToBR, isoDateFromJsonField, toLocalDateString } from "@/lib/date-utils";
+import {
+  brDateToIsoDate,
+  formatIsoDateToBR,
+  isoDateFromJsonField,
+  normalizeTimeForInput,
+  toLocalDateString,
+} from "@/lib/date-utils";
 import type { AnamneseFormValues } from "@/lib/schemas/anamnese-form";
 import type { EvolucaoFormValues } from "@/lib/schemas/evolucao-form";
 import type { PatientCreateFormValues } from "@/lib/schemas/patient-form";
@@ -144,11 +150,25 @@ export function mapAnamneseFromApi(raw: AnamneseDto): Anamnese {
 /** dataSessao em yyyy-MM-dd para comparações; exibição com formatIsoDateToBR. */
 export function mapEvolucaoFromApi(raw: EvolucaoDto): Evolucao {
   const dataSessao = isoDateFromJsonField(raw.dataSessao);
+  const horaRaw = raw.horaAtendimento;
+  let horaNorm = "";
+  if (horaRaw != null && horaRaw !== "") {
+    if (Array.isArray(horaRaw) && horaRaw.length >= 2) {
+      const h = Number(horaRaw[0]);
+      const mi = Number(horaRaw[1]);
+      if (Number.isFinite(h) && Number.isFinite(mi)) {
+        horaNorm = normalizeTimeForInput(`${h}:${mi}`);
+      }
+    } else if (typeof horaRaw === "string") {
+      horaNorm = normalizeTimeForInput(horaRaw);
+    }
+  }
   return {
     id: Number(raw.id),
     patientId: Number(raw.patientId),
     patientName: String(raw.patientName ?? ""),
     dataSessao,
+    horaAtendimento: horaNorm || null,
     tipoSessao: String(raw.tipoSessao ?? ""),
     sinaisVitaisInicio:
       raw.sinaisVitaisInicio != null ? String(raw.sinaisVitaisInicio) : undefined,
@@ -526,9 +546,13 @@ export function anamneseRequestBody(
 }
 
 export function evolucaoRequestBody(values: EvolucaoFormValues): Record<string, unknown> {
+  const t = values.horaAtendimento.trim();
+  const horaAtendimento =
+    t === "" ? null : normalizeTimeForInput(t) || null;
   return {
     patientId: Number(values.patientId),
     dataSessao: values.dataSessao,
+    horaAtendimento,
     tipoSessao: "-",
     sinaisVitaisInicio: values.sinaisVitaisInicio.trim() || "",
     sinaisVitaisFim: values.sinaisVitaisFim.trim() || "",
