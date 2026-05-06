@@ -18,9 +18,11 @@ const buildCsp = (scriptDirectives: string[]) =>
 /** Headers de segurança para produção e operação em Vercel/Node */
 const nextConfig: NextConfig = {
   async headers() {
+    // Em páginas HTML o Next.js/React injetam scripts inline (bootstrap, Flight/RSC).
+    // script-src só com 'self' quebra hidratação em produção (login sem JS → reload).
     const baselineScriptSrc =
       process.env.NODE_ENV === "production"
-        ? ["'self'"]
+        ? ["'self'", "'unsafe-inline'"]
         : ["'self'", "'unsafe-inline'", "'unsafe-eval'"];
 
     const cspBySource: { source: string; csp: string }[] = [

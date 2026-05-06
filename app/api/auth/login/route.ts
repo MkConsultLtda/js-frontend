@@ -7,6 +7,7 @@ import {
   backendApiUrl,
   secureCookie,
 } from "@/lib/server-auth";
+import { forwardedForHeaders } from "@/lib/server/forward-client-ip";
 
 type LoginResponse = {
   accessToken: string;
@@ -40,7 +41,10 @@ export async function POST(req: Request) {
   try {
     upstream = await fetch(loginUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...forwardedForHeaders(req),
+      },
       body: JSON.stringify(body),
       cache: "no-store",
     });
