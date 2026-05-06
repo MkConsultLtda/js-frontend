@@ -85,14 +85,14 @@ export async function POST(req: Request) {
 
   res.cookies.set(ACCESS_TOKEN_COOKIE_NAME, data.accessToken, {
     httpOnly: true,
-    secure: secureCookie(),
+    secure: secureCookie(req),
     sameSite: "lax",
     path: "/",
     maxAge,
   });
   res.cookies.set(REFRESH_TOKEN_COOKIE_NAME, data.refreshToken, {
     httpOnly: true,
-    secure: secureCookie(),
+    secure: secureCookie(req),
     sameSite: "lax",
     path: "/",
     maxAge: 60 * 60 * 24 * 7,

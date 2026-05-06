@@ -20,7 +20,7 @@ type ApiErrorResponse = {
   details?: unknown[];
 };
 
-export async function POST() {
+export async function POST(req: Request) {
   const store = await cookies();
   const refreshToken = store.get(REFRESH_TOKEN_COOKIE_NAME)?.value;
   if (!refreshToken) {
@@ -44,14 +44,14 @@ export async function POST() {
     const res = NextResponse.json(error, { status: upstream.status });
     res.cookies.set(ACCESS_TOKEN_COOKIE_NAME, "", {
       httpOnly: true,
-      secure: secureCookie(),
+      secure: secureCookie(req),
       sameSite: "lax",
       path: "/",
       maxAge: 0,
     });
     res.cookies.set(REFRESH_TOKEN_COOKIE_NAME, "", {
       httpOnly: true,
-      secure: secureCookie(),
+      secure: secureCookie(req),
       sameSite: "lax",
       path: "/",
       maxAge: 0,
@@ -65,14 +65,14 @@ export async function POST() {
 
   res.cookies.set(ACCESS_TOKEN_COOKIE_NAME, data.accessToken, {
     httpOnly: true,
-    secure: secureCookie(),
+    secure: secureCookie(req),
     sameSite: "lax",
     path: "/",
     maxAge,
   });
   res.cookies.set(REFRESH_TOKEN_COOKIE_NAME, data.refreshToken, {
     httpOnly: true,
-    secure: secureCookie(),
+    secure: secureCookie(req),
     sameSite: "lax",
     path: "/",
     maxAge: 60 * 60 * 24 * 7,

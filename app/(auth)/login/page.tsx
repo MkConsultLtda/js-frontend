@@ -42,7 +42,7 @@ function LoginForm() {
       }
 
       const target = safeRedirectFromQuery();
-      // Navegação completa: garante que o pedido GET seguinte (middleware) já inclui os cookies HttpOnly.
+      // Navegação completa: garante que o GET seguinte (proxy/borda) já envia os cookies HttpOnly.
       // router.replace + refresh pode correr antes do browser consolidar Set-Cookie → loop /login ↔ /dashboard.
       window.location.assign(target);
     } catch (err) {
