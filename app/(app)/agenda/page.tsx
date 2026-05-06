@@ -26,6 +26,7 @@ import { AgendaMonthView } from "@/components/agenda/agenda-month-view";
 import { AgendaWeekView } from "@/components/agenda/agenda-week-view";
 import { CalendarExtraFormFields } from "@/components/agenda/calendar-extra-form-fields";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { formatUserFacingApiError } from "@/lib/api/backend-client";
 import {
   dtoAgendaPayloadSession,
   emptyHolidayList,
@@ -101,10 +102,18 @@ export default function AgendaPage() {
     [currentDate, viewMode],
   );
 
-  const { data: patientPage } = usePatientsSearch("");
+  const {
+    data: patientPage,
+    isLoading: isPatientsLoading,
+    error: patientsError,
+  } = usePatientsSearch("");
   const patients = patientPage?.content ?? [];
 
-  const { data: appointments = [] } = useAppointmentRange(range.from, range.to);
+  const {
+    data: appointments = [],
+    isLoading: isAppointmentsLoading,
+    error: appointmentsError,
+  } = useAppointmentRange(range.from, range.to);
 
   const evWindow = React.useMemo(
     () => ({
@@ -114,13 +123,21 @@ export default function AgendaPage() {
     [currentDate],
   );
 
-  const { data: evolucoes = [] } = useAggregateEvoluco(evWindow.from, evWindow.to, true);
+  const {
+    data: evolucoes = [],
+    isLoading: isEvolucoesLoading,
+    error: evolucoesError,
+  } = useAggregateEvoluco(evWindow.from, evWindow.to, true);
 
   const {
     createAppointment,
     replaceAppointment,
     deleteAppointment,
   } = useAgendaMutations(range.from, range.to);
+  const isMutatingAgenda =
+    createAppointment.isPending ||
+    replaceAppointment.isPending ||
+    deleteAppointment.isPending;
 
   const holidays = React.useMemo(() => emptyHolidayList(), []);
 
@@ -360,7 +377,9 @@ export default function AgendaPage() {
           createForm.reset(emptyAppointmentForm(selectedDate));
           toast.success("Agendamento criado.");
         } catch (err) {
-          toast.error(err instanceof Error ? err.message : "Não foi possível criar o agendamento.");
+          toast.error(
+            formatUserFacingApiError(err, "Não foi possível criar o agendamento."),
+          );
         }
       },
     });
@@ -425,7 +444,7 @@ export default function AgendaPage() {
                 : "Evento adicionado.",
           );
         } catch (err) {
-          toast.error(err instanceof Error ? err.message : "Não foi possível salvar.");
+          toast.error(formatUserFacingApiError(err, "Não foi possível salvar."));
         }
       },
     });
@@ -471,7 +490,7 @@ export default function AgendaPage() {
           editForm.reset(emptyAppointmentForm(selectedDate));
           toast.success("Agendamento atualizado.");
         } catch (err) {
-          toast.error(err instanceof Error ? err.message : "Não foi possível atualizar.");
+          toast.error(formatUserFacingApiError(err, "Não foi possível atualizar."));
         }
       },
     });
@@ -511,7 +530,7 @@ export default function AgendaPage() {
           editExtraForm.reset(emptyCalendarExtraForm(selectedDate));
           toast.success("Registro atualizado.");
         } catch (err) {
-          toast.error(err instanceof Error ? err.message : "Não foi possível atualizar.");
+          toast.error(formatUserFacingApiError(err, "Não foi possível atualizar."));
         }
       },
     });
@@ -566,7 +585,7 @@ export default function AgendaPage() {
             : "Marcado como pago.",
         );
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Não foi possível atualizar pagamento.");
+        toast.error(formatUserFacingApiError(err, "Não foi possível atualizar pagamento."));
       }
     })();
   };
@@ -706,7 +725,9 @@ export default function AgendaPage() {
                     idPrefix="create-"
                   />
                   <DialogFooter className="gap-2 sm:gap-0">
-                    <Button type="submit">Criar</Button>
+                    <Button type="submit" disabled={isMutatingAgenda}>
+                      {createAppointment.isPending ? "Criando…" : "Criar"}
+                    </Button>
                   </DialogFooter>
                 </form>
               ) : (
@@ -723,7 +744,9 @@ export default function AgendaPage() {
                     titleLabel={createKind === "block" ? "Motivo do bloqueio" : "Título do evento"}
                   />
                   <DialogFooter className="gap-2 sm:gap-0">
-                    <Button type="submit">Adicionar</Button>
+                    <Button type="submit" disabled={isMutatingAgenda}>
+                      {createAppointment.isPending ? "Adicionando…" : "Adicionar"}
+                    </Button>
                   </DialogFooter>
                 </form>
               )}
@@ -735,6 +758,14 @@ export default function AgendaPage() {
       <AgendaColorLegend />
 
       <div className="space-y-6">
+        {(isPatientsLoading || isAppointmentsLoading || isEvolucoesLoading) && (
+          <p className="text-sm text-muted-foreground">Carregando agenda…</p>
+        )}
+        {(patientsError || appointmentsError || evolucoesError) && (
+          <p className="text-sm text-destructive">
+            Não foi possível carregar todos os dados da agenda. Verifique conexão e sessão.
+          </p>
+        )}
         {viewMode === "month" ? (
           <AgendaMonthView
             currentDate={currentDate}
@@ -790,7 +821,7 @@ export default function AgendaPage() {
             await deleteAppointment.mutateAsync(appointmentToDeleteId);
             toast.success("Registro excluído.");
           } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Não foi possível excluir.");
+            toast.error(formatUserFacingApiError(err, "Não foi possível excluir."));
             throw err;
           }
         }}
@@ -865,8 +896,12 @@ export default function AgendaPage() {
                     Excluir da agenda
                   </Button>
                 ) : null}
-                <Button type="submit" className="w-full sm:ml-auto sm:w-auto">
-                  Salvar alterações
+                <Button
+                  type="submit"
+                  className="w-full sm:ml-auto sm:w-auto"
+                  disabled={isMutatingAgenda}
+                >
+                  {replaceAppointment.isPending ? "Salvando…" : "Salvar alterações"}
                 </Button>
               </DialogFooter>
             </form>
@@ -894,8 +929,12 @@ export default function AgendaPage() {
                 >
                   Excluir da agenda
                 </Button>
-                <Button type="submit" className="w-full sm:ml-auto sm:w-auto">
-                  Salvar alterações
+                <Button
+                  type="submit"
+                  className="w-full sm:ml-auto sm:w-auto"
+                  disabled={isMutatingAgenda}
+                >
+                  {replaceAppointment.isPending ? "Salvando…" : "Salvar alterações"}
                 </Button>
               </DialogFooter>
             </form>

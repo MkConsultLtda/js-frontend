@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
+import { formatUserFacingApiError } from "@/lib/api/backend-client";
 
 function LoginForm() {
   const [email, setEmail] = useState("");
@@ -41,7 +42,7 @@ function LoginForm() {
       // router.replace + refresh pode correr antes do browser consolidar Set-Cookie → loop /login ↔ /dashboard.
       window.location.assign(target);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Não foi possível entrar.");
+      toast.error(formatUserFacingApiError(err, "Não foi possível entrar."));
     } finally {
       setLoading(false);
     }

@@ -8,6 +8,58 @@ export type ApiErrorBody = {
   details?: unknown[];
 };
 
+export type ApiClientError = Error & { status?: number; body?: ApiErrorBody };
+
+function firstApiValidationDetail(details: unknown[]): string | undefined {
+  for (const d of details) {
+    if (d != null && typeof d === "object") {
+      const o = d as Record<string, unknown>;
+      const field = o.field ?? o.path;
+      const msg = o.message;
+      if (typeof msg === "string" && msg.trim()) {
+        const label = typeof field === "string" && field ? `${field}: ` : "";
+        return `${label}${msg}`.trim();
+      }
+    }
+  }
+  return undefined;
+}
+
+function firstApiRuleCode(details: unknown[]): string | undefined {
+  for (const d of details) {
+    if (d != null && typeof d === "object") {
+      const o = d as Record<string, unknown>;
+      const ruleCode = o.ruleCode;
+      if (typeof ruleCode === "string" && ruleCode.trim()) {
+        return ruleCode.trim();
+      }
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Mensagem para toast/UI a partir de erro lançado por `backendJson` / `backendBlob`
+ * (inclui detalhe para `VALIDATION` e `BUSINESS_RULE` quando disponíveis).
+ */
+export function formatUserFacingApiError(error: unknown, fallbackMessage: string): string {
+  if (!(error instanceof Error)) return fallbackMessage;
+  const base = error.message.trim() || fallbackMessage;
+  const body = (error as ApiClientError).body;
+  const code = body?.code;
+  const details = body?.details;
+  if (!code || !Array.isArray(details) || details.length === 0) return base;
+  if (code === "VALIDATION") {
+    const extra = firstApiValidationDetail(details);
+    if (extra) return `${base} — ${extra}`;
+  }
+  if (code === "BUSINESS_RULE") {
+    const ruleCode = firstApiRuleCode(details);
+    if (ruleCode) return `${base} — regra: ${ruleCode}`;
+  }
+  return base;
+}
+
 function joinPath(parts: string[]): string {
   return parts
     .map((p) => p.replace(/^\/+|\/+$/g, ""))
@@ -47,7 +99,7 @@ export async function backendJson<T>(
   if (!res.ok) {
     const err = (await res.json().catch(() => null)) as ApiErrorBody | null;
     const message = err?.message ?? res.statusText ?? "Falha na requisição";
-    const e = new Error(message) as Error & { status?: number; body?: ApiErrorBody };
+    const e = new Error(message) as ApiClientError;
     e.status = res.status;
     e.body = err ?? undefined;
     throw e;
@@ -77,7 +129,7 @@ export async function backendBlob(path: string, init?: RequestInit): Promise<Blo
   if (!res.ok) {
     const err = (await res.json().catch(() => null)) as ApiErrorBody | null;
     const message = err?.message ?? res.statusText ?? "Falha na requisição";
-    const e = new Error(message) as Error & { status?: number; body?: ApiErrorBody };
+    const e = new Error(message) as ApiClientError;
     e.status = res.status;
     e.body = err ?? undefined;
     throw e;

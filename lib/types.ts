@@ -118,6 +118,8 @@ export interface PatientAttachment {
   sizeBytes: number;
   /** ISO-8601 */
   createdAt: string;
+  /** TTL da pré-assinada em segundos (quando a API enviar) */
+  urlExpiresInSeconds?: number;
   /** URL temporária (S3/R2 pré-assinada) quando a API fornecer */
   downloadUrl?: string;
   /** data:... legado/local; opcional quando usa só backend */

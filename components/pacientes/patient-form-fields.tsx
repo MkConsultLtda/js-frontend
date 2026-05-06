@@ -85,9 +85,10 @@ export function PatientFormRows({ form: formProp, idPrefix }: PatientFormProps) 
             placeholder="Opcional"
             className={fieldClass(!!err.cpf)}
             aria-invalid={!!err.cpf}
+            aria-describedby={err.cpf ? `${idPrefix}-cpf-error` : undefined}
             {...register("cpf")}
           />
-          <FormFieldError message={err.cpf?.message} />
+          <FormFieldError message={err.cpf?.message} id={`${idPrefix}-cpf-error`} />
         </div>
       </div>
 
@@ -104,9 +105,10 @@ export function PatientFormRows({ form: formProp, idPrefix }: PatientFormProps) 
             placeholder="Opcional"
             className={fieldClass(!!err.email)}
             aria-invalid={!!err.email}
+            aria-describedby={err.email ? `${idPrefix}-email-error` : undefined}
             {...register("email")}
           />
-          <FormFieldError message={err.email?.message} />
+          <FormFieldError message={err.email?.message} id={`${idPrefix}-email-error`} />
         </div>
       </div>
       <div className="grid grid-cols-4 items-start gap-4">
@@ -188,6 +190,7 @@ export function PatientFormRows({ form: formProp, idPrefix }: PatientFormProps) 
               id={`${idPrefix}-education`}
               className={fieldClass(!!err.educationLevel)}
               aria-invalid={!!err.educationLevel}
+              aria-describedby={err.educationLevel ? `${idPrefix}-education-error` : undefined}
             >
               <SelectValue placeholder="Selecione (opcional)" />
             </SelectTrigger>
@@ -218,6 +221,7 @@ export function PatientFormRows({ form: formProp, idPrefix }: PatientFormProps) 
               id={`${idPrefix}-referral`}
               className={fieldClass(!!err.referralSource)}
               aria-invalid={!!err.referralSource}
+              aria-describedby={err.referralSource ? `${idPrefix}-referral-error` : undefined}
             >
               <SelectValue placeholder="Selecione (opcional)" />
             </SelectTrigger>
@@ -280,9 +284,10 @@ export function PatientFormRows({ form: formProp, idPrefix }: PatientFormProps) 
             id={`${idPrefix}-log`}
             className={fieldClass(!!err.addressLogradouro)}
             aria-invalid={!!err.addressLogradouro}
+            aria-describedby={err.addressLogradouro ? `${idPrefix}-log-error` : undefined}
             {...register("addressLogradouro")}
           />
-          <FormFieldError message={err.addressLogradouro?.message} />
+          <FormFieldError message={err.addressLogradouro?.message} id={`${idPrefix}-log-error`} />
         </div>
       </div>
       <div className="grid grid-cols-4 items-start gap-4">
@@ -295,16 +300,17 @@ export function PatientFormRows({ form: formProp, idPrefix }: PatientFormProps) 
               id={`${idPrefix}-num`}
               className={fieldClass(!!err.addressNumero)}
               aria-invalid={!!err.addressNumero}
+              aria-describedby={err.addressNumero ? `${idPrefix}-num-error` : undefined}
               {...register("addressNumero")}
             />
-            <FormFieldError message={err.addressNumero?.message} />
+            <FormFieldError message={err.addressNumero?.message} id={`${idPrefix}-num-error`} />
           </div>
           <div className="sm:col-span-2 space-y-1">
             <Label htmlFor={`${idPrefix}-comp`} className="text-xs text-muted-foreground">
               Complemento (opcional)
             </Label>
             <Input id={`${idPrefix}-comp`} {...register("addressComplemento")} />
-            <FormFieldError message={err.addressComplemento?.message} />
+            <FormFieldError message={err.addressComplemento?.message} id={`${idPrefix}-comp-error`} />
           </div>
         </div>
       </div>
@@ -317,9 +323,10 @@ export function PatientFormRows({ form: formProp, idPrefix }: PatientFormProps) 
             id={`${idPrefix}-bairro`}
             className={fieldClass(!!err.addressBairro)}
             aria-invalid={!!err.addressBairro}
+            aria-describedby={err.addressBairro ? `${idPrefix}-bairro-error` : undefined}
             {...register("addressBairro")}
           />
-          <FormFieldError message={err.addressBairro?.message} />
+          <FormFieldError message={err.addressBairro?.message} id={`${idPrefix}-bairro-error`} />
         </div>
       </div>
       <div className="grid grid-cols-4 items-start gap-4">
@@ -331,9 +338,10 @@ export function PatientFormRows({ form: formProp, idPrefix }: PatientFormProps) 
               placeholder="Cidade"
               className={fieldClass(!!err.addressCidade)}
               aria-invalid={!!err.addressCidade}
+              aria-describedby={err.addressCidade ? `${idPrefix}-cidade-error` : undefined}
               {...register("addressCidade")}
             />
-            <FormFieldError message={err.addressCidade?.message} />
+            <FormFieldError message={err.addressCidade?.message} id={`${idPrefix}-cidade-error`} />
           </div>
           <div className="space-y-1">
             <Input
@@ -342,9 +350,10 @@ export function PatientFormRows({ form: formProp, idPrefix }: PatientFormProps) 
               maxLength={2}
               className={cn("uppercase", fieldClass(!!err.addressUf))}
               aria-invalid={!!err.addressUf}
+              aria-describedby={err.addressUf ? `${idPrefix}-uf-error` : undefined}
               {...register("addressUf")}
             />
-            <FormFieldError message={err.addressUf?.message} />
+            <FormFieldError message={err.addressUf?.message} id={`${idPrefix}-uf-error`} />
           </div>
         </div>
       </div>

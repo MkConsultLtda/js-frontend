@@ -6,6 +6,7 @@ import {
   type FieldErrors,
   type UseFormGetValues,
   type UseFormSetValue,
+  useWatch,
 } from "react-hook-form";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -33,6 +34,7 @@ export function CalendarExtraFormFields({
   idPrefix = "",
   titleLabel = "Título",
 }: Props) {
+  const isAllDay = useWatch({ control, name: "isAllDay" });
   const weekdays = [
     { label: "Dom", value: 0 },
     { label: "Seg", value: 1 },
@@ -58,6 +60,8 @@ export function CalendarExtraFormFields({
                 id={`${idPrefix}title`}
                 placeholder="Ex.: Almoço, Reunião, Trabalho fixo"
                 className={cn(errors.title && "border-destructive")}
+                aria-invalid={!!errors.title}
+                aria-describedby={errors.title ? `${idPrefix}title-error` : undefined}
                 {...field}
               />
             )}
@@ -79,6 +83,8 @@ export function CalendarExtraFormFields({
                 id={`${idPrefix}date`}
                 type="date"
                 className={cn(errors.date && "border-destructive")}
+                aria-invalid={!!errors.date}
+                aria-describedby={errors.date ? `${idPrefix}date-error` : undefined}
                 {...field}
               />
             )}
@@ -100,6 +106,15 @@ export function CalendarExtraFormFields({
                 id={`${idPrefix}time`}
                 type="time"
                 className={cn(errors.time && "border-destructive")}
+                disabled={isAllDay}
+                aria-invalid={!!errors.time}
+                aria-describedby={
+                  errors.time
+                    ? `${idPrefix}time-error`
+                    : isAllDay
+                      ? `${idPrefix}time-disabled-hint`
+                      : undefined
+                }
                 {...field}
               />
             )}
@@ -121,6 +136,15 @@ export function CalendarExtraFormFields({
                 id={`${idPrefix}end-time`}
                 type="time"
                 className={cn(errors.endTime && "border-destructive")}
+                disabled={isAllDay}
+                aria-invalid={!!errors.endTime}
+                aria-describedby={
+                  errors.endTime
+                    ? `${idPrefix}end-time-error`
+                    : isAllDay
+                      ? `${idPrefix}time-disabled-hint`
+                      : undefined
+                }
                 {...field}
               />
             )}
@@ -129,6 +153,11 @@ export function CalendarExtraFormFields({
           <p className="text-[11px] text-muted-foreground">
             Para bloquear o dia inteiro, marque a opção abaixo.
           </p>
+          {isAllDay ? (
+            <p id={`${idPrefix}time-disabled-hint`} className="text-[11px] text-muted-foreground">
+              Horários desabilitados porque o evento está marcado como dia inteiro.
+            </p>
+          ) : null}
         </div>
       </div>
 
@@ -245,6 +274,8 @@ export function CalendarExtraFormFields({
                   id={`${idPrefix}repeat-until`}
                   type="date"
                   className={cn(errors.repeatUntil && "border-destructive")}
+                  aria-invalid={!!errors.repeatUntil}
+                  aria-describedby={errors.repeatUntil ? `${idPrefix}repeat-until-error` : undefined}
                   {...field}
                 />
               )}
