@@ -34,13 +34,32 @@ export async function POST(req: Request) {
     );
   }
   const body = parsed.data;
+  const loginUrl = `${backendApiUrl()}/auth/login`;
 
-  const upstream = await fetch(`${backendApiUrl()}/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-    cache: "no-store",
-  });
+  let upstream: Response;
+  try {
+    upstream = await fetch(loginUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      cache: "no-store",
+    });
+  } catch (cause) {
+    const message =
+      cause instanceof Error
+        ? cause.message
+        : "Falha de rede ao contactar o servidor da API.";
+    console.error("[auth/login] upstream unreachable:", loginUrl, cause);
+    return NextResponse.json(
+      {
+        code: "SERVICE_UNAVAILABLE",
+        message:
+          "Não foi possível contactar o backend. Confirme que a API está a correr e que BACKEND_API_URL no Next aponta para o Spring (ex.: http://localhost:8080/v1).",
+        details: [{ message }],
+      },
+      { status: 503 },
+    );
+  }
 
   if (!upstream.ok) {
     const error =
@@ -50,6 +69,17 @@ export async function POST(req: Request) {
   }
 
   const data = (await upstream.json()) as LoginResponse;
+  if (!data.accessToken?.trim() || !data.refreshToken?.trim()) {
+    console.error("[auth/login] token em falta na resposta JSON do backend.");
+    return NextResponse.json(
+      {
+        code: "INVALID_RESPONSE",
+        message: "Resposta inválida do servidor de autenticação (tokens em falta).",
+        details: [],
+      },
+      { status: 502 },
+    );
+  }
   const res = NextResponse.json({ ok: true });
   const maxAge = Math.max(60, data.expiresIn || 900);
 
