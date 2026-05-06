@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 
 import {
   ACCESS_TOKEN_COOKIE_NAME,
@@ -19,8 +20,20 @@ type ApiErrorResponse = {
   details?: unknown[];
 };
 
+const loginBodySchema = z.object({
+  email: z.string().email().max(320),
+  password: z.string().min(1).max(120),
+});
+
 export async function POST(req: Request) {
-  const body = await req.json();
+  const parsed = loginBodySchema.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) {
+    return NextResponse.json(
+      { code: "VALIDATION", message: "Dados de entrada inválidos", details: parsed.error.issues },
+      { status: 400 },
+    );
+  }
+  const body = parsed.data;
 
   const upstream = await fetch(`${backendApiUrl()}/auth/login`, {
     method: "POST",
