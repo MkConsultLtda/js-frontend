@@ -322,7 +322,7 @@ export default function PacienteProntuarioPage() {
                   className="flex justify-between gap-4 border-b border-border/60 pb-2 last:border-0"
                 >
                   <span>
-                    {a.date} às {a.time}
+                    {formatIsoDateToBR(a.date)} às {a.time}
                   </span>
                   <span className="text-muted-foreground">{a.type}</span>
                 </li>

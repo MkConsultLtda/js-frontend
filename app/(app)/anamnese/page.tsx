@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { FormFieldError } from "@/components/form-field-error";
+import { formatUserFacingApiError } from "@/lib/api/backend-client";
 import { anamneseRequestBody } from "@/lib/api/fisio-api";
 import {
   useAggregateAnamneses,
@@ -62,9 +63,17 @@ function AnamnesePageContent() {
   const searchParams = useSearchParams();
   const pacienteIdParam = searchParams.get("pacienteId");
 
-  const { data: patientPage } = usePatientsSearch("");
+  const {
+    data: patientPage,
+    isLoading: isPatientsLoading,
+    error: patientsError,
+  } = usePatientsSearch("");
   const patients = patientPage?.content ?? [];
-  const { data: anamneses = [] } = useAggregateAnamneses(true);
+  const {
+    data: anamneses = [],
+    isLoading: isAnamnesesLoading,
+    error: anamnesesError,
+  } = useAggregateAnamneses(true);
   const { createAnam, replaceAnam, deleteAnam } = useAnamneseMutations();
 
   const [isCreating, setIsCreating] = React.useState(false);
@@ -129,7 +138,7 @@ function AnamnesePageContent() {
       setIsCreating(false);
       reset(emptyAnamneseForm(pacienteIdParam));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Não foi possível salvar.");
+      toast.error(formatUserFacingApiError(err, "Não foi possível salvar."));
     }
   };
 
@@ -237,9 +246,9 @@ function AnamnesePageContent() {
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <Button type="submit">
+                <Button type="submit" disabled={createAnam.isPending || replaceAnam.isPending}>
                   <Save className="h-4 w-4 mr-2" />
-                  Salvar
+                  {createAnam.isPending || replaceAnam.isPending ? "Salvando…" : "Salvar"}
                 </Button>
                 <Button type="button" variant="outline" onClick={closeForm}>
                   Cancelar
@@ -251,6 +260,14 @@ function AnamnesePageContent() {
       )}
 
       <div className="grid gap-4">
+        {(isPatientsLoading || isAnamnesesLoading) && (
+          <p className="text-sm text-muted-foreground">Carregando anamneses…</p>
+        )}
+        {(patientsError || anamnesesError) && (
+          <p className="text-sm text-destructive">
+            Não foi possível carregar os dados de anamnese. Verifique conexão e sessão.
+          </p>
+        )}
         {filteredAnamneses.map((anamnese) => (
           <Card key={anamnese.id}>
             <CardHeader>
@@ -311,7 +328,7 @@ function AnamnesePageContent() {
             await deleteAnam.mutateAsync(anamneseToDeleteId);
             toast.success("Anamnese removida.");
           } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Não foi possível excluir.");
+            toast.error(formatUserFacingApiError(err, "Não foi possível excluir."));
             throw err;
           }
         }}

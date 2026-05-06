@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { FileDown, Paperclip, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { formatUserFacingApiError } from "@/lib/api/backend-client";
 import {
   apiDeleteAttachment,
   apiUploadAttachment,
@@ -96,6 +98,7 @@ export function PatientProntuarioToolbar({
   );
 
   const fileRef = React.useRef<HTMLInputElement>(null);
+  const [attachmentToDeleteId, setAttachmentToDeleteId] = React.useState<number | null>(null);
 
   const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -117,7 +120,7 @@ export function PatientProntuarioToolbar({
         toast.success("Upload concluído.");
       } catch (err) {
         toast.error(
-          err instanceof Error ? err.message : "Não foi possível enviar o arquivo.",
+          formatUserFacingApiError(err, "Não foi possível enviar o arquivo."),
         );
       }
     })();
@@ -128,7 +131,7 @@ export function PatientProntuarioToolbar({
       await deleteMutation.mutateAsync(attachmentId);
       toast.message("Anexo removido.");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Não foi possível remover.");
+      toast.error(formatUserFacingApiError(err, "Não foi possível remover."));
     }
   };
 
@@ -210,7 +213,7 @@ export function PatientProntuarioToolbar({
                       variant="ghost"
                       size="sm"
                       className="text-destructive"
-                      onClick={() => handleDelete(a.id)}
+                      onClick={() => setAttachmentToDeleteId(a.id)}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -277,6 +280,21 @@ export function PatientProntuarioToolbar({
           </div>
         </div>
       </CardContent>
+      <ConfirmDialog
+        open={attachmentToDeleteId !== null}
+        onOpenChange={(open) => {
+          if (!open) setAttachmentToDeleteId(null);
+        }}
+        title="Excluir anexo?"
+        description="Essa ação remove o anexo do prontuário."
+        confirmLabel="Excluir anexo"
+        variant="destructive"
+        onConfirm={async () => {
+          if (attachmentToDeleteId == null) return;
+          await handleDelete(attachmentToDeleteId);
+          setAttachmentToDeleteId(null);
+        }}
+      />
     </Card>
   );
 }

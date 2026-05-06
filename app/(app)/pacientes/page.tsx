@@ -53,6 +53,7 @@ import {
 import { FormFieldError } from "@/components/form-field-error";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PatientFormRows } from "@/components/pacientes/patient-form-fields";
+import { formatUserFacingApiError } from "@/lib/api/backend-client";
 import {
   dtoPatientCreateFromFormValues,
   patientToReplaceBodyFromDomain,
@@ -114,7 +115,7 @@ export default function PacientesPage() {
       addForm.reset(emptyPatientCreateFormValues);
       toast.success("Paciente cadastrado.");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Não foi possível cadastrar.");
+      toast.error(formatUserFacingApiError(err, "Não foi possível cadastrar."));
     }
   };
 
@@ -141,7 +142,7 @@ export default function PacientesPage() {
       setEditingPatient(null);
       toast.success("Paciente atualizado.");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Não foi possível salvar alterações.");
+      toast.error(formatUserFacingApiError(err, "Não foi possível salvar alterações."));
     }
   };
 
@@ -447,7 +448,7 @@ export default function PacientesPage() {
             await deletePatient.mutateAsync(patientToDeleteId);
             toast.success("Paciente removido.");
           } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Não foi possível excluir.");
+            toast.error(formatUserFacingApiError(err, "Não foi possível excluir."));
             throw err;
           }
         }}

@@ -2,9 +2,12 @@ import { z } from "zod";
 
 export const calendarExtraFormSchema = z.object({
   title: z.string().min(1, "Informe um título"),
-  date: z.string().min(1, "Informe a data"),
-  time: z.string(),
-  endTime: z.string(),
+  date: z
+    .string()
+    .min(1, "Informe a data")
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Use o formato de data AAAA-MM-DD"),
+  time: z.string().regex(/^$|^([01]\d|2[0-3]):[0-5]\d$/, "Use o formato HH:mm"),
+  endTime: z.string().regex(/^$|^([01]\d|2[0-3]):[0-5]\d$/, "Use o formato HH:mm"),
   isAllDay: z.boolean(),
   repeatEnabled: z.boolean(),
   repeatWeekdays: z.array(z.number().int().min(0).max(6)),

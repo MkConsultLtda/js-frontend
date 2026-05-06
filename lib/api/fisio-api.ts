@@ -96,7 +96,7 @@ export function mapAppointmentFromApi(raw: AppointmentDto): Appointment {
     patientId: Number(raw.patientId ?? 0),
     patientName: String(raw.patientName ?? ""),
     date: typeof raw.date === "string" ? raw.date.substring(0, 10) : "",
-    time: String(raw.time ?? "00:00"),
+    time: normalizeAgendaTime(String(raw.time ?? "00:00")),
     duration: Number(raw.duration ?? 50),
     type: String(raw.type ?? ""),
     status:
@@ -111,13 +111,18 @@ export function mapAppointmentFromApi(raw: AppointmentDto): Appointment {
   };
 }
 
-function isoDate(raw: unknown): string {
-  if (typeof raw === "string") return raw.substring(0, 10);
-  return "";
+function normalizeAgendaTime(time: string): string {
+  const m = time.trim().match(/^(\d{1,2}):(\d{2})(?::\d{2}(?:\.\d+)?)?$/);
+  if (!m) return time.length >= 5 ? time.slice(0, 5) : time;
+  const h = String(Math.min(23, Math.max(0, Number.parseInt(m[1], 10)))).padStart(
+    2,
+    "0",
+  );
+  return `${h}:${m[2]}`;
 }
 
 export function mapAnamneseFromApi(raw: AnamneseDto): Anamnese {
-  const d = isoDate(raw.dataColeta);
+  const d = isoDateFromJsonField(raw.dataColeta);
   return {
     id: Number(raw.id),
     patientId: Number(raw.patientId),
@@ -138,11 +143,12 @@ export function mapAnamneseFromApi(raw: AnamneseDto): Anamnese {
 
 /** dataSessao em yyyy-MM-dd para comparações; exibição com formatIsoDateToBR. */
 export function mapEvolucaoFromApi(raw: EvolucaoDto): Evolucao {
+  const dataSessao = isoDateFromJsonField(raw.dataSessao);
   return {
     id: Number(raw.id),
     patientId: Number(raw.patientId),
     patientName: String(raw.patientName ?? ""),
-    dataSessao: isoDate(raw.dataSessao),
+    dataSessao,
     tipoSessao: String(raw.tipoSessao ?? ""),
     sinaisVitaisInicio:
       raw.sinaisVitaisInicio != null ? String(raw.sinaisVitaisInicio) : undefined,
@@ -169,6 +175,8 @@ export function mapPatientAttachmentFromApi(raw: Record<string, unknown>): Patie
       typeof raw.createdAt === "string"
         ? raw.createdAt
         : new Date().toISOString(),
+    urlExpiresInSeconds:
+      raw.urlExpiresInSeconds != null ? Number(raw.urlExpiresInSeconds) : undefined,
     /** URL pré-assinada (API); sem data URL local */
     downloadUrl:
       typeof raw.downloadUrl === "string" ? raw.downloadUrl : undefined,
