@@ -306,7 +306,7 @@ export function AgendaAppointmentList({
                         {patient && isSessionAppointment(appointment) ? (
                           <Button variant="outline" size="sm" asChild className="gap-1">
                             <Link
-                              href={`/evolucao?pacienteId=${patient.id}&dataSessao=${encodeURIComponent(appointment.date)}`}
+                              href={`/evolucao?pacienteId=${patient.id}&dataSessao=${encodeURIComponent(appointment.date)}&horaAtendimento=${encodeURIComponent(appointment.time)}`}
                               title="Abrir evolução para esta sessão"
                             >
                               <TrendingUp className="h-4 w-4" />

@@ -101,11 +101,16 @@ export default function PacientesPage() {
     },
   });
 
-  const filteredPatients = patients.filter((patient) => {
-    const matchesStatus =
-      statusFilter === "all" || patient.status === statusFilter;
-    return matchesStatus;
-  });
+  const filteredPatients = React.useMemo(() => {
+    const list = patients.filter((patient) => {
+      const matchesStatus =
+        statusFilter === "all" || patient.status === statusFilter;
+      return matchesStatus;
+    });
+    return [...list].sort((a, b) =>
+      a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }),
+    );
+  }, [patients, statusFilter]);
 
   const onCreateSubmit = async (data: PatientCreateFormValues) => {
     if (createPatient.isPending) return;

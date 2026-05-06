@@ -78,3 +78,15 @@ export function fridayOfSameWorkWeek(isoDate: string): string {
   return toLocalDateString(addDays(mon, 4));
 }
 
+/** Normaliza hora (API ou texto) para `HH:mm`, adequado a `input type="time"`. */
+export function normalizeTimeForInput(value: string | undefined | null): string {
+  if (value == null || !String(value).trim()) return "";
+  const m = String(value)
+    .trim()
+    .match(/^(\d{1,2}):(\d{2})(?::\d{2}(?:\.\d+)?)?/);
+  if (!m) return "";
+  const h = Math.min(23, Math.max(0, parseInt(m[1], 10)));
+  const min = Math.min(59, Math.max(0, parseInt(m[2], 10)));
+  return `${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
+}
+
