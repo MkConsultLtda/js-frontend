@@ -42,17 +42,17 @@ async function refreshTokens(refreshToken: string): Promise<TokenResponse | null
   return (await refreshRes.json()) as TokenResponse;
 }
 
-function clearAuthCookies(res: NextResponse) {
+function clearAuthCookies(res: NextResponse, req: Request) {
   res.cookies.set(ACCESS_TOKEN_COOKIE_NAME, "", {
     httpOnly: true,
-    secure: secureCookie(),
+    secure: secureCookie(req),
     sameSite: "lax",
     path: "/",
     maxAge: 0,
   });
   res.cookies.set(REFRESH_TOKEN_COOKIE_NAME, "", {
     httpOnly: true,
-    secure: secureCookie(),
+    secure: secureCookie(req),
     sameSite: "lax",
     path: "/",
     maxAge: 0,
@@ -83,7 +83,7 @@ export async function PATCH(req: Request) {
 
   if (!accessToken) {
     const fail = NextResponse.json({ code: "UNAUTHORIZED", message: "Sessão inválida", details: [] }, { status: 401 });
-    clearAuthCookies(fail);
+    clearAuthCookies(fail, req);
     return fail;
   }
 
@@ -117,7 +117,7 @@ export async function PATCH(req: Request) {
       ((await upstream.json().catch(() => null)) as ApiErrorResponse | null) ??
       { code: "VALIDATION", message: "Falha ao atualizar perfil", details: [] };
     const fail = NextResponse.json(error, { status: upstream.status });
-    if (upstream.status === 401) clearAuthCookies(fail);
+    if (upstream.status === 401) clearAuthCookies(fail, req);
     return fail;
   }
 

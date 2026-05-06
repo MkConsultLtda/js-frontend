@@ -38,35 +38,35 @@ async function refreshTokens(refreshToken: string): Promise<TokenResponse | null
   return (await refreshRes.json()) as TokenResponse;
 }
 
-function applyAuthCookies(res: NextResponse, tokens: TokenResponse) {
+function applyAuthCookies(res: NextResponse, tokens: TokenResponse, req: Request) {
   const maxAge = Math.max(60, tokens.expiresIn || 900);
   res.cookies.set(ACCESS_TOKEN_COOKIE_NAME, tokens.accessToken, {
     httpOnly: true,
-    secure: secureCookie(),
+    secure: secureCookie(req),
     sameSite: "lax",
     path: "/",
     maxAge,
   });
   res.cookies.set(REFRESH_TOKEN_COOKIE_NAME, tokens.refreshToken, {
     httpOnly: true,
-    secure: secureCookie(),
+    secure: secureCookie(req),
     sameSite: "lax",
     path: "/",
     maxAge: 60 * 60 * 24 * 7,
   });
 }
 
-function clearAuthCookies(res: NextResponse) {
+function clearAuthCookies(res: NextResponse, req: Request) {
   res.cookies.set(ACCESS_TOKEN_COOKIE_NAME, "", {
     httpOnly: true,
-    secure: secureCookie(),
+    secure: secureCookie(req),
     sameSite: "lax",
     path: "/",
     maxAge: 0,
   });
   res.cookies.set(REFRESH_TOKEN_COOKIE_NAME, "", {
     httpOnly: true,
-    secure: secureCookie(),
+    secure: secureCookie(req),
     sameSite: "lax",
     path: "/",
     maxAge: 0,
@@ -97,7 +97,7 @@ export async function PATCH(req: Request) {
 
   if (!accessToken) {
     const fail = NextResponse.json({ code: "UNAUTHORIZED", message: "Sessão inválida", details: [] }, { status: 401 });
-    clearAuthCookies(fail);
+    clearAuthCookies(fail, req);
     return fail;
   }
 
@@ -131,12 +131,12 @@ export async function PATCH(req: Request) {
       ((await upstream.json().catch(() => null)) as ApiErrorResponse | null) ??
       { code: "VALIDATION", message: "Falha ao alterar senha", details: [] };
     const fail = NextResponse.json(error, { status: upstream.status });
-    if (upstream.status === 401) clearAuthCookies(fail);
+    if (upstream.status === 401) clearAuthCookies(fail, req);
     return fail;
   }
 
   const tokenPair = (await upstream.json()) as TokenResponse;
   const res = NextResponse.json({ ok: true });
-  applyAuthCookies(res, tokenPair);
+  applyAuthCookies(res, tokenPair, req);
   return res;
 }

@@ -28,7 +28,7 @@ async function fetchMe(accessToken: string) {
   });
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   const store = await cookies();
   let accessToken = store.get(ACCESS_TOKEN_COOKIE_NAME)?.value;
   const refreshToken = store.get(REFRESH_TOKEN_COOKIE_NAME)?.value;
@@ -67,14 +67,14 @@ export async function GET() {
     const fail = NextResponse.json(error, { status: meRes?.status ?? 401 });
     fail.cookies.set(ACCESS_TOKEN_COOKIE_NAME, "", {
       httpOnly: true,
-      secure: secureCookie(),
+      secure: secureCookie(req),
       sameSite: "lax",
       path: "/",
       maxAge: 0,
     });
     fail.cookies.set(REFRESH_TOKEN_COOKIE_NAME, "", {
       httpOnly: true,
-      secure: secureCookie(),
+      secure: secureCookie(req),
       sameSite: "lax",
       path: "/",
       maxAge: 0,
@@ -88,14 +88,14 @@ export async function GET() {
     const maxAge = Math.max(60, refreshed.expiresIn || 900);
     res.cookies.set(ACCESS_TOKEN_COOKIE_NAME, refreshed.accessToken, {
       httpOnly: true,
-      secure: secureCookie(),
+      secure: secureCookie(req),
       sameSite: "lax",
       path: "/",
       maxAge,
     });
     res.cookies.set(REFRESH_TOKEN_COOKIE_NAME, refreshed.refreshToken, {
       httpOnly: true,
-      secure: secureCookie(),
+      secure: secureCookie(req),
       sameSite: "lax",
       path: "/",
       maxAge: 60 * 60 * 24 * 7,
