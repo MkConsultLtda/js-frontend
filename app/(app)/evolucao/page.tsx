@@ -32,10 +32,21 @@ import {
   emptyEvolucaoForm,
   type EvolucaoFormValues,
 } from "@/lib/schemas/evolucao-form";
-import { formatIsoDateToBR, parseBRDate, toLocalDateString } from "@/lib/date-utils";
+import {
+  formatIsoDateToBR,
+  normalizeTimeForInput,
+  parseBRDate,
+  toLocalDateString,
+} from "@/lib/date-utils";
 import type { Evolucao, Patient } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { TrendingUp, Save, Calendar, User, Trash2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { TrendingUp, Save, Calendar, User, Trash2, Eye } from "lucide-react";
 
 function toDateInputValue(dateStr: string): string {
   if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
@@ -44,10 +55,19 @@ function toDateInputValue(dateStr: string): string {
   return toLocalDateString(parseBRDate(dateStr));
 }
 
+function formatEvolucaoDataHoraLabel(e: Evolucao): string {
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(e.dataSessao)
+    ? formatIsoDateToBR(e.dataSessao)
+    : e.dataSessao;
+  const h = e.horaAtendimento?.trim();
+  return h ? `${d} · ${h}` : d;
+}
+
 export default function EvolucaoPage() {
   const searchParams = useClientSearchParams();
   const pacienteIdParam = searchParams.get("pacienteId");
   const dataSessaoParam = searchParams.get("dataSessao");
+  const horaAtendimentoParam = searchParams.get("horaAtendimento");
 
   const {
     data: patientPage,
@@ -74,6 +94,7 @@ export default function EvolucaoPage() {
   const [editingEvolucao, setEditingEvolucao] = React.useState<Evolucao | null>(null);
   const [patientNameFilter, setPatientNameFilter] = React.useState("");
   const [evolucaoToDeleteId, setEvolucaoToDeleteId] = React.useState<number | null>(null);
+  const [viewingEvolucao, setViewingEvolucao] = React.useState<Evolucao | null>(null);
   const agendaPrefillDone = React.useRef(false);
 
   const form = useForm<EvolucaoFormValues>({
@@ -87,7 +108,7 @@ export default function EvolucaoPage() {
     handleSubmit,
     reset,
     setValue,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = form;
 
   React.useEffect(() => {
@@ -106,12 +127,14 @@ export default function EvolucaoPage() {
     agendaPrefillDone.current = true;
     setEditingEvolucao(null);
     setIsCreating(true);
+    const horaPre = normalizeTimeForInput(horaAtendimentoParam ?? "");
     reset({
       ...emptyEvolucaoForm(pacienteIdParam),
       patientId: pacienteIdParam,
       dataSessao: dataSessaoParam,
+      horaAtendimento: horaPre,
     });
-  }, [dataSessaoParam, pacienteIdParam, patients, reset]);
+  }, [dataSessaoParam, horaAtendimentoParam, pacienteIdParam, patients, reset]);
 
   const filteredEvolucoes = React.useMemo(() => {
     const query = patientNameFilter.trim().toLowerCase();
@@ -125,6 +148,7 @@ export default function EvolucaoPage() {
   }, [pacienteIdParam, editingEvolucao, isCreating, setValue]);
 
   const onSubmit = async (values: EvolucaoFormValues) => {
+    if (createEvo.isPending || replaceEvo.isPending) return;
     const patient = patients.find((p) => p.id.toString() === values.patientId);
     if (!patient) return;
 
@@ -151,6 +175,7 @@ export default function EvolucaoPage() {
     reset({
       patientId: evolucao.patientId.toString(),
       dataSessao: toDateInputValue(evolucao.dataSessao),
+      horaAtendimento: normalizeTimeForInput(evolucao.horaAtendimento ?? "") || "",
       sinaisVitaisInicio: evolucao.sinaisVitaisInicio ?? "",
       sinaisVitaisFim: evolucao.sinaisVitaisFim ?? "",
       objetivosSessao: evolucao.objetivosSessao,
@@ -225,7 +250,7 @@ export default function EvolucaoPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-1">
                   <Label htmlFor="evo-patient">Paciente</Label>
                   <Controller
@@ -273,6 +298,24 @@ export default function EvolucaoPage() {
                   <FormFieldError
                     message={errors.dataSessao?.message}
                     id="evo-data-sessao-error"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="evo-hora-atendimento">Hora do atendimento</Label>
+                  <Input
+                    id="evo-hora-atendimento"
+                    type="time"
+                    step={60}
+                    className={fieldClass(!!errors.horaAtendimento)}
+                    aria-invalid={!!errors.horaAtendimento}
+                    aria-describedby={
+                      errors.horaAtendimento ? "evo-hora-atendimento-error" : undefined
+                    }
+                    {...register("horaAtendimento")}
+                  />
+                  <FormFieldError
+                    message={errors.horaAtendimento?.message}
+                    id="evo-hora-atendimento-error"
                   />
                 </div>
               </div>
@@ -444,9 +487,16 @@ export default function EvolucaoPage() {
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <Button type="submit" disabled={createEvo.isPending || replaceEvo.isPending}>
+                <Button
+                  type="submit"
+                  disabled={
+                    createEvo.isPending || replaceEvo.isPending || isSubmitting
+                  }
+                >
                   <Save className="h-4 w-4 mr-2" />
-                  {createEvo.isPending || replaceEvo.isPending ? "Salvando…" : "Salvar"}
+                  {createEvo.isPending || replaceEvo.isPending || isSubmitting
+                    ? "Salvando…"
+                    : "Salvar"}
                 </Button>
                 <Button type="button" variant="outline" onClick={closeForm}>
                   Cancelar
@@ -476,9 +526,7 @@ export default function EvolucaoPage() {
                 </div>
                 <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                   <Calendar className="h-4 w-4" />
-                  {/^\d{4}-\d{2}-\d{2}$/.test(evolucao.dataSessao)
-                    ? formatIsoDateToBR(evolucao.dataSessao)
-                    : evolucao.dataSessao}
+                  {formatEvolucaoDataHoraLabel(evolucao)}
                   <Button variant="ghost" size="sm" className="h-8 px-2" asChild>
                     <Link href={`/pacientes/${evolucao.patientId}`}>Prontuário</Link>
                   </Button>
@@ -515,6 +563,16 @@ export default function EvolucaoPage() {
                 <strong>Atividades:</strong> {evolucao.atividadesRealizadas}
               </div>
               <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-1"
+                  onClick={() => setViewingEvolucao(evolucao)}
+                >
+                  <Eye className="h-4 w-4" />
+                  Ver detalhes
+                </Button>
                 <Button variant="outline" size="sm" onClick={() => handleEdit(evolucao)}>
                   Editar
                 </Button>
@@ -532,6 +590,100 @@ export default function EvolucaoPage() {
           </Card>
         ))}
       </div>
+
+      <Dialog
+        open={viewingEvolucao !== null}
+        onOpenChange={(open) => {
+          if (!open) setViewingEvolucao(null);
+        }}
+      >
+        <DialogContent className="max-w-2xl max-h-[min(90dvh,calc(100dvh-2rem))] overflow-y-auto">
+          {viewingEvolucao ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>Evolução — {viewingEvolucao.patientName}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 text-sm">
+                <div className="text-muted-foreground">
+                  {formatEvolucaoDataHoraLabel(viewingEvolucao)}
+                </div>
+                {viewingEvolucao.tipoSessao && viewingEvolucao.tipoSessao !== "-" ? (
+                  <div>
+                    <span className="font-medium text-foreground">Tipo: </span>
+                    {viewingEvolucao.tipoSessao}
+                  </div>
+                ) : null}
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <span className="font-medium text-foreground">Dor pré: </span>
+                    {viewingEvolucao.dorPre}/10
+                  </div>
+                  <div>
+                    <span className="font-medium text-foreground">Dor pós: </span>
+                    {viewingEvolucao.dorPos}/10
+                  </div>
+                </div>
+                {(viewingEvolucao.sinaisVitaisInicio || viewingEvolucao.sinaisVitaisFim) && (
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <div>
+                      <span className="font-medium text-foreground">Sinais vitais (início): </span>
+                      {viewingEvolucao.sinaisVitaisInicio || "—"}
+                    </div>
+                    <div>
+                      <span className="font-medium text-foreground">Sinais vitais (fim): </span>
+                      {viewingEvolucao.sinaisVitaisFim || "—"}
+                    </div>
+                  </div>
+                )}
+                <div className="space-y-1">
+                  <div className="font-medium text-foreground">Objetivos da sessão</div>
+                  <p className="whitespace-pre-wrap rounded-md border bg-muted/30 p-3">
+                    {viewingEvolucao.objetivosSessao}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <div className="font-medium text-foreground">Atividades realizadas</div>
+                  <p className="whitespace-pre-wrap rounded-md border bg-muted/30 p-3">
+                    {viewingEvolucao.atividadesRealizadas}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <div className="font-medium text-foreground">Resposta do paciente</div>
+                  <p className="whitespace-pre-wrap rounded-md border bg-muted/30 p-3">
+                    {viewingEvolucao.respostaPaciente}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <div className="font-medium text-foreground">Observações</div>
+                  <p className="whitespace-pre-wrap rounded-md border bg-muted/30 p-3">
+                    {viewingEvolucao.observacoes || "—"}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <div className="font-medium text-foreground">Plano para a próxima sessão</div>
+                  <p className="whitespace-pre-wrap rounded-md border bg-muted/30 p-3">
+                    {viewingEvolucao.planoProximaSessao || "—"}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2 pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      if (!viewingEvolucao) return;
+                      handleEdit(viewingEvolucao);
+                      setViewingEvolucao(null);
+                    }}
+                  >
+                    Editar este registro
+                  </Button>
+                </div>
+              </div>
+            </>
+          ) : null}
+        </DialogContent>
+      </Dialog>
 
       <ConfirmDialog
         open={evolucaoToDeleteId !== null}

@@ -311,8 +311,9 @@ function evolucaoTipoLine(e: Evolucao): string | null {
 }
 
 function evolucaoBlock(e: Evolucao): string {
+  const hora = e.horaAtendimento?.trim();
   return [
-    `Data da sessão: ${e.dataSessao}`,
+    `Data da sessão: ${e.dataSessao}${hora ? ` · ${hora}` : ""}`,
     evolucaoTipoLine(e),
     e.sinaisVitaisInicio || e.sinaisVitaisFim
       ? `Sinais vitais — início: ${e.sinaisVitaisInicio || "—"} | fim: ${e.sinaisVitaisFim || "—"}`

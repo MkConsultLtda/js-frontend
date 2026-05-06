@@ -97,6 +97,8 @@ export interface Evolucao {
   patientName: string;
   /** yyyy-MM-dd da API — exibir com formatIsoDateToBR */
   dataSessao: string;
+  /** HH:mm quando informada na API */
+  horaAtendimento?: string | null;
   tipoSessao: string;
   sinaisVitaisInicio?: string;
   sinaisVitaisFim?: string;
