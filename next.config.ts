@@ -18,10 +18,10 @@ const buildCsp = (scriptDirectives: string[]) =>
 /** Headers de segurança para produção e operação em Vercel/Node */
 const nextConfig: NextConfig = {
   async headers() {
-    const baselineScriptSrc = ["'self'", "'unsafe-inline'"];
-    if (process.env.NODE_ENV !== "production") {
-      baselineScriptSrc.push("'unsafe-eval'");
-    }
+    const baselineScriptSrc =
+      process.env.NODE_ENV === "production"
+        ? ["'self'"]
+        : ["'self'", "'unsafe-inline'", "'unsafe-eval'"];
 
     const cspBySource: { source: string; csp: string }[] = [
       {

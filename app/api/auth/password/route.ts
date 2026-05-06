@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { z } from "zod";
 
 import {
   ACCESS_TOKEN_COOKIE_NAME,
@@ -19,6 +20,12 @@ type TokenResponse = {
   refreshToken: string;
   expiresIn: number;
 };
+
+const passwordBodySchema = z.object({
+  currentPassword: z.string().min(1).max(120),
+  newPassword: z.string().min(8).max(120),
+  confirmNewPassword: z.string().min(8).max(120),
+});
 
 async function refreshTokens(refreshToken: string): Promise<TokenResponse | null> {
   const refreshRes = await fetch(`${backendApiUrl()}/auth/refresh`, {
@@ -68,7 +75,14 @@ function clearAuthCookies(res: NextResponse) {
 
 export async function PATCH(req: Request) {
   const store = await cookies();
-  const body = await req.json();
+  const parsed = passwordBodySchema.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) {
+    return NextResponse.json(
+      { code: "VALIDATION", message: "Dados de entrada inválidos", details: parsed.error.issues },
+      { status: 400 },
+    );
+  }
+  const body = parsed.data;
   let accessToken = store.get(ACCESS_TOKEN_COOKIE_NAME)?.value;
   const refreshToken = store.get(REFRESH_TOKEN_COOKIE_NAME)?.value;
 

@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { z } from "zod";
 
 import {
   ACCESS_TOKEN_COOKIE_NAME,
@@ -19,6 +20,16 @@ type TokenResponse = {
   refreshToken: string;
   expiresIn: number;
 };
+
+const profileBodySchema = z.object({
+  name: z.string().min(1).max(200),
+  phone: z.string().max(30).optional().nullable(),
+  crefito: z.string().min(1).max(32),
+  professionalTitle: z.string().min(1).max(120),
+  professionalEmail: z.string().email().max(120),
+  notes: z.string().max(500).optional().nullable(),
+  photoDataUrl: z.string().max(600_000).optional().nullable(),
+});
 
 async function refreshTokens(refreshToken: string): Promise<TokenResponse | null> {
   const refreshRes = await fetch(`${backendApiUrl()}/auth/refresh`, {
@@ -50,7 +61,14 @@ function clearAuthCookies(res: NextResponse) {
 
 export async function PATCH(req: Request) {
   const store = await cookies();
-  const body = await req.json();
+  const parsed = profileBodySchema.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) {
+    return NextResponse.json(
+      { code: "VALIDATION", message: "Dados de entrada inválidos", details: parsed.error.issues },
+      { status: 400 },
+    );
+  }
+  const body = parsed.data;
   let accessToken = store.get(ACCESS_TOKEN_COOKIE_NAME)?.value;
   const refreshToken = store.get(REFRESH_TOKEN_COOKIE_NAME)?.value;
 
