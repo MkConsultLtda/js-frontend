@@ -49,7 +49,11 @@ function EvolucaoPageContent() {
   const pacienteIdParam = searchParams.get("pacienteId");
   const dataSessaoParam = searchParams.get("dataSessao");
 
-  const { data: patientPage } = usePatientsSearch("");
+  const {
+    data: patientPage,
+    isLoading: isPatientsLoading,
+    error: patientsError,
+  } = usePatientsSearch("");
   const patients: Patient[] = React.useMemo(
     () => patientPage?.content ?? [],
     [patientPage],
@@ -59,7 +63,11 @@ function EvolucaoPageContent() {
     () => ({ from: `${y}-01-01`, to: `${y}-12-31` }),
     [y],
   );
-  const { data: evolucoes = [] } = useAggregateEvoluco(evWindow.from, evWindow.to, true);
+  const {
+    data: evolucoes = [],
+    isLoading: isEvolucoesLoading,
+    error: evolucoesError,
+  } = useAggregateEvoluco(evWindow.from, evWindow.to, true);
   const { createEvo, replaceEvo, deleteEvo } = useEvolucoMutations(evWindow.from, evWindow.to);
 
   const [isCreating, setIsCreating] = React.useState(false);
@@ -436,9 +444,9 @@ function EvolucaoPageContent() {
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <Button type="submit">
+                <Button type="submit" disabled={createEvo.isPending || replaceEvo.isPending}>
                   <Save className="h-4 w-4 mr-2" />
-                  Salvar
+                  {createEvo.isPending || replaceEvo.isPending ? "Salvando…" : "Salvar"}
                 </Button>
                 <Button type="button" variant="outline" onClick={closeForm}>
                   Cancelar
@@ -450,6 +458,14 @@ function EvolucaoPageContent() {
       )}
 
       <div className="grid gap-4">
+        {(isPatientsLoading || isEvolucoesLoading) && (
+          <p className="text-sm text-muted-foreground">Carregando evoluções…</p>
+        )}
+        {(patientsError || evolucoesError) && (
+          <p className="text-sm text-destructive">
+            Não foi possível carregar os dados de evolução. Verifique conexão e sessão.
+          </p>
+        )}
         {filteredEvolucoes.map((evolucao) => (
           <Card key={evolucao.id}>
             <CardHeader>

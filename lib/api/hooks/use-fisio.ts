@@ -125,7 +125,7 @@ export function useAppointmentRange(from: string, to: string) {
   return useQuery({
     queryKey: fisioKeys.agenda(from, to),
     queryFn: () => fetchAppointmentsRange(from, to),
-    staleTime: 10_000,
+    staleTime: 30_000,
   });
 }
 
