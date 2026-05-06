@@ -1,20 +1,23 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { formatUserFacingApiError } from "@/lib/api/backend-client";
+
+function safeRedirectFromQuery(): string {
+  if (typeof window === "undefined") return "/dashboard";
+  const from = new URLSearchParams(window.location.search).get("from");
+  return from && from.startsWith("/") && !from.startsWith("//") ? from : "/dashboard";
+}
 
 function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const searchParams = useSearchParams();
-  const from = searchParams.get("from");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,8 +39,7 @@ function LoginForm() {
         throw new Error(err?.message || "Falha no login");
       }
 
-      const target =
-        from && from.startsWith("/") && !from.startsWith("//") ? from : "/dashboard";
+      const target = safeRedirectFromQuery();
       // Navegação completa: garante que o pedido GET seguinte (middleware) já inclui os cookies HttpOnly.
       // router.replace + refresh pode correr antes do browser consolidar Set-Cookie → loop /login ↔ /dashboard.
       window.location.assign(target);
@@ -92,17 +94,7 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Suspense
-        fallback={
-          <Card className="w-full max-w-md">
-            <CardContent className="py-12 text-center text-muted-foreground text-sm">
-              Carregando…
-            </CardContent>
-          </Card>
-        }
-      >
-        <LoginForm />
-      </Suspense>
+      <LoginForm />
     </div>
   );
 }
