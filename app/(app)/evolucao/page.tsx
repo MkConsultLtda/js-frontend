@@ -1,11 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { Suspense } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { useSearchParams } from "next/navigation";
+import { useClientSearchParams } from "@/lib/hooks/use-client-search-params";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
@@ -45,8 +44,8 @@ function toDateInputValue(dateStr: string): string {
   return toLocalDateString(parseBRDate(dateStr));
 }
 
-function EvolucaoPageContent() {
-  const searchParams = useSearchParams();
+export default function EvolucaoPage() {
+  const searchParams = useClientSearchParams();
   const pacienteIdParam = searchParams.get("pacienteId");
   const dataSessaoParam = searchParams.get("dataSessao");
 
@@ -561,17 +560,5 @@ function EvolucaoPageContent() {
         </p>
       )}
     </div>
-  );
-}
-
-export default function EvolucaoPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="p-8 text-sm text-muted-foreground">Carregando evoluções…</div>
-      }
-    >
-      <EvolucaoPageContent />
-    </Suspense>
   );
 }
