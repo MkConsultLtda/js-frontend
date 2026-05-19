@@ -285,15 +285,15 @@ export default function AgendaPage() {
   );
 
   const executeWithConflictConfirmation = React.useCallback(
-    (params: {
+    async (params: {
       candidates: ScheduleCandidate[];
       onContinue: (allowOverlap: boolean) => void | Promise<void>;
       ignoreAppointmentId?: number;
       actionLabel: string;
-    }) => {
+    }): Promise<void> => {
       const conflicts = findScheduleConflicts(params.candidates, params.ignoreAppointmentId);
       if (conflicts.length === 0) {
-        void Promise.resolve(params.onContinue(false));
+        await params.onContinue(false);
         return;
       }
 
@@ -303,7 +303,9 @@ export default function AgendaPage() {
       setConflictDialogDescription(
         `${params.actionLabel} conflita com: ${preview}${suffix}. Deseja salvar mesmo assim?`
       );
-      setPendingConflictAction(() => () => params.onContinue(true));
+      setPendingConflictAction(() => async () => {
+        await params.onContinue(true);
+      });
       setConflictDialogOpen(true);
     },
     [findScheduleConflicts]
@@ -321,7 +323,7 @@ export default function AgendaPage() {
     [evolucoes],
   );
 
-  const onCreateSessionSubmit = (values: AppointmentFormValues) => {
+  const onCreateSessionSubmit = async (values: AppointmentFormValues) => {
     const patient = patients.find((p) => p.id === parseInt(values.patientId, 10));
     if (!patient) return;
     if (values.status === "completed" && !hasEvolucaoForAppointmentDate(patient.id, values.date)) {
@@ -344,7 +346,7 @@ export default function AgendaPage() {
       paymentStatus: values.paymentStatus,
     };
 
-    executeWithConflictConfirmation({
+    await executeWithConflictConfirmation({
       candidates: [{ date: values.date, time: values.time, duration, label: patient.name }],
       actionLabel: "Este atendimento",
       onContinue: async (allowOverlap) => {
@@ -365,7 +367,7 @@ export default function AgendaPage() {
     });
   };
 
-  const onCreateExtraSubmit = (values: CalendarExtraFormValues) => {
+  const onCreateExtraSubmit = async (values: CalendarExtraFormValues) => {
     const kind: CalendarEntryKind = createKind === "block" ? "block" : "personal";
     const title = values.title.trim();
     const duration = values.isAllDay
@@ -398,7 +400,7 @@ export default function AgendaPage() {
       paymentStatus: "pending" as const,
     }));
 
-    executeWithConflictConfirmation({
+    await executeWithConflictConfirmation({
       candidates: entries.map((entry) => ({
         date: entry.date,
         time: entry.time,
@@ -432,7 +434,7 @@ export default function AgendaPage() {
     });
   };
 
-  const onEditSessionSubmit = (values: AppointmentFormValues) => {
+  const onEditSessionSubmit = async (values: AppointmentFormValues) => {
     if (!editingAppointment) return;
     const patient = patients.find((p) => p.id === parseInt(values.patientId, 10));
     if (!patient) return;
@@ -456,7 +458,7 @@ export default function AgendaPage() {
       paymentStatus: values.paymentStatus,
     };
 
-    executeWithConflictConfirmation({
+    await executeWithConflictConfirmation({
       candidates: [{ date: updated.date, time: updated.time, duration: updated.duration, label: updated.patientName }],
       ignoreAppointmentId: editingAppointment.id,
       actionLabel: "Esta alteração",
@@ -478,7 +480,7 @@ export default function AgendaPage() {
     });
   };
 
-  const onEditExtraSubmit = (values: CalendarExtraFormValues) => {
+  const onEditExtraSubmit = async (values: CalendarExtraFormValues) => {
     if (!editingAppointment || isSessionAppointment(editingAppointment)) return;
     const duration = values.isAllDay
       ? 24 * 60
@@ -496,7 +498,7 @@ export default function AgendaPage() {
       notes: values.notes?.trim() || undefined,
     };
 
-    executeWithConflictConfirmation({
+    await executeWithConflictConfirmation({
       candidates: [{ date: updated.date, time: updated.time, duration: updated.duration, label: updated.patientName }],
       ignoreAppointmentId: editingAppointment.id,
       actionLabel: "Esta alteração",
