@@ -2,13 +2,26 @@
 
 import { useEffect } from "react";
 
-const REFRESH_MS = 10 * 60 * 1000;
+/** Access token ~15 min; renova a cada 7 min (antes de expirar). */
+const REFRESH_MS = 7 * 60 * 1000;
+
+export const SESSION_EXPIRED_EVENT = "fisio:session-expired";
 
 /** Renova cookies de sessão antes do access token expirar (complementa o refresh reativo em 401). */
 export function SessionKeepAlive() {
   useEffect(() => {
-    const refresh = () => {
-      void fetch("/api/auth/refresh", { method: "POST", credentials: "include" }).catch(() => {});
+    const refresh = async () => {
+      try {
+        const res = await fetch("/api/auth/refresh", {
+          method: "POST",
+          credentials: "include",
+        });
+        if (!res.ok) {
+          window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
+        }
+      } catch {
+        /* rede indisponível — não invalidar sessão */
+      }
     };
     const id = window.setInterval(refresh, REFRESH_MS);
     const onVis = () => {

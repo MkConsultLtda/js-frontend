@@ -4,15 +4,9 @@ import { NextResponse } from "next/server";
 import {
   ACCESS_TOKEN_COOKIE_NAME,
   REFRESH_TOKEN_COOKIE_NAME,
-  backendApiUrl,
   secureCookie,
 } from "@/lib/server-auth";
-
-type TokenResponse = {
-  accessToken: string;
-  refreshToken: string;
-  expiresIn: number;
-};
+import { refreshSessionTokens, type TokenResponse } from "@/lib/server/backend-access";
 
 type ApiErrorResponse = {
   code?: string;
@@ -30,18 +24,15 @@ export async function POST(req: Request) {
     );
   }
 
-  const upstream = await fetch(`${backendApiUrl()}/auth/refresh`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refreshToken }),
-    cache: "no-store",
-  });
+  const data = await refreshSessionTokens(refreshToken);
 
-  if (!upstream.ok) {
-    const error =
-      ((await upstream.json().catch(() => null)) as ApiErrorResponse | null) ??
-      { code: "UNAUTHORIZED", message: "Não foi possível renovar sessão", details: [] };
-    const res = NextResponse.json(error, { status: upstream.status });
+  if (!data) {
+    const error: ApiErrorResponse = {
+      code: "UNAUTHORIZED",
+      message: "Não foi possível renovar sessão",
+      details: [],
+    };
+    const res = NextResponse.json(error, { status: 401 });
     res.cookies.set(ACCESS_TOKEN_COOKIE_NAME, "", {
       httpOnly: true,
       secure: secureCookie(req),
@@ -59,7 +50,6 @@ export async function POST(req: Request) {
     return res;
   }
 
-  const data = (await upstream.json()) as TokenResponse;
   const res = NextResponse.json({ ok: true });
   const maxAge = Math.max(60, data.expiresIn || 900);
 
