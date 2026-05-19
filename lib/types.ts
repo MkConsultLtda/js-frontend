@@ -105,8 +105,6 @@ export interface Evolucao {
   objetivosSessao: string;
   atividadesRealizadas: string;
   respostaPaciente: string;
-  dorPre: number;
-  dorPos: number;
   observacoes: string;
   planoProximaSessao: string;
 }

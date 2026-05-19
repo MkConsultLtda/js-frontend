@@ -177,8 +177,6 @@ export function mapEvolucaoFromApi(raw: EvolucaoDto): Evolucao {
     objetivosSessao: String(raw.objetivosSessao ?? ""),
     atividadesRealizadas: String(raw.atividadesRealizadas ?? ""),
     respostaPaciente: String(raw.respostaPaciente ?? ""),
-    dorPre: Number(raw.dorPre ?? 0),
-    dorPos: Number(raw.dorPos ?? 0),
     observacoes: String(raw.observacoes ?? ""),
     planoProximaSessao: String(raw.planoProximaSessao ?? ""),
   };
@@ -559,8 +557,6 @@ export function evolucaoRequestBody(values: EvolucaoFormValues): Record<string, 
     objetivosSessao: values.objetivosSessao,
     atividadesRealizadas: values.atividadesRealizadas,
     respostaPaciente: values.respostaPaciente,
-    dorPre: values.dorPre,
-    dorPos: values.dorPos,
     observacoes: values.observacoes.trim() || "",
     planoProximaSessao: values.planoProximaSessao.trim() || "",
   };

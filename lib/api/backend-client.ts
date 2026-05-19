@@ -84,26 +84,7 @@ export function backendApiHref(path: string, searchParams?: Record<string, strin
   return `${u.pathname}${u.search}`;
 }
 
-export async function backendJson<T>(
-  input: string,
-  init?: RequestInit,
-): Promise<T> {
-  const res = await fetch(input, {
-    credentials: "include",
-    ...init,
-    headers: {
-      Accept: "application/json",
-      ...(init?.headers as Record<string, string>),
-    },
-  });
-  if (!res.ok) {
-    const err = (await res.json().catch(() => null)) as ApiErrorBody | null;
-    const message = err?.message ?? res.statusText ?? "Falha na requisição";
-    const e = new Error(message) as ApiClientError;
-    e.status = res.status;
-    e.body = err ?? undefined;
-    throw e;
-  }
+async function parseBackendJsonResponse<T>(res: Response): Promise<T> {
   if (res.status === 204 || res.status === 205) {
     return undefined as T;
   }
@@ -119,6 +100,54 @@ export async function backendJson<T>(
     e.status = res.status;
     throw e;
   }
+}
+
+async function fetchBackendJsonResponse(
+  input: string,
+  init?: RequestInit,
+): Promise<Response> {
+  return fetch(input, {
+    credentials: "include",
+    ...init,
+    headers: {
+      Accept: "application/json",
+      ...(init?.headers as Record<string, string>),
+    },
+  });
+}
+
+async function throwIfBackendError(res: Response): Promise<void> {
+  if (res.ok) return;
+  const err = (await res.json().catch(() => null)) as ApiErrorBody | null;
+  const message = err?.message ?? res.statusText ?? "Falha na requisição";
+  const e = new Error(message) as ApiClientError;
+  e.status = res.status;
+  e.body = err ?? undefined;
+  throw e;
+}
+
+/** Renova sessão e repete a requisição uma vez em 401 (mutations, evolução, etc.). */
+export async function tryRefreshSession(): Promise<boolean> {
+  const refreshRes = await fetch("/api/auth/refresh", {
+    method: "POST",
+    credentials: "include",
+  });
+  return refreshRes.ok;
+}
+
+export async function backendJson<T>(
+  input: string,
+  init?: RequestInit,
+): Promise<T> {
+  let res = await fetchBackendJsonResponse(input, init);
+  if (res.status === 401) {
+    const renewed = await tryRefreshSession();
+    if (renewed) {
+      res = await fetchBackendJsonResponse(input, init);
+    }
+  }
+  await throwIfBackendError(res);
+  return parseBackendJsonResponse<T>(res);
 }
 
 export async function backendBlob(path: string, init?: RequestInit): Promise<Blob> {

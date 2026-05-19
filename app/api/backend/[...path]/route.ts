@@ -28,25 +28,26 @@ function forwardHeaders(req: NextRequest, accessToken: string): Headers {
   return out;
 }
 
+async function readRequestBody(req: NextRequest, method: string): Promise<BodyInit | undefined> {
+  if (["GET", "HEAD"].includes(method)) return undefined;
+  return req.blob();
+}
+
 async function forwardOnce(
-  req: NextRequest,
+  method: string,
+  search: string,
   pathSegments: string[],
   accessToken: string,
+  req: NextRequest,
+  cachedBody: BodyInit | undefined,
 ): Promise<Response> {
-  const method = req.method.toUpperCase();
-  const search = req.nextUrl.search;
   const url = buildTargetUrl(pathSegments, search);
   const headers = forwardHeaders(req, accessToken);
-
-  let body: BodyInit | undefined;
-  if (!["GET", "HEAD"].includes(method)) {
-    body = await req.blob();
-  }
 
   return fetch(url, {
     method,
     headers,
-    body,
+    body: cachedBody,
     cache: "no-store",
   });
 }
@@ -73,7 +74,18 @@ async function handler(req: NextRequest, ctx: { params: Promise<{ path: string[]
     return session.response;
   }
 
-  let upstream = await forwardOnce(req, path, session.accessToken);
+  const method = req.method.toUpperCase();
+  const search = req.nextUrl.search;
+  const cachedBody = await readRequestBody(req, method);
+
+  let upstream = await forwardOnce(
+    method,
+    search,
+    path,
+    session.accessToken,
+    req,
+    cachedBody,
+  );
   let recovered: TokenResponse | undefined;
 
   if (upstream.status === 401) {
@@ -83,7 +95,14 @@ async function handler(req: NextRequest, ctx: { params: Promise<{ path: string[]
     }
     if (recovery) {
       recovered = recovery;
-      upstream = await forwardOnce(req, path, recovery.accessToken);
+      upstream = await forwardOnce(
+        method,
+        search,
+        path,
+        recovery.accessToken,
+        req,
+        cachedBody,
+      );
     }
   }
 

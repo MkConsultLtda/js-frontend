@@ -7,6 +7,8 @@ import {
   backendApiUrl,
   secureCookie,
 } from "@/lib/server-auth";
+import { accessTokenNeedsRefresh } from "@/lib/server/jwt-utils";
+import { withRefreshMutex } from "@/lib/server/refresh-mutex";
 
 export type TokenResponse = {
   accessToken: string;
@@ -57,7 +59,7 @@ function applyTokenCookies(res: NextResponse, data: TokenResponse): void {
   });
 }
 
-async function refreshTokens(refreshToken: string): Promise<TokenResponse | null> {
+async function refreshTokensOnce(refreshToken: string): Promise<TokenResponse | null> {
   const refreshRes = await fetch(`${backendApiUrl()}/auth/refresh`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -66,6 +68,15 @@ async function refreshTokens(refreshToken: string): Promise<TokenResponse | null
   });
   if (!refreshRes.ok) return null;
   return (await refreshRes.json()) as TokenResponse;
+}
+
+/** Refresh com mutex — use em /api/auth/refresh e no proxy BFF. */
+export async function refreshSessionTokens(refreshToken: string): Promise<TokenResponse | null> {
+  return withRefreshMutex(refreshToken, () => refreshTokensOnce(refreshToken));
+}
+
+async function refreshTokens(refreshToken: string): Promise<TokenResponse | null> {
+  return refreshSessionTokens(refreshToken);
 }
 
 /**
@@ -92,7 +103,11 @@ export async function resolveAccessTokenForBackendProxy(): Promise<
   }
 
   let refreshed: TokenResponse | undefined;
-  if (!accessToken && refreshToken) {
+  const shouldRefresh =
+    refreshToken &&
+    (!accessToken || (accessToken && accessTokenNeedsRefresh(accessToken)));
+
+  if (shouldRefresh && refreshToken) {
     const tokens = await refreshTokens(refreshToken);
     if (!tokens) {
       return {

@@ -264,7 +264,7 @@ export function CalendarExtraFormFields({
 
           <div className="space-y-1">
             <Label htmlFor={`${idPrefix}repeat-until`} className="text-xs text-muted-foreground">
-              Repetir até
+              {isAllDay ? "Até (dia)" : "Repetir até"}
             </Label>
             <Controller
               name="repeatUntil"

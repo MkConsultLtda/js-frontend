@@ -253,9 +253,6 @@ export default function PacienteProntuarioPage() {
                     · {e.tipoSessao}
                   </p>
                   <p className="text-muted-foreground line-clamp-2 mt-1">{e.objetivosSessao}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Dor {e.dorPre} → {e.dorPos}
-                  </p>
                 </li>
               ))}
             </ul>
