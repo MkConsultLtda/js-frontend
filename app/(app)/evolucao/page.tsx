@@ -181,8 +181,6 @@ export default function EvolucaoPage() {
       objetivosSessao: evolucao.objetivosSessao,
       atividadesRealizadas: evolucao.atividadesRealizadas,
       respostaPaciente: evolucao.respostaPaciente,
-      dorPre: evolucao.dorPre,
-      dorPos: evolucao.dorPos,
       observacoes: evolucao.observacoes,
       planoProximaSessao: evolucao.planoProximaSessao,
     });
@@ -409,63 +407,6 @@ export default function EvolucaoPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <Label htmlFor="evo-dor-pre">Dor pré-sessão (0–10)</Label>
-                  <Controller
-                    name="dorPre"
-                    control={control}
-                    render={({ field }) => (
-                      <Input
-                        id="evo-dor-pre"
-                        type="number"
-                        min={0}
-                        max={10}
-                        className={fieldClass(!!errors.dorPre)}
-                        aria-invalid={!!errors.dorPre}
-                        aria-describedby={errors.dorPre ? "evo-dorpre-error" : undefined}
-                        value={field.value}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          field.onChange(v === "" ? 0 : parseInt(v, 10));
-                        }}
-                        onBlur={field.onBlur}
-                        name={field.name}
-                        ref={field.ref}
-                      />
-                    )}
-                  />
-                  <FormFieldError message={errors.dorPre?.message} id="evo-dorpre-error" />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="evo-dor-pos">Dor pós-sessão (0–10)</Label>
-                  <Controller
-                    name="dorPos"
-                    control={control}
-                    render={({ field }) => (
-                      <Input
-                        id="evo-dor-pos"
-                        type="number"
-                        min={0}
-                        max={10}
-                        className={fieldClass(!!errors.dorPos)}
-                        aria-invalid={!!errors.dorPos}
-                        aria-describedby={errors.dorPos ? "evo-dorpos-error" : undefined}
-                        value={field.value}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          field.onChange(v === "" ? 0 : parseInt(v, 10));
-                        }}
-                        onBlur={field.onBlur}
-                        name={field.name}
-                        ref={field.ref}
-                      />
-                    )}
-                  />
-                  <FormFieldError message={errors.dorPos?.message} id="evo-dorpos-error" />
-                </div>
-              </div>
-
               <div className="space-y-1">
                 <Label htmlFor="evo-obs">Observações</Label>
                 <Textarea spellCheck
@@ -537,14 +478,6 @@ export default function EvolucaoPage() {
               ) : null}
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-4">
-                <div>
-                  <strong>Dor pré:</strong> {evolucao.dorPre}/10
-                </div>
-                <div>
-                  <strong>Dor pós:</strong> {evolucao.dorPos}/10
-                </div>
-              </div>
               {(evolucao.sinaisVitaisInicio || evolucao.sinaisVitaisFim) && (
                 <div className="mb-4 grid grid-cols-1 gap-2 text-sm md:grid-cols-2">
                   <div>
@@ -613,16 +546,6 @@ export default function EvolucaoPage() {
                     {viewingEvolucao.tipoSessao}
                   </div>
                 ) : null}
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div>
-                    <span className="font-medium text-foreground">Dor pré: </span>
-                    {viewingEvolucao.dorPre}/10
-                  </div>
-                  <div>
-                    <span className="font-medium text-foreground">Dor pós: </span>
-                    {viewingEvolucao.dorPos}/10
-                  </div>
-                </div>
                 {(viewingEvolucao.sinaisVitaisInicio || viewingEvolucao.sinaisVitaisFim) && (
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <div>
