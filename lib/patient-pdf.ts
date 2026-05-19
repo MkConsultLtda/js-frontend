@@ -321,7 +321,6 @@ function evolucaoBlock(e: Evolucao): string {
     `Objetivos: ${e.objetivosSessao}`,
     `Atividades: ${e.atividadesRealizadas}`,
     `Resposta do paciente: ${e.respostaPaciente}`,
-    `Dor: ${e.dorPre} → ${e.dorPos} (0–10)`,
     `Observações: ${e.observacoes || "—"}`,
     `Plano próxima sessão: ${e.planoProximaSessao || "—"}`,
   ]

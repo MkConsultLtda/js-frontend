@@ -49,7 +49,8 @@ import {
   emptyCalendarExtraForm,
   type CalendarExtraFormValues,
 } from "@/lib/schemas/calendar-extra-form";
-import { addDays, formatIsoDateToBR, parseLocalDate, toLocalDateString } from "@/lib/date-utils";
+import { buildCalendarExtraDates } from "@/lib/agenda-extra-dates";
+import { formatIsoDateToBR, parseLocalDate, toLocalDateString } from "@/lib/date-utils";
 import {
   appointmentsOverlap,
   calculateDurationFromTimeRange,
@@ -308,27 +309,6 @@ export default function AgendaPage() {
     [findScheduleConflicts]
   );
 
-  const buildExtraDates = React.useCallback((values: CalendarExtraFormValues): string[] => {
-    if (!values.repeatEnabled) return [values.date];
-    const endDate = values.repeatUntil || values.date;
-    const cursorStart = parseLocalDate(values.date);
-    const cursorEnd = parseLocalDate(endDate);
-    const selectedWeekdays = new Set(values.repeatWeekdays);
-    const dates: string[] = [];
-
-    for (
-      let cursor = new Date(cursorStart.getFullYear(), cursorStart.getMonth(), cursorStart.getDate());
-      cursor <= cursorEnd;
-      cursor = addDays(cursor, 1)
-    ) {
-      if (selectedWeekdays.has(cursor.getDay())) {
-        dates.push(toLocalDateString(cursor));
-      }
-    }
-
-    return dates;
-  }, []);
-
   const hasEvolucaoForAppointmentDate = React.useCallback(
     (patientId: number, isoDate: string) => {
       return evolucoes.some(
@@ -396,10 +376,12 @@ export default function AgendaPage() {
       return;
     }
 
-    const dates = buildExtraDates(values);
+    const dates = buildCalendarExtraDates(values);
     if (dates.length === 0) {
       toast.error(
-        "Nenhum dia no período combina com os dias da semana marcados. Ajuste «Repetir até» ou use o atalho Seg–sex.",
+        values.isAllDay
+          ? "Informe uma data final válida em «Até (dia)» para bloquear vários dias seguidos."
+          : "Nenhum dia no período combina com os dias da semana marcados. Ajuste «Repetir até» ou use o atalho Seg–sex.",
       );
       return;
     }

@@ -38,6 +38,14 @@ export const calendarExtraFormSchema = z.object({
     });
   }
 
+  if (values.isAllDay && values.repeatUntil && values.repeatUntil < values.date) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["repeatUntil"],
+      message: "Data final deve ser igual ou após a data inicial",
+    });
+  }
+
   if (values.repeatEnabled) {
     if (!values.repeatUntil) {
       ctx.addIssue({

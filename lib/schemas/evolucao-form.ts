@@ -17,16 +17,6 @@ export const evolucaoFormSchema = z.object({
   objetivosSessao: text(4000).min(1, "Informe os objetivos da sessão"),
   atividadesRealizadas: text(8000).min(1, "Descreva as atividades realizadas"),
   respostaPaciente: text(4000).min(1, "Informe a resposta do paciente"),
-  dorPre: z
-    .number({ error: "Informe a dor pré-sessão (0 a 10)" })
-    .int()
-    .min(0, "Mínimo 0")
-    .max(10, "Máximo 10"),
-  dorPos: z
-    .number({ error: "Informe a dor pós-sessão (0 a 10)" })
-    .int()
-    .min(0, "Mínimo 0")
-    .max(10, "Máximo 10"),
   observacoes: text(8000),
   planoProximaSessao: text(4000),
 });
@@ -43,8 +33,6 @@ export function emptyEvolucaoForm(pacienteIdFromUrl: string | null): EvolucaoFor
     objetivosSessao: "",
     atividadesRealizadas: "",
     respostaPaciente: "",
-    dorPre: 0,
-    dorPos: 0,
     observacoes: "",
     planoProximaSessao: "",
   };
