@@ -27,27 +27,15 @@ export async function POST(req: Request) {
   const data = await refreshSessionTokens(refreshToken);
 
   if (!data) {
+    // Renovação proativa (keep-alive) — uma falha aqui costuma ser corrida ou blip
+    // transitório. NÃO apagamos os cookies: o logout autoritativo acontece em
+    // /api/auth/me e no proxy reativo quando uma requisição real retorna 401.
     const error: ApiErrorResponse = {
       code: "UNAUTHORIZED",
       message: "Não foi possível renovar sessão",
       details: [],
     };
-    const res = NextResponse.json(error, { status: 401 });
-    res.cookies.set(ACCESS_TOKEN_COOKIE_NAME, "", {
-      httpOnly: true,
-      secure: secureCookie(req),
-      sameSite: "lax",
-      path: "/",
-      maxAge: 0,
-    });
-    res.cookies.set(REFRESH_TOKEN_COOKIE_NAME, "", {
-      httpOnly: true,
-      secure: secureCookie(req),
-      sameSite: "lax",
-      path: "/",
-      maxAge: 0,
-    });
-    return res;
+    return NextResponse.json(error, { status: 401 });
   }
 
   const res = NextResponse.json({ ok: true });
