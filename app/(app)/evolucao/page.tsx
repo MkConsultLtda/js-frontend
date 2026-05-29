@@ -206,10 +206,10 @@ export default function EvolucaoPage() {
   const fieldClass = (hasError: boolean) => cn(hasError && "border-destructive");
 
   return (
-    <div className="p-8 space-y-8">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Evolução</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Evolução</h1>
           <p className="text-muted-foreground">Registro do progresso dos pacientes</p>
           <div className="mt-3 max-w-md space-y-1">
             <Label htmlFor="evo-filter-name" className="text-xs text-muted-foreground">
@@ -248,7 +248,7 @@ export default function EvolucaoPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="space-y-1">
                   <Label htmlFor="evo-patient">Paciente</Label>
                   <Controller
