@@ -6,7 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   attendanceRatePercent,
   countCompletedSessions,
+  hasReachedPlannedSessions,
+  isPenultimateSession,
   sessionProgressPercent,
+  sessionsRemaining,
 } from "@/lib/patient-treatment";
 import { patientStatusLabel } from "@/lib/patient-labels";
 import { formatIsoDateToBR } from "@/lib/date-utils";
@@ -24,6 +27,11 @@ export function PatientTreatmentCard({ patient, patientId, appointments }: Props
   const progress = sessionProgressPercent(patient.totalSessionsPlanned, completed);
   const attendance = attendanceRatePercent(appointments, patientId);
   const isDischarged = patient.status === "discharged";
+  const planned = patient.totalSessionsPlanned;
+  const penultimate = !isDischarged && isPenultimateSession(planned, completed);
+  const planComplete =
+    !isDischarged && hasReachedPlannedSessions(planned, completed);
+  const remaining = sessionsRemaining(planned, completed);
 
   return (
     <Card className="md:col-span-2 border-primary/20">
@@ -70,6 +78,30 @@ export function PatientTreatmentCard({ patient, patientId, appointments }: Props
             </p>
           </div>
         </div>
+
+        {penultimate ? (
+          <div
+            className="rounded-lg border border-amber-300/80 bg-amber-50 px-3 py-2 text-amber-950 dark:border-amber-600/50 dark:bg-amber-950/30 dark:text-amber-100"
+            role="status"
+          >
+            <p className="font-medium">Penúltimo atendimento do plano</p>
+            <p className="text-xs mt-0.5 opacity-90">
+              Resta {remaining} sessão após a próxima conclusão. Considere revisar objetivos e alta.
+            </p>
+          </div>
+        ) : null}
+
+        {planComplete ? (
+          <div
+            className="rounded-lg border border-sky-300/80 bg-sky-50 px-3 py-2 text-sky-950 dark:border-sky-600/50 dark:bg-sky-950/30 dark:text-sky-100"
+            role="status"
+          >
+            <p className="font-medium">Meta de sessões atingida</p>
+            <p className="text-xs mt-0.5 opacity-90">
+              {completed} de {planned} sessões concluídas. Avalie registrar a alta fisioterapêutica.
+            </p>
+          </div>
+        ) : null}
 
         {progress != null ? (
           <div className="space-y-1.5">

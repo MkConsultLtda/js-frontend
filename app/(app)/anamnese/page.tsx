@@ -318,7 +318,7 @@ export default function AnamnesePage() {
           if (!open) setAnamneseToDeleteId(null);
         }}
         title="Excluir anamnese?"
-        description="A exclusão é lógica no servidor."
+        description="O registro deixará de aparecer nas listagens. Esta ação não pode ser desfeita."
         confirmLabel="Excluir"
         variant="destructive"
         onConfirm={async () => {

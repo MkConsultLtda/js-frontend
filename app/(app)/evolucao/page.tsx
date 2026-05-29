@@ -614,7 +614,7 @@ export default function EvolucaoPage() {
           if (!open) setEvolucaoToDeleteId(null);
         }}
         title="Excluir evolução?"
-        description="A exclusão é lógica no servidor. Atendimentos da agenda não são revertidos automaticamente."
+        description="O registro deixará de aparecer nas listagens. Os atendimentos da agenda não são alterados automaticamente."
         confirmLabel="Excluir"
         variant="destructive"
         onConfirm={async () => {

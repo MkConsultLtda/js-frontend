@@ -83,6 +83,7 @@ export default function AgendaPage() {
   );
   const [searchTerm, setSearchTerm] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState("all");
+  const [paymentFilter, setPaymentFilter] = React.useState<"all" | "pending" | "paid">("all");
   const [createOpen, setCreateOpen] = React.useState(false);
   const [createKind, setCreateKind] = React.useState<"session" | "block" | "personal">("session");
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
@@ -189,8 +190,11 @@ export default function AgendaPage() {
       apt.patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       apt.type.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "all" || apt.status === statusFilter;
+    const matchesPayment =
+      paymentFilter === "all" ||
+      apt.paymentStatus === paymentFilter;
     const matchesDate = apt.date === selectedDate;
-    return matchesSearch && matchesStatus && matchesDate;
+    return matchesSearch && matchesStatus && matchesPayment && matchesDate;
   });
 
   const dayAppointments = React.useMemo(
@@ -643,7 +647,7 @@ export default function AgendaPage() {
                   setCreateOpen(true);
                 }}
               >
-                Atendimento (paciente)
+                Atendimento
               </DropdownMenuItem>
               <DropdownMenuItem
                 onSelect={() => {
@@ -661,7 +665,7 @@ export default function AgendaPage() {
                   setCreateOpen(true);
                 }}
               >
-                Evento pessoal / trabalho fixo
+                Evento pessoal
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -691,14 +695,14 @@ export default function AgendaPage() {
                     ? "Novo atendimento"
                     : createKind === "block"
                       ? "Bloquear horário"
-                      : "Evento pessoal ou trabalho"}
+                      : "Evento pessoal"}
                 </DialogTitle>
                 <DialogDescription>
                   {createKind === "session"
                     ? "Agende uma sessão para um paciente."
                     : createKind === "block"
                       ? "Reserve o intervalo na agenda (não aparece como atendimento na lista do dia)."
-                      : "Marque compromissos pessoais ou trabalho fixo (cor roxa na grade)."}
+                      : "Marque compromissos pessoais (cor roxa na grade)."}
                 </DialogDescription>
               </DialogHeader>
               {createKind === "session" ? (
@@ -786,6 +790,8 @@ export default function AgendaPage() {
           onSearchTermChange={setSearchTerm}
           statusFilter={statusFilter}
           onStatusFilterChange={setStatusFilter}
+          paymentFilter={paymentFilter}
+          onPaymentFilterChange={setPaymentFilter}
           filteredAppointments={filteredAppointments}
           dayAppointments={dayAppointments}
           patients={patients}
@@ -802,7 +808,7 @@ export default function AgendaPage() {
           if (!open) setAppointmentToDeleteId(null);
         }}
         title="Excluir registro da agenda?"
-        description="Esta ação não pode ser desfeita. O registro será removido no servidor (exclusão lógica)."
+        description="Esta ação não pode ser desfeita. O agendamento será removido da sua agenda."
         confirmLabel="Excluir"
         variant="destructive"
         onConfirm={async () => {

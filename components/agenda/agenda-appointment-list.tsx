@@ -23,6 +23,7 @@ import {
   buildWhatsAppLink,
   toWhatsAppDigits,
 } from "@/lib/session-messages";
+import { sessionStatusLabel } from "@/lib/session-status";
 import {
   Activity,
   Banknote,
@@ -52,6 +53,8 @@ type Props = {
   onSearchTermChange: (value: string) => void;
   statusFilter: string;
   onStatusFilterChange: (value: string) => void;
+  paymentFilter: "all" | "pending" | "paid";
+  onPaymentFilterChange: (value: "all" | "pending" | "paid") => void;
   filteredAppointments: Appointment[];
   dayAppointments: Appointment[];
   patients: Patient[];
@@ -67,6 +70,8 @@ export function AgendaAppointmentList({
   onSearchTermChange,
   statusFilter,
   onStatusFilterChange,
+  paymentFilter,
+  onPaymentFilterChange,
   filteredAppointments,
   dayAppointments,
   patients,
@@ -80,7 +85,8 @@ export function AgendaAppointmentList({
     month: "long",
     year: "numeric",
   });
-  const hasActiveFilters = searchTerm.trim().length > 0 || statusFilter !== "all";
+  const hasActiveFilters =
+    searchTerm.trim().length > 0 || statusFilter !== "all" || paymentFilter !== "all";
   const now = new Date();
   const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(
     now.getDate()
@@ -160,6 +166,21 @@ export function AgendaAppointmentList({
                 <SelectItem value="no_show">Faltas</SelectItem>
               </SelectContent>
             </Select>
+            <Select
+              value={paymentFilter}
+              onValueChange={(v) =>
+                onPaymentFilterChange(v as "all" | "pending" | "paid")
+              }
+            >
+              <SelectTrigger className="w-full sm:w-44">
+                <SelectValue placeholder="Pagamento" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos pagamentos</SelectItem>
+                <SelectItem value="pending">Só pendentes</SelectItem>
+                <SelectItem value="paid">Só pagos</SelectItem>
+              </SelectContent>
+            </Select>
             {hasActiveFilters ? (
               <Button
                 type="button"
@@ -168,6 +189,7 @@ export function AgendaAppointmentList({
                 onClick={() => {
                   onSearchTermChange("");
                   onStatusFilterChange("all");
+                  onPaymentFilterChange("all");
                 }}
               >
                 Limpar filtros
@@ -212,7 +234,7 @@ export function AgendaAppointmentList({
               <CalendarIcon className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="text-lg font-medium">Nenhum agendamento encontrado</h3>
               <p className="text-muted-foreground">
-                {searchTerm || statusFilter !== "all"
+                {searchTerm || statusFilter !== "all" || paymentFilter !== "all"
                   ? "Tente ajustar os filtros de busca."
                   : "Não há agendamentos para esta data."}
               </p>
@@ -239,6 +261,11 @@ export function AgendaAppointmentList({
                       key={appointment.id}
                       className={`flex flex-col gap-4 rounded-lg border p-4 transition hover:bg-muted/50 sm:flex-row sm:items-start sm:justify-between ${
                         appointment.id === nextAppointmentId ? "border-primary bg-primary/5" : ""
+                      } ${
+                        appointment.paymentStatus === "pending" &&
+                        appointment.status !== "cancelled"
+                          ? "border-orange-400/70 bg-orange-50/40 dark:border-orange-600/50 dark:bg-orange-950/20"
+                          : ""
                       }`}
                     >
                       <div className="space-y-2 min-w-0 flex-1">
@@ -277,25 +304,23 @@ export function AgendaAppointmentList({
                                   ? "bg-amber-100 text-amber-900"
                                   : appointment.status === "completed"
                                     ? "bg-emerald-100 text-emerald-900"
-                                    : "bg-red-100 text-red-800 line-through"
+                                    : appointment.status === "no_show"
+                                      ? "bg-orange-100 text-orange-900"
+                                      : appointment.status === "cancelled"
+                                        ? "bg-red-100 text-red-800 line-through"
+                                        : "bg-muted text-muted-foreground"
                             }`}
                           >
-                            {appointment.status === "confirmed"
-                              ? "Confirmado"
-                              : appointment.status === "scheduled"
-                                ? "Agendado"
-                                : appointment.status === "completed"
-                                  ? "Concluído"
-                                  : "Cancelado"}
+                            {sessionStatusLabel(appointment.status)}
                           </span>
                           <span
-                            className={`rounded-full px-2 py-1 text-xs ${
+                            className={`rounded-full px-2 py-1 text-xs font-medium ${
                               appointment.paymentStatus === "paid"
-                                ? "bg-emerald-100 text-emerald-900"
-                                : "bg-slate-100 text-slate-700"
+                                ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200"
+                                : "bg-orange-200 text-orange-950 dark:bg-orange-900/50 dark:text-orange-100"
                             }`}
                           >
-                            {appointment.paymentStatus === "paid" ? "Pago" : "Pag. pendente"}
+                            {appointment.paymentStatus === "paid" ? "Pago" : "Pagamento pendente"}
                           </span>
                         </div>
                       </div>

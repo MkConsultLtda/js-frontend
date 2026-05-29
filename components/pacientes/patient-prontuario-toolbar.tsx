@@ -152,8 +152,8 @@ export function PatientProntuarioToolbar({
           Anexos e relatórios (PDF)
         </CardTitle>
         <p className="text-sm text-muted-foreground">
-          Anexos são armazenados no servidor (URL pré-assinada para download). PDFs combinam dados
-          carregados do backend para este paciente.
+          Anexos ficam armazenados com segurança na nuvem. Os PDFs reúnem os dados clínicos deste
+          paciente.
         </p>
       </CardHeader>
       <CardContent className="space-y-6">

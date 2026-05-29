@@ -66,7 +66,7 @@ export function ClinicInstitutionalCard() {
         </CardTitle>
         <p className="text-sm text-muted-foreground">
           Usados nos documentos legais (Termos de Uso e Política de Privacidade) e no contato com pacientes.
-          Ficam salvos na API.
+          Sincronizados automaticamente com sua conta.
         </p>
       </CardHeader>
       <CardContent className="space-y-4">

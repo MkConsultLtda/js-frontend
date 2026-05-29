@@ -96,7 +96,7 @@ async function parseBackendJsonResponse<T>(res: Response): Promise<T> {
   try {
     return JSON.parse(trimmed) as T;
   } catch {
-    const e = new Error("Resposta inválida da API (não é JSON)") as Error & { status?: number };
+    const e = new Error("Resposta inválida do servidor.") as Error & { status?: number };
     e.status = res.status;
     throw e;
   }

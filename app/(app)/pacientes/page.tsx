@@ -58,7 +58,15 @@ import {
   dtoPatientCreateFromFormValues,
   patientToReplaceBodyFromDomain,
 } from "@/lib/api/fisio-api";
-import { usePatientMutations, usePatientsSearch } from "@/lib/api/hooks/use-fisio";
+import {
+  useAppointmentRange,
+  usePatientMutations,
+  usePatientsSearch,
+} from "@/lib/api/hooks/use-fisio";
+import {
+  countCompletedSessions,
+  sessionProgressPercent,
+} from "@/lib/patient-treatment";
 import {
   emptyPatientCreateFormValues,
   patientFromEditForm,
@@ -80,6 +88,11 @@ export default function PacientesPage() {
   const { data: patientPage, isLoading, error } = usePatientsSearch(searchTerm);
   const { createPatient, replacePatient, deletePatient } = usePatientMutations();
   const patients = patientPage?.content ?? [];
+  const year = new Date().getFullYear();
+  const { data: yearAppointments = [] } = useAppointmentRange(
+    `${year}-01-01`,
+    `${year}-12-31`,
+  );
 
   const [statusFilter, setStatusFilter] = React.useState<
     "all" | "active" | "inactive" | "discharged"
@@ -231,7 +244,7 @@ export default function PacientesPage() {
 
       {error && (
         <p className="text-sm text-destructive">
-          Não foi possível carregar os pacientes. Verifique sessão ou conexão com a API.
+          Não foi possível carregar os pacientes. Verifique sua sessão ou a conexão com a internet.
         </p>
       )}
       {isLoading && patients.length === 0 && (
@@ -242,6 +255,11 @@ export default function PacientesPage() {
         {filteredPatients.map((patient) => {
           const age = ageFromBirthDateIso(patient.birthDate);
           const cidadeUf = `${patient.address.cidade} – ${patient.address.uf}`;
+          const completed = countCompletedSessions(yearAppointments, patient.id);
+          const planPct = sessionProgressPercent(
+            patient.totalSessionsPlanned,
+            completed,
+          );
           return (
             <Card
               key={patient.id}
@@ -343,6 +361,13 @@ export default function PacientesPage() {
                     <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
                     <span>Última sessão: {patient.lastSession}</span>
                   </div>
+                  {patient.totalSessionsPlanned > 0 ? (
+                    <p className="text-xs text-muted-foreground">
+                      Plano terapêutico: {completed} de {patient.totalSessionsPlanned}{" "}
+                      sessões
+                      {planPct != null ? ` (${planPct}%)` : ""}
+                    </p>
+                  ) : null}
                 </div>
 
                 <div className="flex items-center justify-between pt-2 gap-2 flex-wrap">
@@ -466,7 +491,7 @@ export default function PacientesPage() {
           if (!open) setPatientToDeleteId(null);
         }}
         title="Excluir paciente?"
-        description="A exclusão é lógica no servidor — agendamentos e prontuário vinculados seguem as regras do backend."
+        description="O paciente deixará de aparecer nas listagens. Agendamentos e dados do prontuário permanecem arquivados conforme as regras da clínica."
         confirmLabel="Excluir paciente"
         variant="destructive"
         onConfirm={async () => {

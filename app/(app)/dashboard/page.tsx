@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useQuery } from "@tanstack/react-query";
 import { useDashboardBundle } from "@/lib/api/hooks/use-fisio";
+import { fetchFinancialReport } from "@/lib/api/fisio-api";
 import { useClinicSettings } from "@/lib/clinic-settings";
 import { buildRouteForDate } from "@/lib/route-day";
 import { brDateToIsoDate, startOfWeekMonday, toLocalDateString } from "@/lib/date-utils";
@@ -17,8 +19,21 @@ import { getUpcomingBirthdays, birthdayWhenLabel } from "@/lib/birthdays";
 import {
   averageSessionDurationMinutes,
   formatDurationMinutes,
+  patientsWithHighNoShowRate,
 } from "@/lib/patient-treatment";
-import { Users, Calendar, Clock, Activity, TrendingUp, Route, ExternalLink, BarChart3, Gift } from "lucide-react";
+import {
+  Users,
+  Calendar,
+  Clock,
+  Activity,
+  TrendingUp,
+  Route,
+  ExternalLink,
+  BarChart3,
+  Gift,
+  Banknote,
+  AlertTriangle,
+} from "lucide-react";
 import { useMemo } from "react";
 import type { Appointment, Evolucao, Patient } from "@/lib/types";
 
@@ -43,6 +58,28 @@ export default function DashboardPage() {
   const appointments: Appointment[] = useMemo(() => dash?.appointments ?? [], [dash]);
   const evolucoes: Evolucao[] = useMemo(() => dash?.evolucoes ?? [], [dash]);
   const { settings } = useClinicSettings();
+
+  const monthRange = useMemo(() => {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return {
+      from: toLocalDateString(start),
+      to: toLocalDateString(end),
+    };
+  }, []);
+
+  const { data: financialReport } = useQuery({
+    queryKey: ["financial-report", monthRange.from, monthRange.to, settings.sessionPrice],
+    queryFn: () =>
+      fetchFinancialReport(monthRange.from, monthRange.to, settings.sessionPrice),
+    staleTime: 60_000,
+  });
+
+  const noShowAlerts = useMemo(
+    () => patientsWithHighNoShowRate(patients, appointments, 30),
+    [patients, appointments],
+  );
 
   const metrics = useMemo(() => {
     const now = new Date();
@@ -502,6 +539,80 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {financialReport ? (
+        <Card className="border-primary/15">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Banknote className="h-5 w-5 text-chart-4" />
+              Financeiro do mês
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Sessões cobráveis no mês com valor de referência de{" "}
+              {money(settings.sessionPrice)} por atendimento.
+            </p>
+          </CardHeader>
+          <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 text-sm">
+            <div>
+              <p className="text-muted-foreground">Recebido</p>
+              <p className="text-xl font-bold text-chart-4">
+                {money(financialReport.receivedRevenue)}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {financialReport.paidSessions} sessão(ões) pagas
+              </p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Previsto (cobrável)</p>
+              <p className="text-xl font-bold">{money(financialReport.estimatedRevenue)}</p>
+              <p className="text-xs text-muted-foreground">
+                {financialReport.paidSessions + financialReport.pendingSessions} no período
+              </p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Pagamentos pendentes</p>
+              <p className="text-xl font-bold text-orange-700 dark:text-orange-300">
+                {financialReport.pendingSessions}
+              </p>
+              <p className="text-xs text-muted-foreground">sessões a receber</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Inadimplência</p>
+              <p className="text-xl font-bold">{financialReport.defaultRate}%</p>
+              <p className="text-xs text-muted-foreground">pendentes ÷ cobráveis</p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {noShowAlerts.length > 0 ? (
+        <Card className="border-orange-300/60 bg-orange-50/30 dark:border-orange-700/50 dark:bg-orange-950/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg text-orange-900 dark:text-orange-100">
+              <AlertTriangle className="h-5 w-5" />
+              Atenção: faltas frequentes
+            </CardTitle>
+            <p className="text-sm text-orange-900/80 dark:text-orange-200/80">
+              Pacientes ativos com taxa de falta acima de 30% (mínimo 2 sessões contabilizadas).
+            </p>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2 text-sm">
+              {noShowAlerts.slice(0, 8).map((a) => (
+                <li key={a.patientId} className="flex flex-wrap justify-between gap-2">
+                  <Link href={`/pacientes/${a.patientId}`} className="font-medium hover:underline">
+                    {a.patientName}
+                  </Link>
+                  <span className="text-orange-800 dark:text-orange-200 tabular-nums">
+                    {a.rate}% ({a.noShow} falta{a.noShow !== 1 ? "s" : ""} / {a.completed}{" "}
+                    concluída{a.completed !== 1 ? "s" : ""})
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card>
         <CardHeader>

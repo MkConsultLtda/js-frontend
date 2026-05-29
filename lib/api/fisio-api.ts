@@ -343,6 +343,39 @@ export async function fetchDashboardMetricsBundle(from: string, to: string): Pro
   }
 }
 
+export type FinancialReport = {
+  totalSessions: number;
+  paidSessions: number;
+  pendingSessions: number;
+  cancelledSessions: number;
+  estimatedRevenue: number;
+  receivedRevenue: number;
+  defaultRate: number;
+};
+
+export async function fetchFinancialReport(
+  from: string,
+  to: string,
+  sessionPrice: number,
+): Promise<FinancialReport> {
+  const raw = await backendJson<Record<string, unknown>>(
+    backendApiHref("reports/financial", {
+      from,
+      to,
+      sessionPrice: String(sessionPrice),
+    }),
+  );
+  return {
+    totalSessions: Number(raw.totalSessions ?? 0),
+    paidSessions: Number(raw.paidSessions ?? 0),
+    pendingSessions: Number(raw.pendingSessions ?? 0),
+    cancelledSessions: Number(raw.cancelledSessions ?? 0),
+    estimatedRevenue: Number(raw.estimatedRevenue ?? 0),
+    receivedRevenue: Number(raw.receivedRevenue ?? 0),
+    defaultRate: Number(raw.defaultRate ?? 0),
+  };
+}
+
 export async function fetchAggregatedAnamneses(patients: { id: number }[]) {
   if (patients.length === 0) return [];
   const chunks = await Promise.all(patients.map((p) => fetchAnamnesesForPatient(p.id)));

@@ -249,7 +249,10 @@ export function AgendaWeekView({
                             onClick={() => onAppointmentClick(apt)}
                             className={cn(
                               "absolute overflow-hidden rounded-md px-1 py-0.5 text-left text-[10px] leading-tight hover:brightness-95",
-                              calendarEntryClassName(apt)
+                              calendarEntryClassName(apt),
+                              apt.paymentStatus === "pending" &&
+                                apt.status !== "cancelled" &&
+                                "ring-2 ring-orange-500/80 ring-offset-1",
                             )}
                             style={{
                               top: `${top}px`,

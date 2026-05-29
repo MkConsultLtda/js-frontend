@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { formatUserFacingApiError } from "@/lib/api/backend-client";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -31,19 +32,33 @@ const WEEKDAY_OPTIONS: { value: number; label: string }[] = [
 ];
 
 export default function ConfiguracoesPage() {
-  const { settings, setSettings } = useClinicSettings();
+  const { settings, setSettings, isLoading } = useClinicSettings();
 
   const [draft, setDraft] = useState(settings);
   const [newDuration, setNewDuration] = useState("");
   const [newType, setNewType] = useState("");
+  const [saving, setSaving] = useState(false);
+  const settingsVersionRef = useRef<string>("");
 
   useEffect(() => {
+    if (isLoading) return;
+    const version = JSON.stringify(settings);
+    if (version === settingsVersionRef.current) return;
+    settingsVersionRef.current = version;
     setDraft(settings);
-  }, [settings]);
+  }, [settings, isLoading]);
 
-  const saveClinic = () => {
-    setSettings(draft);
-    toast.success("Preferências da clínica salvas neste dispositivo.");
+  const saveClinic = async () => {
+    setSaving(true);
+    try {
+      await setSettings(draft);
+      settingsVersionRef.current = JSON.stringify(draft);
+      toast.success("Preferências da clínica salvas.");
+    } catch (error) {
+      toast.error(formatUserFacingApiError(error, "Não foi possível salvar as preferências."));
+    } finally {
+      setSaving(false);
+    }
   };
 
   const logout = async () => {
@@ -57,8 +72,8 @@ export default function ConfiguracoesPage() {
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Configurações</h1>
         <p className="text-muted-foreground">
-          Preferências de marca, dias de atendimento e metas do painel ficam guardadas neste navegador para
-          personalizar a experiência. Dados institucionais (LGPD), clínicos e agenda vivem na API.
+          Preferências da clínica, agenda e metas do painel são sincronizadas entre seus dispositivos.
+          Dados institucionais (LGPD), prontuários e agenda ficam armazenados com segurança na sua conta.
         </p>
       </div>
 
@@ -347,8 +362,8 @@ export default function ConfiguracoesPage() {
             </div>
           </div>
 
-          <Button type="button" onClick={saveClinic}>
-            Salvar preferências
+          <Button type="button" onClick={saveClinic} disabled={saving || isLoading}>
+            {saving ? "Salvando…" : "Salvar preferências"}
           </Button>
         </CardContent>
       </Card>
@@ -367,7 +382,7 @@ export default function ConfiguracoesPage() {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Integração futura com API de mensagens e lembretes automáticos.
+            Em breve: lembretes automáticos por WhatsApp e outros canais de mensagem.
           </p>
         </CardContent>
       </Card>
