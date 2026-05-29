@@ -41,8 +41,8 @@ export function AppointmentFormFields({
 }: Props) {
   return (
     <div className="grid gap-2 py-4">
-      <div className="grid grid-cols-4 items-start gap-4">
-        <Label htmlFor={`${idPrefix}patient`} className={cn("text-right pt-2", rowClass(!!errors.patientId))}>
+      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-4 sm:items-start sm:gap-4">
+        <Label htmlFor={`${idPrefix}patient`} className={cn("sm:text-right sm:pt-2", rowClass(!!errors.patientId))}>
           Paciente
         </Label>
         <div className="col-span-3 space-y-1">
@@ -73,8 +73,8 @@ export function AppointmentFormFields({
         </div>
       </div>
 
-      <div className="grid grid-cols-4 items-start gap-4">
-        <Label htmlFor={`${idPrefix}date`} className={cn("text-right pt-2", rowClass(!!errors.date))}>
+      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-4 sm:items-start sm:gap-4">
+        <Label htmlFor={`${idPrefix}date`} className={cn("sm:text-right sm:pt-2", rowClass(!!errors.date))}>
           Data
         </Label>
         <div className="col-span-3 space-y-1">
@@ -96,8 +96,8 @@ export function AppointmentFormFields({
         </div>
       </div>
 
-      <div className="grid grid-cols-4 items-start gap-4">
-        <Label htmlFor={`${idPrefix}time`} className={cn("text-right pt-2", rowClass(!!errors.time))}>
+      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-4 sm:items-start sm:gap-4">
+        <Label htmlFor={`${idPrefix}time`} className={cn("sm:text-right sm:pt-2", rowClass(!!errors.time))}>
           Horário
         </Label>
         <div className="col-span-3 space-y-1">
@@ -119,8 +119,8 @@ export function AppointmentFormFields({
         </div>
       </div>
 
-      <div className="grid grid-cols-4 items-start gap-4">
-        <Label htmlFor={`${idPrefix}duration`} className={cn("text-right pt-2", rowClass(!!errors.duration))}>
+      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-4 sm:items-start sm:gap-4">
+        <Label htmlFor={`${idPrefix}duration`} className={cn("sm:text-right sm:pt-2", rowClass(!!errors.duration))}>
           Duração
         </Label>
         <div className="col-span-3 space-y-1">
@@ -160,8 +160,8 @@ export function AppointmentFormFields({
         </div>
       </div>
 
-      <div className="grid grid-cols-4 items-start gap-4">
-        <Label htmlFor={`${idPrefix}type`} className={cn("text-right pt-2", rowClass(!!errors.type))}>
+      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-4 sm:items-start sm:gap-4">
+        <Label htmlFor={`${idPrefix}type`} className={cn("sm:text-right sm:pt-2", rowClass(!!errors.type))}>
           Tipo
         </Label>
         <div className="col-span-3 space-y-1">
@@ -192,8 +192,8 @@ export function AppointmentFormFields({
         </div>
       </div>
 
-      <div className="grid grid-cols-4 items-start gap-4">
-        <Label htmlFor={`${idPrefix}status`} className={cn("text-right pt-2", rowClass(!!errors.status))}>
+      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-4 sm:items-start sm:gap-4">
+        <Label htmlFor={`${idPrefix}status`} className={cn("sm:text-right sm:pt-2", rowClass(!!errors.status))}>
           Status
         </Label>
         <div className="col-span-3 space-y-1">
@@ -226,8 +226,8 @@ export function AppointmentFormFields({
         </div>
       </div>
 
-      <div className="grid grid-cols-4 items-start gap-4">
-        <Label htmlFor={`${idPrefix}payment`} className={cn("text-right pt-2", rowClass(!!errors.paymentStatus))}>
+      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-4 sm:items-start sm:gap-4">
+        <Label htmlFor={`${idPrefix}payment`} className={cn("sm:text-right sm:pt-2", rowClass(!!errors.paymentStatus))}>
           Pagamento
         </Label>
         <div className="col-span-3 space-y-1">
@@ -260,8 +260,8 @@ export function AppointmentFormFields({
         </div>
       </div>
 
-      <div className="grid grid-cols-4 items-start gap-4">
-        <Label htmlFor={`${idPrefix}notes`} className="text-right pt-2">
+      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-4 sm:items-start sm:gap-4">
+        <Label htmlFor={`${idPrefix}notes`} className="sm:text-right sm:pt-2">
           Observações
         </Label>
         <div className="col-span-3 space-y-1">

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 72" width="300" height="72" role="img" aria-label="JS Fisioterapia - Julli Severina">
+  <defs>
+    <linearGradient id="jsLogo" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7E8F71"/>
+      <stop offset="1" stop-color="#5C6C52"/>
+    </linearGradient>
+  </defs>
+  <svg x="6" y="8" width="56" height="56" viewBox="0 0 64 64">
+    <rect width="64" height="64" rx="16" fill="url(#jsLogo)"/>
+    <path d="M11 44 H21 L25 35 L30 51 L34 44 H53" fill="none" stroke="#D7816A" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" opacity="0.92"/>
+    <text x="32" y="33" text-anchor="middle" font-family="Inter, Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="30" font-weight="800" fill="#FFFFFF" letter-spacing="-1">JS</text>
+  </svg>
+  <text x="78" y="35" font-family="Inter, Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="23" font-weight="800" letter-spacing="-0.5">
+    <tspan fill="#6C7D61">JS</tspan><tspan fill="#445552" font-weight="700"> Fisioterapia</tspan>
+  </text>
+  <text x="79" y="54" font-family="Inter, Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11.5" font-weight="400" letter-spacing="0.4" fill="#7A7A66">Julli Severina &#183; CREFITO</text>
+</svg>

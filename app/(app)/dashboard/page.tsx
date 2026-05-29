@@ -13,7 +13,8 @@ import {
   isWorkingDateKey,
 } from "@/lib/schedule-utils";
 import { isSessionAppointment } from "@/lib/types";
-import { Users, Calendar, Clock, Activity, TrendingUp, Route, ExternalLink, BarChart3 } from "lucide-react";
+import { getUpcomingBirthdays, birthdayWhenLabel } from "@/lib/birthdays";
+import { Users, Calendar, Clock, Activity, TrendingUp, Route, ExternalLink, BarChart3, Gift } from "lucide-react";
 import { useMemo } from "react";
 import type { Appointment, Evolucao, Patient } from "@/lib/types";
 
@@ -192,6 +193,8 @@ export default function DashboardPage() {
       .sort((a, b) => a.time.localeCompare(b.time));
   }, [appointments, metrics.today]);
 
+  const birthdays = useMemo(() => getUpcomingBirthdays(patients), [patients]);
+
   const referralChartData = useMemo(() => {
     const counts = new Map<string, number>();
     for (const patient of patients) {
@@ -209,7 +212,7 @@ export default function DashboardPage() {
   }, [patients]);
 
   return (
-    <div className="p-8 space-y-8">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-8">
       {isRefetchError && dashError && (
         <div
           className="flex flex-col gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 sm:flex-row sm:items-center sm:justify-between"
@@ -236,7 +239,7 @@ export default function DashboardPage() {
       )}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Dashboard</h1>
           <p className="text-muted-foreground">
             Bem-vindo ao seu painel de controle —{" "}
             {new Date().toLocaleDateString("pt-BR")}
@@ -475,6 +478,52 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Gift className="h-5 w-5 text-chart-4" />
+            Aniversariantes da semana
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Pacientes que fazem aniversário nos próximos 7 dias — uma oportunidade de
+            cuidado e relacionamento.
+          </p>
+        </CardHeader>
+        <CardContent>
+          {birthdays.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Nenhum aniversariante nos próximos 7 dias.
+            </p>
+          ) : (
+            <ul className="space-y-3 text-sm">
+              {birthdays.map((b) => (
+                <li
+                  key={b.patientId}
+                  className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-3 last:border-0 last:pb-0"
+                >
+                  <div className="min-w-0">
+                    <Link
+                      href={`/pacientes/${b.patientId}`}
+                      className="font-medium hover:underline"
+                    >
+                      {b.name}
+                    </Link>
+                    <span className="text-muted-foreground">
+                      {" "}
+                      · {b.dayMonthLabel}
+                      {b.turningAge !== null ? ` · faz ${b.turningAge} anos` : ""}
+                    </span>
+                  </div>
+                  <span className="shrink-0 rounded-full bg-chart-4/15 px-2 py-1 text-xs font-medium text-chart-4">
+                    {birthdayWhenLabel(b.daysUntil)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

@@ -23,6 +23,11 @@ import {
   fetchPatientPage,
 } from "@/lib/api/fisio-api";
 import { fetchAuthMe } from "@/lib/auth-me-api";
+import {
+  fetchClinicProfile,
+  updateClinicProfile,
+  type ClinicProfile,
+} from "@/lib/clinic-profile-api";
 
 export type DashboardBundle = {
   patients: Patient[];
@@ -69,6 +74,7 @@ export const fisioKeys = {
   anamnesesAgg: ["anamneses", "aggregate"] as const,
   patient: (id: number) => ["patient", id] as const,
   authMe: ["auth-me"] as const,
+  clinicProfile: ["clinic-profile"] as const,
 };
 
 /** Perfil profissional persistido na API (nome, Crefito, título, telefone). */
@@ -245,4 +251,29 @@ export function useEvolucoMutations(evFrom: string, evTo: string) {
   });
   const deleteEvo = useMutation({ mutationFn: apiDeleteEvolution, onSuccess: invalidate });
   return { createEvo, replaceEvo, deleteEvo };
+}
+
+/** Dados institucionais da clínica (CNPJ, contato, DPO) persistidos na API. */
+export function useClinicProfile(enabled = true) {
+  return useQuery({
+    queryKey: fisioKeys.clinicProfile,
+    queryFn: fetchClinicProfile,
+    enabled,
+    staleTime: 60_000,
+    retry: (failureCount, error) => {
+      const status = (error as Error & { status?: number }).status;
+      if (status === 401) return false;
+      return failureCount < 2;
+    },
+  });
+}
+
+export function useUpdateClinicProfile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: updateClinicProfile,
+    onSuccess: (data: ClinicProfile) => {
+      qc.setQueryData(fisioKeys.clinicProfile, data);
+    },
+  });
 }

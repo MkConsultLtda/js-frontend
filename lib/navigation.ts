@@ -1,6 +1,5 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  Activity,
   Calendar,
   FileText,
   LayoutDashboard,
@@ -25,5 +24,3 @@ export const APP_NAV: AppNavItem[] = [
   { name: "Meu perfil", href: "/perfil", icon: UserCircle },
   { name: "Configurações", href: "/configuracoes", icon: Settings },
 ];
-
-export { Activity };

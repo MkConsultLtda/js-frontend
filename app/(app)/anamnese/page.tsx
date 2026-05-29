@@ -167,10 +167,10 @@ export default function AnamnesePage() {
   };
 
   return (
-    <div className="p-8 space-y-8">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Anamnese</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Anamnese</h1>
           <p className="text-muted-foreground">Avaliação inicial dos pacientes</p>
           {pacienteIdParam && (
             <p className="text-sm text-muted-foreground mt-2">
@@ -290,7 +290,7 @@ export default function AnamnesePage() {
                 </div>
               </div>
               <div
-                className="prose prose-sm mt-4 max-w-none dark:prose-invert"
+                className="prose prose-sm mt-4 max-w-none overflow-x-auto dark:prose-invert"
                 dangerouslySetInnerHTML={{ __html: legacyAnamneseToHtml(anamnese) }}
               />
               <div className="mt-4 flex flex-wrap gap-2">

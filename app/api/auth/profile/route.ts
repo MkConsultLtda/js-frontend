@@ -29,6 +29,7 @@ const profileBodySchema = z.object({
   professionalEmail: z.string().email().max(120),
   notes: z.string().max(500).optional().nullable(),
   photoDataUrl: z.string().max(600_000).optional().nullable(),
+  signatureImage: z.string().max(600_000).optional().nullable(),
 });
 
 async function refreshTokens(refreshToken: string): Promise<TokenResponse | null> {

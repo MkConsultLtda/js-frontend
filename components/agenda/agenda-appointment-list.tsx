@@ -296,7 +296,7 @@ export function AgendaAppointmentList({
                           </span>
                         </div>
                       </div>
-                      <div className="flex flex-wrap items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-2 overflow-x-auto pb-1 shrink-0 [&>*]:shrink-0 sm:flex-wrap sm:overflow-x-visible sm:pb-0">
                         <Button variant="outline" size="sm" asChild className="gap-1">
                           <a href={mapsUrl} target="_blank" rel="noopener noreferrer">
                             <ExternalLink className="h-4 w-4" />

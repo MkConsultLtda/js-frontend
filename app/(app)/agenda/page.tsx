@@ -24,6 +24,8 @@ import { AgendaAppointmentList } from "@/components/agenda/agenda-appointment-li
 import { AgendaColorLegend } from "@/components/agenda/agenda-color-legend";
 import { AgendaMonthView } from "@/components/agenda/agenda-month-view";
 import { AgendaWeekView } from "@/components/agenda/agenda-week-view";
+import { AgendaWeekMobile } from "@/components/agenda/agenda-week-mobile";
+import { useIsMobile } from "@/lib/hooks/use-is-mobile";
 import { CalendarExtraFormFields } from "@/components/agenda/calendar-extra-form-fields";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { formatUserFacingApiError } from "@/lib/api/backend-client";
@@ -76,6 +78,7 @@ type ScheduleCandidate = {
 
 export default function AgendaPage() {
   const [viewMode, setViewMode] = React.useState<AgendaViewMode>("month");
+  const isMobile = useIsMobile();
   const [currentDate, setCurrentDate] = React.useState(() => new Date());
   const [selectedDate, setSelectedDate] = React.useState(() =>
     toLocalDateString(new Date())
@@ -590,10 +593,10 @@ export default function AgendaPage() {
   }, [selectedDate, workingWeekdays]);
 
   return (
-    <div className="p-8 space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Agenda</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Agenda</h1>
           <p className="text-muted-foreground">
             Visualização em estilo calendário: mês com atendimentos no próprio grid e semana com horários
             e duração.
@@ -760,6 +763,16 @@ export default function AgendaPage() {
             onNavigate={navigateMonth}
             onSelectDay={handleSelectDay}
             onAppointmentClick={openEditModal}
+          />
+        ) : isMobile ? (
+          <AgendaWeekMobile
+            anchorDate={currentDate}
+            selectedDate={selectedDate}
+            appointments={appointments}
+            holidays={holidays}
+            workingWeekdays={workingWeekdays}
+            onNavigate={navigateWeek}
+            onSelectDateKey={handleSelectDateKey}
           />
         ) : (
           <AgendaWeekView

@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { clearAuthSession } from "@/lib/auth-session";
 import { useClinicSettings } from "@/lib/clinic-settings";
+import { ClinicInstitutionalCard } from "@/components/configuracoes/clinic-institutional-card";
 import {
   Bell,
   Building2,
@@ -52,12 +53,12 @@ export default function ConfiguracoesPage() {
   };
 
   return (
-    <div className="p-8 space-y-8 max-w-3xl">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-8 max-w-3xl">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Configurações</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Configurações</h1>
         <p className="text-muted-foreground">
           Preferências de marca, dias de atendimento e metas do painel ficam guardadas neste navegador para
-          personalizar a experiência. Dados clínicos e agenda vivem na API.
+          personalizar a experiência. Dados institucionais (LGPD), clínicos e agenda vivem na API.
         </p>
       </div>
 
@@ -351,6 +352,8 @@ export default function ConfiguracoesPage() {
           </Button>
         </CardContent>
       </Card>
+
+      <ClinicInstitutionalCard />
 
       <Card>
         <CardHeader>

@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { FileDown, Paperclip, Trash2 } from "lucide-react";
+import { FileDown, FileText, Paperclip, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -22,6 +22,7 @@ import {
 } from "@/lib/patient-pdf";
 import { useAuthMe } from "@/lib/api/hooks/use-fisio";
 import { useClinicSettings } from "@/lib/clinic-settings";
+import { BRAND_NAME } from "@/lib/brand";
 import {
   formatBytes,
   isAllowedAttachmentMime,
@@ -59,7 +60,7 @@ export function PatientProntuarioToolbar({
           })
         : [];
     return {
-      clinicTitle: settings.clinicName?.trim() || "FisioSystem",
+      clinicTitle: settings.clinicName?.trim() || BRAND_NAME,
       logoDataUrl: me?.photoDataUrl?.trim() || undefined,
       signatureLines: sig,
     };
@@ -231,6 +232,17 @@ export function PatientProntuarioToolbar({
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
             <Button
               type="button"
+              className="gap-2 w-fit"
+              onClick={() => {
+                window.open(`/api/pdf/prontuario/${patientId}`, "_blank", "noopener");
+                toast.message("Gerando o prontuário profissional em PDF…");
+              }}
+            >
+              <FileText className="h-4 w-4" />
+              Prontuário profissional (COFFITO 414)
+            </Button>
+            <Button
+              type="button"
               variant="secondary"
               className="gap-2 w-fit"
               onClick={() => {
@@ -243,7 +255,7 @@ export function PatientProntuarioToolbar({
               }}
             >
               <FileDown className="h-4 w-4" />
-              Prontuário (anamnese + evolução + agenda)
+              Prontuário simples (rápido)
             </Button>
             <Button
               type="button"

@@ -2,6 +2,7 @@
 
 import { useCallback, useSyncExternalStore } from "react";
 import { SESSION_DURATION_OPTIONS, SESSION_TYPES } from "@/lib/constants";
+import { BRAND_NAME, BRAND_OWNER } from "@/lib/brand";
 import { normalizeWorkingWeekdays } from "@/lib/schedule-utils";
 
 const STORAGE_KEY = "fisio_clinic_settings_v1";
@@ -66,8 +67,8 @@ function normalizeTypes(values: unknown): string[] {
 }
 
 const defaults: ClinicSettings = {
-  clinicName: "FisioSystem",
-  therapistName: "Julli Severina",
+  clinicName: BRAND_NAME,
+  therapistName: BRAND_OWNER,
   therapistPhone: "",
   defaultTravelBufferMinutes: 20,
   workingWeekdays: [1, 2, 3, 4, 5],
