@@ -1,6 +1,7 @@
 import { formatIsoDateToBR } from "@/lib/date-utils";
 import { htmlToPlainText } from "@/lib/html-to-plain";
 import { formatAddressOneLine, formatCepDisplay } from "@/lib/patient-utils";
+import { patientStatusLabel } from "@/lib/patient-labels";
 import { isSessionAppointment } from "@/lib/types";
 import type { Anamnese, Appointment, Evolucao, Patient } from "@/lib/types";
 
@@ -62,7 +63,7 @@ function patientSection(p: Patient): string {
       </div>
       ${field("Endereco", `${formatAddressOneLine(p.address)} · CEP ${formatCepDisplay(p.address.cep)}`)}
       ${field("Diagnostico clinico", p.diagnosis)}
-      ${field("Status", p.status === "active" ? "Ativo" : "Inativo")}
+      ${field("Status", patientStatusLabel(p.status))}
     </section>`;
 }
 

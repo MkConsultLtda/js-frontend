@@ -14,6 +14,10 @@ import {
 } from "@/lib/schedule-utils";
 import { isSessionAppointment } from "@/lib/types";
 import { getUpcomingBirthdays, birthdayWhenLabel } from "@/lib/birthdays";
+import {
+  averageSessionDurationMinutes,
+  formatDurationMinutes,
+} from "@/lib/patient-treatment";
 import { Users, Calendar, Clock, Activity, TrendingUp, Route, ExternalLink, BarChart3, Gift } from "lucide-react";
 import { useMemo } from "react";
 import type { Appointment, Evolucao, Patient } from "@/lib/types";
@@ -100,6 +104,7 @@ export default function DashboardPage() {
     const monthlyReceived = monthlySessions.filter((apt) => apt.paymentStatus === "paid").length * sessionPrice;
     const monthlyCompleted = monthlySessions.filter((apt) => apt.status === "completed").length;
     const monthlyCancelled = monthlySessions.filter((apt) => apt.status === "cancelled").length;
+    const avgSessionMinutes = averageSessionDurationMinutes(monthlySessions);
     const monthlyGoal = Math.max(1, settings.monthlyRevenueGoal || 0);
     const monthlyGoalPct = Math.min(999, Math.round((monthlyReceived / monthlyGoal) * 100));
 
@@ -171,6 +176,7 @@ export default function DashboardPage() {
       receivableMonth,
       weekSessionTotal: weeklySessions.length,
       monthSessionTotal: monthlySessions.length,
+      avgSessionMinutes,
     };
   }, [
     patients,
@@ -323,6 +329,24 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {metrics.avgSessionMinutes != null ? (
+        <Card className="border-primary/15">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Tempo médio de sessão (mês)</CardTitle>
+            <Activity className="h-4 w-4 text-primary" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-primary">
+              {formatDurationMinutes(metrics.avgSessionMinutes)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Média das sessões concluídas neste mês ({metrics.monthlyCompleted} atendimento
+              {metrics.monthlyCompleted !== 1 ? "s" : ""})
+            </p>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card>
         <CardHeader>

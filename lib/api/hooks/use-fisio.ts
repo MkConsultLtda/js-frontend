@@ -5,12 +5,14 @@ import type { Appointment, Evolucao, Patient } from "@/lib/types";
 import {
   apiCreateAppointment,
   apiCreatePatient,
+  apiCreateRecurringBlocks,
   apiCreateAnamnese,
   apiCreateEvolution,
   apiDeleteAnamnese,
   apiDeleteAppointment,
   apiDeleteEvolution,
   apiDeletePatient,
+  apiDischargePatient,
   apiReplaceAnamnese,
   apiReplaceAppointment,
   apiReplaceEvolution,
@@ -183,8 +185,18 @@ export function usePatientMutations() {
     mutationFn: apiDeletePatient,
     onSuccess: invalidate,
   });
+  const dischargePatient = useMutation({
+    mutationFn: ({
+      id,
+      dischargeSummary,
+    }: {
+      id: number;
+      dischargeSummary?: string;
+    }) => apiDischargePatient(id, dischargeSummary),
+    onSuccess: invalidate,
+  });
 
-  return { createPatient, replacePatient, deletePatient };
+  return { createPatient, replacePatient, deletePatient, dischargePatient };
 }
 
 export function useAgendaMutations(from: string, to: string) {
@@ -211,8 +223,17 @@ export function useAgendaMutations(from: string, to: string) {
     mutationFn: apiDeleteAppointment,
     onSuccess: invalidate,
   });
+  const createRecurringBlocks = useMutation({
+    mutationFn: apiCreateRecurringBlocks,
+    onSuccess: invalidate,
+  });
 
-  return { createAppointment, replaceAppointment, deleteAppointment };
+  return {
+    createAppointment,
+    replaceAppointment,
+    deleteAppointment,
+    createRecurringBlocks,
+  };
 }
 
 export function useAnamneseMutations() {

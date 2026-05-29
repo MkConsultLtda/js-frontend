@@ -85,8 +85,17 @@ export function mapPatientFromApi(raw: PatientDto): Patient {
           uf: "",
         },
     lastSession: lastIso ? formatIsoDateToBR(lastIso) : "",
-    status: raw.status === "inactive" ? "inactive" : "active",
+    status:
+      raw.status === "inactive"
+        ? "inactive"
+        : raw.status === "discharged"
+          ? "discharged"
+          : "active",
     registeredAt: regIso ? formatIsoDateToBR(regIso) : "",
+    totalSessionsPlanned: Math.max(0, Number(raw.totalSessionsPlanned ?? 0)),
+    dischargedAt: patientDtoDate(raw, "dischargedAt", "discharged_at") || undefined,
+    dischargeSummary:
+      raw.dischargeSummary != null ? String(raw.dischargeSummary) : undefined,
   };
 }
 
@@ -109,7 +118,8 @@ export function mapAppointmentFromApi(raw: AppointmentDto): Appointment {
       status === "confirmed" ||
       status === "completed" ||
       status === "cancelled" ||
-      status === "scheduled"
+      status === "scheduled" ||
+      status === "no_show"
         ? status
         : "scheduled",
     notes: raw.notes != null ? String(raw.notes) : undefined,
@@ -379,6 +389,45 @@ export async function apiDeletePatient(id: number): Promise<void> {
   await backendJson<void>(backendApiHref(`patients/${id}`), { method: "DELETE" });
 }
 
+export async function apiDischargePatient(
+  id: number,
+  dischargeSummary?: string,
+): Promise<Patient> {
+  const raw = await backendJson<PatientDto>(backendApiHref(`patients/${id}/discharge`), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ dischargeSummary: dischargeSummary?.trim() ?? "" }),
+  });
+  return mapPatientFromApi(raw);
+}
+
+export async function apiCreateRecurringBlocks(body: {
+  dayOfWeek: number;
+  time: string;
+  duration: number;
+  notes?: string;
+  fromDate: string;
+  untilDate: string;
+  allowOverlap?: boolean;
+}): Promise<Appointment[]> {
+  const raw = await backendJson<AppointmentDto[]>(
+    backendApiHref("appointments/recurring-block", body.allowOverlap ? { allowOverlap: "true" } : undefined),
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        dayOfWeek: body.dayOfWeek,
+        time: body.time,
+        duration: body.duration,
+        notes: body.notes ?? null,
+        fromDate: body.fromDate,
+        untilDate: body.untilDate,
+      }),
+    },
+  );
+  return raw.map(mapAppointmentFromApi);
+}
+
 export async function apiCreateAppointment(
   body: Record<string, unknown>,
   options?: { allowOverlap?: boolean },
@@ -506,6 +555,7 @@ export function dtoPatientCreateFromFormValues(data: PatientCreateFormValues): R
     lastSession: null,
     status: "active",
     registeredAt: today,
+    totalSessionsPlanned: 0,
   };
 }
 
@@ -589,6 +639,9 @@ export function patientToReplaceBodyFromDomain(p: Patient): Record<string, unkno
     lastSession: lastIso,
     status: p.status,
     registeredAt: registeredIso,
+    totalSessionsPlanned: p.totalSessionsPlanned,
+    dischargedAt: p.dischargedAt ?? null,
+    dischargeSummary: p.dischargeSummary ?? "",
   };
 }
 

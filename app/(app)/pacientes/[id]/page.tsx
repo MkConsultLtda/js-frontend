@@ -18,6 +18,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PatientProntuarioToolbar } from "@/components/pacientes/patient-prontuario-toolbar";
+import { PatientTreatmentCard } from "@/components/pacientes/patient-treatment-card";
+import { patientStatusLabel } from "@/lib/patient-labels";
 import { usePatientDetailBundle } from "@/lib/api/hooks/use-fisio";
 import { formatIsoDateToBR } from "@/lib/date-utils";
 import {
@@ -183,10 +185,13 @@ export default function PacienteProntuarioPage() {
               Status
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-sm">
-            {patient.status === "active" ? "Ativo" : "Inativo"}
-          </CardContent>
+          <CardContent className="text-sm">{patientStatusLabel(patient.status)}</CardContent>
         </Card>
+        <PatientTreatmentCard
+          patient={patient}
+          patientId={idNum}
+          appointments={appointments}
+        />
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">

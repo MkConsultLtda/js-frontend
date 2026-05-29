@@ -72,6 +72,7 @@ import {
   type PatientEditFormValues,
 } from "@/lib/schemas/patient-form";
 import type { Patient } from "@/lib/types";
+import { patientStatusBadgeClass, patientStatusLabel } from "@/lib/patient-labels";
 import { cn } from "@/lib/utils";
 
 export default function PacientesPage() {
@@ -80,9 +81,9 @@ export default function PacientesPage() {
   const { createPatient, replacePatient, deletePatient } = usePatientMutations();
   const patients = patientPage?.content ?? [];
 
-  const [statusFilter, setStatusFilter] = React.useState<"all" | "active" | "inactive">(
-    "all"
-  );
+  const [statusFilter, setStatusFilter] = React.useState<
+    "all" | "active" | "inactive" | "discharged"
+  >("all");
   const [isAddModalOpen, setIsAddModalOpen] = React.useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
   const [editingPatient, setEditingPatient] = React.useState<Patient | null>(null);
@@ -98,6 +99,7 @@ export default function PacientesPage() {
     defaultValues: {
       ...emptyPatientCreateFormValues,
       status: "active",
+      totalSessionsPlanned: 0,
     },
   });
 
@@ -222,6 +224,7 @@ export default function PacientesPage() {
             <SelectItem value="all">Todos os status</SelectItem>
             <SelectItem value="active">Ativos</SelectItem>
             <SelectItem value="inactive">Inativos</SelectItem>
+            <SelectItem value="discharged">Alta</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -344,13 +347,12 @@ export default function PacientesPage() {
 
                 <div className="flex items-center justify-between pt-2 gap-2 flex-wrap">
                   <span
-                    className={`text-[10px] font-bold px-2 py-1 rounded-full uppercase ${
-                      patient.status === "active"
-                        ? "bg-green-100 text-green-700"
-                        : "bg-gray-100 text-gray-700"
-                    }`}
+                    className={cn(
+                      "text-[10px] font-bold px-2 py-1 rounded-full uppercase",
+                      patientStatusBadgeClass(patient.status),
+                    )}
                   >
-                    {patient.status === "active" ? "Ativo" : "Inativo"}
+                    {patientStatusLabel(patient.status)}
                   </span>
                   <div className="flex gap-2">
                     <Button variant="outline" size="sm" className="h-8 gap-1" asChild>
@@ -414,11 +416,31 @@ export default function PacientesPage() {
                         <SelectContent>
                           <SelectItem value="active">Ativo</SelectItem>
                           <SelectItem value="inactive">Inativo</SelectItem>
+                          <SelectItem value="discharged">Alta</SelectItem>
                         </SelectContent>
                       </Select>
                     )}
                   />
                   <FormFieldError message={editForm.formState.errors.status?.message} />
+                </div>
+              </div>
+              <div className="grid grid-cols-4 items-start gap-4 w-full">
+                <Label htmlFor="edit-sessions" className="text-right pt-2">
+                  Sessões planejadas
+                </Label>
+                <div className="col-span-3 space-y-1">
+                  <Input
+                    id="edit-sessions"
+                    type="number"
+                    min={0}
+                    {...editForm.register("totalSessionsPlanned", { valueAsNumber: true })}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Meta do plano terapêutico (0 = não exibir barra de progresso).
+                  </p>
+                  <FormFieldError
+                    message={editForm.formState.errors.totalSessionsPlanned?.message}
+                  />
                 </div>
               </div>
               <DialogFooter className="flex justify-end pt-2 sm:justify-end">

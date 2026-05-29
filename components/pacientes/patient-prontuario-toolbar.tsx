@@ -241,6 +241,20 @@ export function PatientProntuarioToolbar({
               <FileText className="h-4 w-4" />
               Prontuário profissional (COFFITO 414)
             </Button>
+            {patient.status === "discharged" ? (
+              <Button
+                type="button"
+                variant="default"
+                className="gap-2 w-fit"
+                onClick={() => {
+                  window.open(`/api/pdf/alta/${patientId}`, "_blank", "noopener");
+                  toast.message("Gerando o termo de alta em PDF…");
+                }}
+              >
+                <FileText className="h-4 w-4" />
+                Termo de alta (PDF)
+              </Button>
+            ) : null}
             <Button
               type="button"
               variant="secondary"

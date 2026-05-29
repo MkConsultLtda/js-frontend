@@ -24,8 +24,7 @@ import { AgendaAppointmentList } from "@/components/agenda/agenda-appointment-li
 import { AgendaColorLegend } from "@/components/agenda/agenda-color-legend";
 import { AgendaMonthView } from "@/components/agenda/agenda-month-view";
 import { AgendaWeekView } from "@/components/agenda/agenda-week-view";
-import { AgendaWeekMobile } from "@/components/agenda/agenda-week-mobile";
-import { useIsMobile } from "@/lib/hooks/use-is-mobile";
+import { RecurringBlockDialog } from "@/components/agenda/recurring-block-dialog";
 import { CalendarExtraFormFields } from "@/components/agenda/calendar-extra-form-fields";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { formatUserFacingApiError } from "@/lib/api/backend-client";
@@ -78,7 +77,6 @@ type ScheduleCandidate = {
 
 export default function AgendaPage() {
   const [viewMode, setViewMode] = React.useState<AgendaViewMode>("month");
-  const isMobile = useIsMobile();
   const [currentDate, setCurrentDate] = React.useState(() => new Date());
   const [selectedDate, setSelectedDate] = React.useState(() =>
     toLocalDateString(new Date())
@@ -667,6 +665,11 @@ export default function AgendaPage() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          <RecurringBlockDialog
+            from={range.from}
+            to={range.to}
+            durationOptions={durationOptions}
+          />
 
           <Dialog
             open={createOpen}
@@ -763,16 +766,6 @@ export default function AgendaPage() {
             onNavigate={navigateMonth}
             onSelectDay={handleSelectDay}
             onAppointmentClick={openEditModal}
-          />
-        ) : isMobile ? (
-          <AgendaWeekMobile
-            anchorDate={currentDate}
-            selectedDate={selectedDate}
-            appointments={appointments}
-            holidays={holidays}
-            workingWeekdays={workingWeekdays}
-            onNavigate={navigateWeek}
-            onSelectDateKey={handleSelectDateKey}
           />
         ) : (
           <AgendaWeekView

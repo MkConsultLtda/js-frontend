@@ -218,6 +218,7 @@ export function AppointmentFormFields({
                   <SelectItem value="confirmed">Confirmado</SelectItem>
                   <SelectItem value="completed">Concluído</SelectItem>
                   <SelectItem value="cancelled">Cancelado</SelectItem>
+                  <SelectItem value="no_show">Falta (no-show)</SelectItem>
                 </SelectContent>
               </Select>
             )}

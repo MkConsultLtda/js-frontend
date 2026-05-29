@@ -105,6 +105,7 @@ export function AgendaAppointmentList({
         confirmed: 0,
         completed: 0,
         cancelled: 0,
+        no_show: 0,
         paid: 0,
         pendingPayment: 0,
       }
@@ -156,6 +157,7 @@ export function AgendaAppointmentList({
                 <SelectItem value="confirmed">Confirmados</SelectItem>
                 <SelectItem value="completed">Concluídos</SelectItem>
                 <SelectItem value="cancelled">Cancelados</SelectItem>
+                <SelectItem value="no_show">Faltas</SelectItem>
               </SelectContent>
             </Select>
             {hasActiveFilters ? (
@@ -193,7 +195,8 @@ export function AgendaAppointmentList({
             <div className="rounded-lg border border-emerald-200/70 bg-emerald-50/60 px-3 py-2 dark:border-emerald-500/40 dark:bg-emerald-500/10">
               <p className="text-muted-foreground">Finalização</p>
               <p className="font-semibold">
-                {statusCounts.completed} concluída(s) · {statusCounts.cancelled} cancelada(s)
+                {statusCounts.completed} concluída(s) · {statusCounts.no_show} falta(s) ·{" "}
+                {statusCounts.cancelled} cancelada(s)
               </p>
             </div>
             <div className="rounded-lg border border-amber-200/70 bg-amber-50/60 px-3 py-2 dark:border-amber-500/40 dark:bg-amber-500/10">
