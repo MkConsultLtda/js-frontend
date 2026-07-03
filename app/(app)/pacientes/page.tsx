@@ -63,6 +63,8 @@ import {
   usePatientMutations,
   usePatientsSearch,
 } from "@/lib/api/hooks/use-fisio";
+import { ListSortSelect } from "@/components/ui/list-sort-select";
+import { sortByName, type NameSortOrder } from "@/lib/list-sort";
 import {
   countCompletedSessions,
   sessionProgressPercent,
@@ -101,6 +103,7 @@ export default function PacientesPage() {
   const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
   const [editingPatient, setEditingPatient] = React.useState<Patient | null>(null);
   const [patientToDeleteId, setPatientToDeleteId] = React.useState<number | null>(null);
+  const [nameSortOrder, setNameSortOrder] = React.useState<NameSortOrder>("name-asc");
 
   const addForm = useForm<PatientCreateFormValues>({
     resolver: zodResolver(patientCreateFormSchema),
@@ -122,10 +125,8 @@ export default function PacientesPage() {
         statusFilter === "all" || patient.status === statusFilter;
       return matchesStatus;
     });
-    return [...list].sort((a, b) =>
-      a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }),
-    );
-  }, [patients, statusFilter]);
+    return sortByName(list, nameSortOrder);
+  }, [patients, statusFilter, nameSortOrder]);
 
   const onCreateSubmit = async (data: PatientCreateFormValues) => {
     if (createPatient.isPending) return;
@@ -240,6 +241,16 @@ export default function PacientesPage() {
             <SelectItem value="discharged">Alta</SelectItem>
           </SelectContent>
         </Select>
+        <ListSortSelect
+          id="patients-sort"
+          label="Ordenar pacientes"
+          value={nameSortOrder}
+          onChange={(v) => setNameSortOrder(v as NameSortOrder)}
+          options={[
+            { value: "name-asc", label: "Nome A–Z" },
+            { value: "name-desc", label: "Nome Z–A" },
+          ]}
+        />
       </div>
 
       {error && (

@@ -1,8 +1,15 @@
 import type { Metadata, Viewport } from "next";
 import { Analytics } from "@vercel/analytics/next";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import { BRAND_DESCRIPTION, BRAND_NAME } from "@/lib/brand";
+
+const plusJakarta = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-plus-jakarta",
+  display: "swap",
+});
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
@@ -25,7 +32,6 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-/** Melhora uso em telemóveis (barra dinâmica, área segura em iOS). */
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
@@ -39,8 +45,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="pt-BR" className="scroll-smooth" data-scroll-behavior="smooth">
-      <body>
+    <html lang="pt-BR" className={`scroll-smooth ${plusJakarta.variable}`} data-scroll-behavior="smooth">
+      <body className="font-sans antialiased">
         <Providers>{children}</Providers>
         <Analytics />
       </body>

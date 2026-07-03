@@ -78,6 +78,14 @@ export interface Appointment {
   notes?: string;
   /** Pagamento da sessão (controle financeiro leve) */
   paymentStatus: AppointmentPaymentStatus;
+  /** Valor da sessão (R$) definido no cadastro */
+  sessionAmount?: number;
+  /** Plano de pagamento do pacote */
+  paymentPlan?: "per_session" | "upfront" | "installments";
+  packageAmount?: number;
+  installmentCount?: number;
+  /** UUID do pacote recorrente, quando aplicável */
+  seriesId?: string;
 }
 
 export function isSessionAppointment(a: Pick<Appointment, "kind">): boolean {

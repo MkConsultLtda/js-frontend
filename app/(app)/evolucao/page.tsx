@@ -46,6 +46,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ListSortSelect } from "@/components/ui/list-sort-select";
+import { sortEvolucoes, type DateSortOrder, type NameSortOrder } from "@/lib/list-sort";
 import { TrendingUp, Save, Calendar, User, Trash2, Eye } from "lucide-react";
 
 function toDateInputValue(dateStr: string): string {
@@ -95,6 +97,7 @@ export default function EvolucaoPage() {
   const [patientNameFilter, setPatientNameFilter] = React.useState("");
   const [evolucaoToDeleteId, setEvolucaoToDeleteId] = React.useState<number | null>(null);
   const [viewingEvolucao, setViewingEvolucao] = React.useState<Evolucao | null>(null);
+  const [listSortOrder, setListSortOrder] = React.useState<NameSortOrder | DateSortOrder>("name-asc");
   const agendaPrefillDone = React.useRef(false);
 
   const form = useForm<EvolucaoFormValues>({
@@ -138,9 +141,11 @@ export default function EvolucaoPage() {
 
   const filteredEvolucoes = React.useMemo(() => {
     const query = patientNameFilter.trim().toLowerCase();
-    if (!query) return evolucoes;
-    return evolucoes.filter((e) => e.patientName.toLowerCase().includes(query));
-  }, [evolucoes, patientNameFilter]);
+    const base = query
+      ? evolucoes.filter((e) => e.patientName.toLowerCase().includes(query))
+      : evolucoes;
+    return sortEvolucoes(base, listSortOrder);
+  }, [evolucoes, patientNameFilter, listSortOrder]);
 
   React.useEffect(() => {
     if (editingEvolucao || !isCreating) return;
@@ -182,7 +187,6 @@ export default function EvolucaoPage() {
       atividadesRealizadas: evolucao.atividadesRealizadas,
       respostaPaciente: evolucao.respostaPaciente,
       observacoes: evolucao.observacoes,
-      planoProximaSessao: evolucao.planoProximaSessao,
     });
     setIsCreating(true);
   };
@@ -220,6 +224,19 @@ export default function EvolucaoPage() {
               value={patientNameFilter}
               onChange={(e) => setPatientNameFilter(e.target.value)}
               placeholder="Digite o nome do paciente..."
+            />
+            <ListSortSelect
+              id="evo-sort"
+              label="Ordenar evoluções"
+              value={listSortOrder}
+              onChange={(v) => setListSortOrder(v as NameSortOrder | DateSortOrder)}
+              options={[
+                { value: "name-asc", label: "Paciente A–Z" },
+                { value: "name-desc", label: "Paciente Z–A" },
+                { value: "date-desc", label: "Data mais recente" },
+                { value: "date-asc", label: "Data mais antiga" },
+              ]}
+              className="pt-2"
             />
           </div>
           {pacienteIdParam && (
@@ -417,16 +434,6 @@ export default function EvolucaoPage() {
                 <FormFieldError message={errors.observacoes?.message} />
               </div>
 
-              <div className="space-y-1">
-                <Label htmlFor="evo-plano">Plano para próxima sessão</Label>
-                <Textarea spellCheck
-                  id="evo-plano"
-                  placeholder="Planejamento para a próxima sessão"
-                  {...register("planoProximaSessao")}
-                />
-                <FormFieldError message={errors.planoProximaSessao?.message} />
-              </div>
-
               <div className="flex flex-wrap gap-2">
                 <Button
                   type="submit"
@@ -580,12 +587,6 @@ export default function EvolucaoPage() {
                   <div className="font-medium text-foreground">Observações</div>
                   <p className="whitespace-pre-wrap rounded-md border bg-muted/30 p-3">
                     {viewingEvolucao.observacoes || "—"}
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <div className="font-medium text-foreground">Plano para a próxima sessão</div>
-                  <p className="whitespace-pre-wrap rounded-md border bg-muted/30 p-3">
-                    {viewingEvolucao.planoProximaSessao || "—"}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2 pt-2">

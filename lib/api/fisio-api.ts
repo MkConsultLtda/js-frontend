@@ -26,7 +26,18 @@ export type SpringPageDto<T> = {
   size: number;
 };
 
-/** Feriados: sem API no MVP — grade sem bloqueios nacionais. */
+/** Feriados via API */
+export async function fetchHolidays(year: number): Promise<Holiday[]> {
+  type HolidayDto = { id: number; date: string; name: string };
+  const raw = await backendJson<HolidayDto[]>(backendApiHref("holidays", { year }));
+  return raw.map((h, i) => ({
+    id: h.id > 0 ? h.id : -(i + 1),
+    date: h.date,
+    name: h.name,
+  }));
+}
+
+/** @deprecated use fetchHolidays */
 export function emptyHolidayList(): Holiday[] {
   return [];
 }
@@ -123,7 +134,20 @@ export function mapAppointmentFromApi(raw: AppointmentDto): Appointment {
         ? status
         : "scheduled",
     notes: raw.notes != null ? String(raw.notes) : undefined,
-    paymentStatus: raw.paymentStatus === "paid" ? "paid" : "pending",
+    paymentStatus:
+      raw.paymentStatus === "paid" || raw.pay === "paid" ? "paid" : "pending",
+    sessionAmount:
+      raw.sessionAmount != null ? Number(raw.sessionAmount) : undefined,
+    paymentPlan:
+      raw.paymentPlan === "upfront" || raw.paymentPlan === "installments"
+        ? raw.paymentPlan
+        : raw.paymentPlan === "per_session"
+          ? "per_session"
+          : undefined,
+    packageAmount: raw.packageAmount != null ? Number(raw.packageAmount) : undefined,
+    installmentCount:
+      raw.installmentCount != null ? Number(raw.installmentCount) : undefined,
+    seriesId: raw.seriesId != null ? String(raw.seriesId) : undefined,
   };
 }
 
@@ -223,6 +247,7 @@ export async function fetchPatientPage(opts: {
     q: opts.q,
     page: opts.page ?? 0,
     size: opts.size ?? 50,
+    sort: "name,asc",
   });
   const page = await backendJson<SpringPageDto<PatientDto>>(href);
   return {
@@ -689,10 +714,14 @@ export function dtoAgendaPayloadSession(input: {
   status: string;
   notes?: string;
   paymentStatus: string;
+  sessionAmount?: number;
+  paymentPlan?: string;
+  packageAmount?: number;
+  installmentCount?: number;
 }): Record<string, unknown> {
   const kind =
     input.kind ?? (input.patientId > 0 ? "session" : "personal");
-  return {
+  const payload: Record<string, unknown> = {
     kind,
     patientId: input.patientId || null,
     patientName: input.patientName,
@@ -704,4 +733,15 @@ export function dtoAgendaPayloadSession(input: {
     notes: input.notes ?? null,
     paymentStatus: input.paymentStatus,
   };
+  if (input.sessionAmount != null && input.sessionAmount > 0) {
+    payload.sessionAmount = input.sessionAmount;
+  }
+  if (input.paymentPlan) payload.paymentPlan = input.paymentPlan;
+  if (input.packageAmount != null && input.packageAmount > 0) {
+    payload.packageAmount = input.packageAmount;
+  }
+  if (input.installmentCount != null && input.installmentCount > 0) {
+    payload.installmentCount = input.installmentCount;
+  }
+  return payload;
 }

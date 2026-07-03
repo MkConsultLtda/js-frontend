@@ -23,6 +23,15 @@ import {
   buildWhatsAppLink,
   toWhatsAppDigits,
 } from "@/lib/session-messages";
+import { money } from "@/lib/dashboard-metrics";
+import {
+  paymentViewBadgeClass,
+  paymentViewLabel,
+  resolveAppointmentPaymentView,
+  sessionAmountValue,
+} from "@/lib/appointment-payment";
+import type { AgendaDaySortOrder } from "@/lib/list-sort";
+import { ListSortSelect } from "@/components/ui/list-sort-select";
 import { sessionStatusLabel } from "@/lib/session-status";
 import {
   Activity,
@@ -58,10 +67,12 @@ type Props = {
   filteredAppointments: Appointment[];
   dayAppointments: Appointment[];
   patients: Patient[];
-  settings: Pick<ClinicSettings, "therapistName" | "clinicName" | "maxSessionsPerDay">;
+  settings: Pick<ClinicSettings, "therapistName" | "clinicName" | "maxSessionsPerDay" | "sessionPrice">;
   onEdit: (appointment: Appointment) => void;
   onDeleteRequest: (id: number) => void;
   onTogglePayment: (appointment: Appointment) => void;
+  daySortOrder: AgendaDaySortOrder;
+  onDaySortOrderChange: (order: AgendaDaySortOrder) => void;
 };
 
 export function AgendaAppointmentList({
@@ -79,6 +90,8 @@ export function AgendaAppointmentList({
   onEdit,
   onDeleteRequest,
   onTogglePayment,
+  daySortOrder,
+  onDaySortOrderChange,
 }: Props) {
   const dateLabel = parseLocalDate(selectedDate).toLocaleDateString("pt-BR", {
     day: "2-digit",
@@ -166,6 +179,17 @@ export function AgendaAppointmentList({
                 <SelectItem value="no_show">Faltas</SelectItem>
               </SelectContent>
             </Select>
+            <ListSortSelect
+              id="agenda-day-sort"
+              label="Ordenar atendimentos"
+              value={daySortOrder}
+              onChange={(v) => onDaySortOrderChange(v as AgendaDaySortOrder)}
+              options={[
+                { value: "time", label: "Horário" },
+                { value: "name-asc", label: "Paciente A–Z" },
+                { value: "name-desc", label: "Paciente Z–A" },
+              ]}
+            />
             <Select
               value={paymentFilter}
               onValueChange={(v) =>
@@ -241,11 +265,10 @@ export function AgendaAppointmentList({
             </div>
           ) : (
             <div className="space-y-4">
-              {filteredAppointments
-                .slice()
-                .sort((a, b) => a.time.localeCompare(b.time))
-                .map((appointment) => {
+              {filteredAppointments.map((appointment) => {
                   const patient = patients.find((p) => p.id === appointment.patientId);
+                  const paymentView = resolveAppointmentPaymentView(appointment, todayKey);
+                  const amount = sessionAmountValue(appointment, settings.sessionPrice ?? 150);
                   const mapsUrl = patient
                     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(formatAddressOneLine(patient.address))}`
                     : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(appointment.patientName)}`;
@@ -296,6 +319,11 @@ export function AgendaAppointmentList({
                             <Activity className="h-4 w-4 shrink-0" />
                             {appointment.type}
                           </span>
+                          {appointment.seriesId ? (
+                            <span className="rounded-full bg-violet-100 px-2 py-1 text-xs font-medium text-violet-900 dark:bg-violet-950/40 dark:text-violet-200">
+                              Pacote
+                            </span>
+                          ) : null}
                           <span
                             className={`rounded-full px-2 py-1 text-xs ${
                               appointment.status === "confirmed"
@@ -314,13 +342,9 @@ export function AgendaAppointmentList({
                             {sessionStatusLabel(appointment.status)}
                           </span>
                           <span
-                            className={`rounded-full px-2 py-1 text-xs font-medium ${
-                              appointment.paymentStatus === "paid"
-                                ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200"
-                                : "bg-orange-200 text-orange-950 dark:bg-orange-900/50 dark:text-orange-100"
-                            }`}
+                            className={`rounded-full px-2 py-1 text-xs font-medium ${paymentViewBadgeClass(paymentView)}`}
                           >
-                            {appointment.paymentStatus === "paid" ? "Pago" : "Pagamento pendente"}
+                            {paymentViewLabel(paymentView, amount)}
                           </span>
                         </div>
                       </div>
@@ -368,7 +392,7 @@ export function AgendaAppointmentList({
                           onClick={() => onTogglePayment(appointment)}
                         >
                           <Banknote className="h-4 w-4" />
-                          {appointment.paymentStatus === "paid" ? "Desmarcar pago" : "Pago"}
+                          {appointment.paymentStatus === "paid" ? "Desmarcar pago" : "Marcar pago"}
                         </Button>
                         <Button
                           variant="outline"

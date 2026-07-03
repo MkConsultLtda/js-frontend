@@ -25,6 +25,7 @@ type Props = {
   durationOptions: number[];
   typeOptions: string[];
   idPrefix?: string;
+  defaultSessionPrice?: number;
 };
 
 function rowClass(hasError: boolean) {
@@ -38,6 +39,7 @@ export function AppointmentFormFields({
   durationOptions,
   typeOptions,
   idPrefix = "",
+  defaultSessionPrice = 150,
 }: Props) {
   return (
     <div className="grid gap-2 py-4">
@@ -189,6 +191,38 @@ export function AppointmentFormFields({
             )}
           />
           <FormFieldError message={errors.type?.message} id={`${idPrefix}type-error`} />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-4 sm:items-start sm:gap-4">
+        <Label
+          htmlFor={`${idPrefix}session-amount`}
+          className={cn("sm:text-right sm:pt-2", rowClass(!!errors.sessionAmount))}
+        >
+          Valor (R$)
+        </Label>
+        <div className="col-span-3 space-y-1">
+          <Controller
+            name="sessionAmount"
+            control={control}
+            render={({ field }) => (
+              <Input
+                id={`${idPrefix}session-amount`}
+                inputMode="decimal"
+                placeholder={String(defaultSessionPrice)}
+                className={cn(errors.sessionAmount && "border-destructive")}
+                {...field}
+              />
+            )}
+          />
+          <p className="text-[11px] text-muted-foreground">
+            Valor de referência deste atendimento. Referência da clínica: R${" "}
+            {defaultSessionPrice.toFixed(2).replace(".", ",")}.
+          </p>
+          <FormFieldError
+            message={errors.sessionAmount?.message}
+            id={`${idPrefix}session-amount-error`}
+          />
         </div>
       </div>
 

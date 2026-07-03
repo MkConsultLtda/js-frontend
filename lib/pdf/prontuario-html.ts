@@ -107,7 +107,6 @@ function evolucaoBody(e: Evolucao): string {
     `Atividades: ${e.atividadesRealizadas}`,
     `Resposta do paciente: ${e.respostaPaciente}`,
     `Observacoes: ${e.observacoes || "—"}`,
-    `Plano proxima sessao: ${e.planoProximaSessao || "—"}`,
   ]
     .filter(Boolean)
     .join("\n");

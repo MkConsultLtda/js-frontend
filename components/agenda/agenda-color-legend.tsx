@@ -9,10 +9,11 @@ export function AgendaColorLegend() {
     { label: "Falta", className: "bg-orange-200/75 border border-orange-400/60" },
     { label: "Pessoal / Trabalho", className: "bg-violet-300/55 border border-violet-400/60" },
     { label: "Bloqueado", className: "bg-slate-300/70 border border-slate-400/60" },
+    { label: "Feriado", className: "bg-[var(--holiday-bg)] border border-[var(--holiday)]/50" },
   ];
 
   return (
-    <div className="rounded-xl border bg-gradient-to-r from-primary/5 via-violet-500/5 to-cyan-500/5 px-4 py-3 text-sm">
+    <div className="rounded-xl border bg-card px-4 py-3 text-sm">
       <p className="mb-2 text-sm font-semibold tracking-tight text-foreground">Legenda de cores</p>
       <ul className="flex flex-wrap gap-x-4 gap-y-2 text-xs font-medium text-muted-foreground">
         {swatches.map((item) => (

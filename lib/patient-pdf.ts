@@ -323,7 +323,6 @@ function evolucaoBlock(e: Evolucao): string {
     `Atividades: ${e.atividadesRealizadas}`,
     `Resposta do paciente: ${e.respostaPaciente}`,
     `Observações: ${e.observacoes || "—"}`,
-    `Plano próxima sessão: ${e.planoProximaSessao || "—"}`,
   ]
     .filter(Boolean)
     .join("\n");
