@@ -177,7 +177,6 @@ export function computeDashboardMetrics(
     workingDaysLabel,
     maxSessions,
     receivedToday,
-    cancelledToday,
     weeklyReceived,
     weeklyCancelled,
     weeklyCompleted,
