@@ -18,6 +18,7 @@ import {
   deleteFinanceTransaction,
   fetchFinanceCategories,
   fetchFinanceDelinquency,
+  fetchFinanceReceivable,
   fetchFinanceSummary,
   fetchFinanceTransactions,
   type FinancialScope,
@@ -71,10 +72,17 @@ export default function FinanceiroPage() {
     staleTime: 30_000,
   });
 
+  const { data: receivable } = useQuery({
+    queryKey: ["finance-receivable", range.from, range.to],
+    queryFn: () => fetchFinanceReceivable(range.from, range.to),
+    staleTime: 30_000,
+  });
+
   const delinquencyTotal = useMemo(
     () => delinquency.reduce((sum, d) => sum + d.estimatedAmount, 0),
     [delinquency],
   );
+  const receivableTotal = receivable?.estimatedTotal ?? 0;
 
   const createMutation = useMutation({
     mutationFn: createFinanceTransaction,
@@ -142,6 +150,7 @@ export default function FinanceiroPage() {
         scope={scope}
         summary={summary}
         delinquencyTotal={delinquencyTotal}
+        receivableTotal={receivableTotal}
         loading={summaryLoading}
       />
 

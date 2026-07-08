@@ -50,19 +50,19 @@ function block(label: string, body: string): string {
 function patientSection(p: Patient): string {
   return `
     <section>
-      <h2>1. Identificacao do paciente</h2>
+      <h2>1. Identificação do paciente</h2>
       <div class="grid">
         ${field("Nome completo", p.name)}
         ${field("Nascimento", formatIsoDateToBR(p.birthDate))}
         ${field("CPF", p.cpf || "")}
         ${field("Telefone", p.phone)}
         ${field("E-mail", p.email)}
-        ${field("Responsavel", p.responsiblePhone || "")}
-        ${field("Profissao", p.profession || "")}
-        ${field("Indicacao", p.referralSource || "")}
+        ${field("Responsável", p.responsiblePhone || "")}
+        ${field("Profissão", p.profession || "")}
+        ${field("Indicação", p.referralSource || "")}
       </div>
-      ${field("Endereco", `${formatAddressOneLine(p.address)} · CEP ${formatCepDisplay(p.address.cep)}`)}
-      ${field("Diagnostico clinico", p.diagnosis)}
+      ${field("Endereço", `${formatAddressOneLine(p.address)} · CEP ${formatCepDisplay(p.address.cep)}`)}
+      ${field("Diagnóstico clínico", p.diagnosis)}
       ${field("Status", patientStatusLabel(p.status))}
     </section>`;
 }
@@ -71,15 +71,15 @@ function anamneseBody(a: Anamnese): string {
   const rich = a.anamneseTexto ? htmlToPlainText(a.anamneseTexto) : "";
   return [
     `Data da coleta: ${a.dataColeta}`,
-    rich ? `Conteudo:\n${rich}` : "",
+    rich ? `Conteúdo:\n${rich}` : "",
     `Queixa principal: ${a.queixaPrincipal}`,
-    `Historia da doenca: ${a.historiaDoenca}`,
+    `História da doença: ${a.historiaDoenca}`,
     `Antecedentes familiares: ${a.antecedentesFamiliares}`,
     `Medicamentos: ${a.medicamentos}`,
     `Alergias: ${a.alergias}`,
-    `Habitos de vida: ${a.habitosVida}`,
-    `Exame fisico: ${a.exameFisico}`,
-    `Diagnostico fisioterapeutico: ${a.diagnosticoFisioterapico}`,
+    `Hábitos de vida: ${a.habitosVida}`,
+    `Exame físico: ${a.exameFisico}`,
+    `Diagnóstico fisioterapêutico: ${a.diagnosticoFisioterapico}`,
     `Objetivos do tratamento: ${a.objetivosTratamento}`,
   ]
     .filter(Boolean)
@@ -92,21 +92,21 @@ function anamneseSection(items: Anamnese[]): string {
     ordered.length === 0
       ? block("Registros", "Nenhuma anamnese cadastrada para este paciente.")
       : ordered.map((a) => block(`Anamnese #${a.id}`, anamneseBody(a))).join("");
-  return `<section><h2>2. Historico clinico e anamnese</h2>${body}</section>`;
+  return `<section><h2>2. Histórico clínico e anamnese</h2>${body}</section>`;
 }
 
 function evolucaoBody(e: Evolucao): string {
   const hora = e.horaAtendimento?.trim();
   return [
-    `Data da sessao: ${e.dataSessao}${hora ? ` · ${hora}` : ""}`,
+    `Data da sessão: ${e.dataSessao}${hora ? ` · ${hora}` : ""}`,
     e.tipoSessao && e.tipoSessao !== "-" ? `Tipo: ${e.tipoSessao}` : "",
     e.sinaisVitaisInicio || e.sinaisVitaisFim
-      ? `Sinais vitais — inicio: ${e.sinaisVitaisInicio || "—"} | fim: ${e.sinaisVitaisFim || "—"}`
+      ? `Sinais vitais — início: ${e.sinaisVitaisInicio || "—"} | fim: ${e.sinaisVitaisFim || "—"}`
       : "",
     `Objetivos: ${e.objetivosSessao}`,
     `Atividades: ${e.atividadesRealizadas}`,
     `Resposta do paciente: ${e.respostaPaciente}`,
-    `Observacoes: ${e.observacoes || "—"}`,
+    `Observações: ${e.observacoes || "—"}`,
   ]
     .filter(Boolean)
     .join("\n");
@@ -116,13 +116,13 @@ function evolucaoSection(items: Evolucao[]): string {
   const ordered = [...items].sort((a, b) => b.dataSessao.localeCompare(a.dataSessao));
   const body =
     ordered.length === 0
-      ? block("Registros", "Nenhuma evolucao registrada para este paciente.")
+      ? block("Registros", "Nenhuma evolução registrada para este paciente.")
       : ordered
           .map((e) =>
-            block(`Evolucao #${e.id} · ${formatIsoDateToBR(e.dataSessao)}`, evolucaoBody(e)),
+            block(`Evolução #${e.id} · ${formatIsoDateToBR(e.dataSessao)}`, evolucaoBody(e)),
           )
           .join("");
-  return `<section><h2>3. Evolucao fisioterapeutica</h2>${body}</section>`;
+  return `<section><h2>3. Evolução fisioterapêutica</h2>${body}</section>`;
 }
 
 function appointmentRow(a: Appointment): string {
@@ -133,7 +133,7 @@ function appointmentRow(a: Appointment): string {
       : a.status === "scheduled"
         ? "Agendado"
         : a.status === "completed"
-          ? "Concluido"
+          ? "Concluído"
           : "Cancelado";
   return `<tr><td>${esc(a.date)}</td><td>${esc(a.time)}</td><td>${esc(a.type)}</td><td>${esc(st)}</td><td>${esc(pay)}</td></tr>`;
 }
@@ -143,11 +143,11 @@ function appointmentsSection(items: Appointment[], patientId: number): string {
     .filter((a) => isSessionAppointment(a) && a.patientId === patientId)
     .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
   if (sessoes.length === 0) {
-    return `<section><h2>4. Historico de atendimentos</h2>${block("Sessoes", "Nenhum agendamento registrado.")}</section>`;
+    return `<section><h2>4. Histórico de atendimentos</h2>${block("Sessões", "Nenhum agendamento registrado.")}</section>`;
   }
   return `
     <section>
-      <h2>4. Historico de atendimentos</h2>
+      <h2>4. Histórico de atendimentos</h2>
       <table class="timeline">
         <thead><tr><th>Data</th><th>Hora</th><th>Tipo</th><th>Status</th><th>Pagamento</th></tr></thead>
         <tbody>${sessoes.map(appointmentRow).join("")}</tbody>
@@ -165,7 +165,7 @@ function authenticitySection(d: ProntuarioPdfData): string {
     : `CREFITO ${d.professional.crefito}`;
   return `
     <section class="authenticity">
-      <h2>Responsavel tecnico e autenticidade</h2>
+      <h2>Responsável técnico e autenticidade</h2>
       ${sig}
       <div class="resp">
         <strong>${esc(d.professional.name || "—")}</strong><br/>
@@ -219,8 +219,8 @@ export function buildProntuarioHtml(d: ProntuarioPdfData): string {
 <body>
   <header>
     <div>
-      <h1>Prontuario Fisioterapeutico</h1>
-      <div class="sub">${esc(d.clinicTitle)} · Resolucao COFFITO 414/2012</div>
+      <h1>Prontuário Fisioterapêutico</h1>
+      <div class="sub">${esc(d.clinicTitle)} · Resolução COFFITO 414/2012</div>
       <div class="sub">Emitido em ${esc(d.generatedAt)}</div>
     </div>
     ${logo}

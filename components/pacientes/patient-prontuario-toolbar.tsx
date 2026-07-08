@@ -62,6 +62,7 @@ export function PatientProntuarioToolbar({
     return {
       clinicTitle: settings.clinicName?.trim() || BRAND_NAME,
       logoDataUrl: me?.photoDataUrl?.trim() || undefined,
+      signatureImageDataUrl: me?.signatureImage?.trim() || undefined,
       signatureLines: sig,
     };
   }, [me, settings.clinicName]);
@@ -259,9 +260,9 @@ export function PatientProntuarioToolbar({
               type="button"
               variant="secondary"
               className="gap-2 w-fit"
-              onClick={() => {
+              onClick={async () => {
                 try {
-                  downloadProntuarioPdf(patient, anamneses, evolucoes, myAptForPatient, pdfBranding);
+                  await downloadProntuarioPdf(patient, anamneses, evolucoes, myAptForPatient, pdfBranding);
                   toast.message("Download do prontuário iniciado.");
                 } catch {
                   toast.error("Falha ao gerar o PDF. Tente novamente.");
@@ -275,9 +276,9 @@ export function PatientProntuarioToolbar({
               type="button"
               variant="secondary"
               className="gap-2 w-fit"
-              onClick={() => {
+              onClick={async () => {
                 try {
-                  downloadEvolucaoPdf(patient, evolucoes, pdfBranding);
+                  await downloadEvolucaoPdf(patient, evolucoes, pdfBranding);
                   toast.message("Download da evolução iniciado.");
                 } catch {
                   toast.error("Falha ao gerar o PDF. Tente novamente.");
@@ -291,9 +292,9 @@ export function PatientProntuarioToolbar({
               type="button"
               variant="secondary"
               className="gap-2 w-fit"
-              onClick={() => {
+              onClick={async () => {
                 try {
-                  downloadAtendimentosPdf(patient, myAptForPatient, pdfBranding);
+                  await downloadAtendimentosPdf(patient, myAptForPatient, pdfBranding);
                   toast.message("Download do histórico de atendimentos iniciado.");
                 } catch {
                   toast.error("Falha ao gerar o PDF. Tente novamente.");
