@@ -137,6 +137,13 @@ export type DelinquencyItem = {
   estimatedAmount: number;
 };
 
+export type ReceivableSummary = {
+  from: string;
+  to: string;
+  pendingSessions: number;
+  estimatedTotal: number;
+};
+
 function mapTx(raw: Record<string, unknown>): FinancialTransaction {
   return {
     id: Number(raw.id),
@@ -225,4 +232,16 @@ export async function fetchFinanceDelinquency(from: string, to: string): Promise
     pendingSessions: Number(d.pendingSessions ?? 0),
     estimatedAmount: Number(d.estimatedAmount ?? 0),
   }));
+}
+
+export async function fetchFinanceReceivable(from: string, to: string): Promise<ReceivableSummary> {
+  const raw = await backendJson<Record<string, unknown>>(
+    backendApiHref("finance/receivable", { from, to }),
+  );
+  return {
+    from: String(raw.from ?? from),
+    to: String(raw.to ?? to),
+    pendingSessions: Number(raw.pendingSessions ?? 0),
+    estimatedTotal: Number(raw.estimatedTotal ?? 0),
+  };
 }
