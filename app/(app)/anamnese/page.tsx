@@ -33,6 +33,8 @@ import {
 } from "@/lib/schemas/anamnese-form";
 import type { Anamnese } from "@/lib/types";
 import { FileText, Save, User, Trash2 } from "lucide-react";
+import { ListSortSelect } from "@/components/ui/list-sort-select";
+import { sortAnamneses, type DateSortOrder, type NameSortOrder } from "@/lib/list-sort";
 
 function normalizeAnamneseHtml(raw: string): string {
   if (!raw.trim()) return "";
@@ -78,6 +80,7 @@ export default function AnamnesePage() {
   const [isCreating, setIsCreating] = React.useState(false);
   const [editingAnamnese, setEditingAnamnese] = React.useState<Anamnese | null>(null);
   const [anamneseToDeleteId, setAnamneseToDeleteId] = React.useState<number | null>(null);
+  const [listSortOrder, setListSortOrder] = React.useState<NameSortOrder | DateSortOrder>("name-asc");
 
   const form = useForm<AnamneseFormValues>({
     resolver: zodResolver(anamneseFormSchema),
@@ -98,10 +101,11 @@ export default function AnamnesePage() {
   }, [pacienteIdParam, editingAnamnese, isCreating, setValue]);
 
   const filteredAnamneses = React.useMemo(() => {
-    if (!pacienteIdParam) return anamneses;
-    const pid = Number(pacienteIdParam);
-    return anamneses.filter((a) => a.patientId === pid);
-  }, [anamneses, pacienteIdParam]);
+    const base = !pacienteIdParam
+      ? anamneses
+      : anamneses.filter((a) => a.patientId === Number(pacienteIdParam));
+    return sortAnamneses(base, listSortOrder);
+  }, [anamneses, pacienteIdParam, listSortOrder]);
 
   const onSubmit = async (values: AnamneseFormValues) => {
     const patient = patients.find((p) => p.id.toString() === values.patientId);
@@ -167,10 +171,10 @@ export default function AnamnesePage() {
   };
 
   return (
-    <div className="p-8 space-y-8">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Anamnese</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Anamnese</h1>
           <p className="text-muted-foreground">Avaliação inicial dos pacientes</p>
           {pacienteIdParam && (
             <p className="text-sm text-muted-foreground mt-2">
@@ -186,6 +190,20 @@ export default function AnamnesePage() {
           {isCreating ? "Cancelar" : "Nova anamnese"}
         </Button>
       </div>
+
+      <ListSortSelect
+        id="anam-sort"
+        label="Ordenar anamneses"
+        value={listSortOrder}
+        onChange={(v) => setListSortOrder(v as NameSortOrder | DateSortOrder)}
+        options={[
+          { value: "name-asc", label: "Paciente A–Z" },
+          { value: "name-desc", label: "Paciente Z–A" },
+          { value: "date-desc", label: "Data mais recente" },
+          { value: "date-asc", label: "Data mais antiga" },
+        ]}
+        className="max-w-xs"
+      />
 
       {isCreating && (
         <Card>
@@ -290,7 +308,7 @@ export default function AnamnesePage() {
                 </div>
               </div>
               <div
-                className="prose prose-sm mt-4 max-w-none dark:prose-invert"
+                className="prose prose-sm mt-4 max-w-none overflow-x-auto dark:prose-invert"
                 dangerouslySetInnerHTML={{ __html: legacyAnamneseToHtml(anamnese) }}
               />
               <div className="mt-4 flex flex-wrap gap-2">
@@ -318,7 +336,7 @@ export default function AnamnesePage() {
           if (!open) setAnamneseToDeleteId(null);
         }}
         title="Excluir anamnese?"
-        description="A exclusão é lógica no servidor."
+        description="O registro deixará de aparecer nas listagens. Esta ação não pode ser desfeita."
         confirmLabel="Excluir"
         variant="destructive"
         onConfirm={async () => {

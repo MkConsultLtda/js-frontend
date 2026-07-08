@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { formatUserFacingApiError, type ApiErrorBody } from "@/lib/api/backend-client";
+import { BRAND_LOGO, BRAND_NAME } from "@/lib/brand";
 
 function safeRedirectFromQuery(): string {
   if (typeof window === "undefined") return "/dashboard";
@@ -54,8 +56,16 @@ function LoginForm() {
 
   return (
     <Card className="w-full max-w-md">
-      <CardHeader className="text-center">
-        <CardTitle className="text-2xl">FisioSystem</CardTitle>
+      <CardHeader className="items-center text-center">
+        <Image
+          src={BRAND_LOGO}
+          alt={BRAND_NAME}
+          width={280}
+          height={72}
+          priority
+          unoptimized
+          className="h-12 w-auto"
+        />
         <p className="text-muted-foreground">Entre na sua conta</p>
       </CardHeader>
       <CardContent>

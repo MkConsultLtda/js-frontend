@@ -18,6 +18,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PatientProntuarioToolbar } from "@/components/pacientes/patient-prontuario-toolbar";
+import { PatientTreatmentCard } from "@/components/pacientes/patient-treatment-card";
+import { patientStatusLabel } from "@/lib/patient-labels";
 import { usePatientDetailBundle } from "@/lib/api/hooks/use-fisio";
 import { formatIsoDateToBR } from "@/lib/date-utils";
 import {
@@ -113,18 +115,18 @@ export default function PacienteProntuarioPage() {
   const enderecoLinha = formatAddressOneLine(patient.address);
 
   return (
-    <div className="p-8 space-y-8">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-1">
+        <div className="space-y-1 min-w-0">
           <Button variant="ghost" asChild className="gap-2 -ml-2 w-fit">
             <Link href="/pacientes">
               <ArrowLeft className="h-4 w-4" />
               Pacientes
             </Link>
           </Button>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-            <User className="h-8 w-8 text-primary" />
-            {patient.name}
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2 min-w-0">
+            <User className="h-7 w-7 sm:h-8 sm:w-8 text-primary shrink-0" />
+            <span className="truncate">{patient.name}</span>
           </h1>
           <p className="text-muted-foreground">
             {age} anos · Nasc. {nascimento} · {patient.diagnosis}
@@ -183,10 +185,13 @@ export default function PacienteProntuarioPage() {
               Status
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-sm">
-            {patient.status === "active" ? "Ativo" : "Inativo"}
-          </CardContent>
+          <CardContent className="text-sm">{patientStatusLabel(patient.status)}</CardContent>
         </Card>
+        <PatientTreatmentCard
+          patient={patient}
+          patientId={idNum}
+          appointments={appointments}
+        />
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -316,7 +321,7 @@ export default function PacienteProntuarioPage() {
               {proximos.map((a) => (
                 <li
                   key={a.id}
-                  className="flex justify-between gap-4 border-b border-border/60 pb-2 last:border-0"
+                  className="flex flex-col gap-0.5 border-b border-border/60 pb-2 last:border-0 sm:flex-row sm:justify-between sm:gap-4"
                 >
                   <span>
                     {formatIsoDateToBR(a.date)} às {a.time}

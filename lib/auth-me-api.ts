@@ -9,6 +9,7 @@ export type AuthMeResponse = {
   professionalEmail: string;
   notes: string;
   photoDataUrl: string;
+  signatureImage: string;
 };
 
 export type AuthProfilePatchBody = {
@@ -19,6 +20,7 @@ export type AuthProfilePatchBody = {
   professionalEmail: string;
   notes: string;
   photoDataUrl: string;
+  signatureImage: string;
 };
 
 export async function fetchAuthMe(): Promise<AuthMeResponse> {

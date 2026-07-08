@@ -24,17 +24,22 @@ import { AgendaAppointmentList } from "@/components/agenda/agenda-appointment-li
 import { AgendaColorLegend } from "@/components/agenda/agenda-color-legend";
 import { AgendaMonthView } from "@/components/agenda/agenda-month-view";
 import { AgendaWeekView } from "@/components/agenda/agenda-week-view";
+import { RecurringBlockDialog } from "@/components/agenda/recurring-block-dialog";
+import { RecurringSessionForm } from "@/components/agenda/recurring-session-form";
+import { parseMoneyInput } from "@/lib/appointment-payment";
+import type { AgendaDaySortOrder } from "@/lib/list-sort";
+import { sortAgendaDay } from "@/lib/list-sort";
 import { CalendarExtraFormFields } from "@/components/agenda/calendar-extra-form-fields";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { formatUserFacingApiError } from "@/lib/api/backend-client";
 import {
   dtoAgendaPayloadSession,
-  emptyHolidayList,
 } from "@/lib/api/fisio-api";
 import {
   useAggregateEvoluco,
   useAppointmentRange,
   useAgendaMutations,
+  useHolidays,
   usePatientsSearch,
 } from "@/lib/api/hooks/use-fisio";
 import { computeAgendaFetchRange } from "@/lib/agenda-api-range";
@@ -67,6 +72,7 @@ import { isSessionAppointment, type Appointment, type CalendarEntryKind } from "
 import { ChevronDown, Plus } from "lucide-react";
 
 type AgendaViewMode = "month" | "week";
+type CreateSessionMode = "single" | "package";
 type ScheduleCandidate = {
   date: string;
   time: string;
@@ -82,8 +88,11 @@ export default function AgendaPage() {
   );
   const [searchTerm, setSearchTerm] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState("all");
+  const [paymentFilter, setPaymentFilter] = React.useState<"all" | "pending" | "paid">("all");
   const [createOpen, setCreateOpen] = React.useState(false);
   const [createKind, setCreateKind] = React.useState<"session" | "block" | "personal">("session");
+  const [createSessionMode, setCreateSessionMode] = React.useState<CreateSessionMode>("single");
+  const [daySortOrder, setDaySortOrder] = React.useState<AgendaDaySortOrder>("time");
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [editingAppointment, setEditingAppointment] =
     React.useState<Appointment | null>(null);
@@ -140,7 +149,8 @@ export default function AgendaPage() {
     replaceAppointment.isPending ||
     deleteAppointment.isPending;
 
-  const holidays = React.useMemo(() => emptyHolidayList(), []);
+  const holidayYear = currentDate.getFullYear();
+  const { data: holidays = [] } = useHolidays(holidayYear);
 
   const patientOptions = patients.map((p) => ({ id: p.id, name: p.name }));
 
@@ -164,12 +174,12 @@ export default function AgendaPage() {
 
   const createForm = useForm<AppointmentFormValues>({
     resolver: zodResolver(appointmentFormSchema),
-    defaultValues: emptyAppointmentForm(toLocalDateString(new Date())),
+    defaultValues: emptyAppointmentForm(toLocalDateString(new Date()), settings.sessionPrice),
   });
 
   const editForm = useForm<AppointmentFormValues>({
     resolver: zodResolver(appointmentFormSchema),
-    defaultValues: emptyAppointmentForm(toLocalDateString(new Date())),
+    defaultValues: emptyAppointmentForm(toLocalDateString(new Date()), settings.sessionPrice),
   });
 
   const createExtraForm = useForm<CalendarExtraFormValues>({
@@ -182,15 +192,21 @@ export default function AgendaPage() {
     defaultValues: emptyCalendarExtraForm(toLocalDateString(new Date())),
   });
 
-  const filteredAppointments = appointments.filter((apt) => {
-    if (!isSessionAppointment(apt)) return false;
-    const matchesSearch =
-      apt.patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      apt.type.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || apt.status === statusFilter;
-    const matchesDate = apt.date === selectedDate;
-    return matchesSearch && matchesStatus && matchesDate;
-  });
+  const filteredAppointments = React.useMemo(() => {
+    const list = appointments.filter((apt) => {
+      if (!isSessionAppointment(apt)) return false;
+      const matchesSearch =
+        apt.patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        apt.type.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesStatus = statusFilter === "all" || apt.status === statusFilter;
+      const matchesPayment =
+        paymentFilter === "all" ||
+        apt.paymentStatus === paymentFilter;
+      const matchesDate = apt.date === selectedDate;
+      return matchesSearch && matchesStatus && matchesPayment && matchesDate;
+    });
+    return sortAgendaDay(list, daySortOrder);
+  }, [appointments, searchTerm, statusFilter, paymentFilter, selectedDate, daySortOrder]);
 
   const dayAppointments = React.useMemo(
     () =>
@@ -323,6 +339,25 @@ export default function AgendaPage() {
     [evolucoes],
   );
 
+  const agendaPayloadFromForm = (
+    appointment: Pick<Appointment, "kind" | "patientId" | "patientName">,
+    values: AppointmentFormValues,
+    duration: number,
+  ) =>
+    dtoAgendaPayloadSession({
+      kind: appointment.kind ?? "session",
+      patientId: appointment.patientId,
+      patientName: appointment.patientName,
+      date: values.date,
+      time: values.time,
+      duration,
+      type: values.type,
+      status: values.status,
+      notes: values.notes?.trim() || undefined,
+      paymentStatus: values.paymentStatus,
+      sessionAmount: parseMoneyInput(values.sessionAmount),
+    });
+
   const onCreateSessionSubmit = async (values: AppointmentFormValues) => {
     const patient = patients.find((p) => p.id === parseInt(values.patientId, 10));
     if (!patient) return;
@@ -333,18 +368,11 @@ export default function AgendaPage() {
       return;
     }
     const duration = parseInt(values.duration, 10);
-    const payload = {
-      kind: "session" as const,
-      patientId: patient.id,
-      patientName: patient.name,
-      date: values.date,
-      time: values.time,
+    const payload = agendaPayloadFromForm(
+      { kind: "session", patientId: patient.id, patientName: patient.name },
+      values,
       duration,
-      type: values.type,
-      status: values.status,
-      notes: values.notes?.trim() || undefined,
-      paymentStatus: values.paymentStatus,
-    };
+    );
 
     await executeWithConflictConfirmation({
       candidates: [{ date: values.date, time: values.time, duration, label: patient.name }],
@@ -352,11 +380,11 @@ export default function AgendaPage() {
       onContinue: async (allowOverlap) => {
         try {
           await createAppointment.mutateAsync({
-            body: dtoAgendaPayloadSession(payload),
+            body: payload,
             allowOverlap,
           });
           setCreateOpen(false);
-          createForm.reset(emptyAppointmentForm(selectedDate));
+          createForm.reset(emptyAppointmentForm(selectedDate, settings.sessionPrice));
           toast.success("Agendamento criado.");
         } catch (err) {
           toast.error(
@@ -445,6 +473,15 @@ export default function AgendaPage() {
       return;
     }
     const duration = parseInt(values.duration, 10);
+    const body = agendaPayloadFromForm(
+      {
+        kind: editingAppointment.kind,
+        patientId: patient.id,
+        patientName: patient.name,
+      },
+      values,
+      duration,
+    );
     const updated = {
       ...editingAppointment,
       patientId: patient.id,
@@ -456,6 +493,7 @@ export default function AgendaPage() {
       status: values.status,
       notes: values.notes?.trim() || undefined,
       paymentStatus: values.paymentStatus,
+      sessionAmount: parseMoneyInput(values.sessionAmount),
     };
 
     await executeWithConflictConfirmation({
@@ -466,12 +504,12 @@ export default function AgendaPage() {
         try {
           await replaceAppointment.mutateAsync({
             id: editingAppointment.id,
-            body: dtoAgendaPayloadSession(updated),
+            body,
             allowOverlap,
           });
           setIsEditDialogOpen(false);
           setEditingAppointment(null);
-          editForm.reset(emptyAppointmentForm(selectedDate));
+          editForm.reset(emptyAppointmentForm(selectedDate, settings.sessionPrice));
           toast.success("Agendamento atualizado.");
         } catch (err) {
           toast.error(formatUserFacingApiError(err, "Não foi possível atualizar."));
@@ -531,6 +569,10 @@ export default function AgendaPage() {
         type: appointment.type,
         status: appointment.status,
         paymentStatus: appointment.paymentStatus ?? "pending",
+        sessionAmount:
+          appointment.sessionAmount != null
+            ? String(appointment.sessionAmount).replace(".", ",")
+            : String(settings.sessionPrice),
         notes: appointment.notes ?? "",
       });
     } else {
@@ -561,13 +603,10 @@ export default function AgendaPage() {
           body: dtoAgendaPayloadSession({
             ...appointment,
             paymentStatus: nextPaid,
+            sessionAmount: appointment.sessionAmount ?? settings.sessionPrice,
           }),
         });
-        toast.message(
-          nextPaid === "pending"
-            ? "Marcado como pagamento pendente."
-            : "Marcado como pago.",
-        );
+        toast.message(nextPaid === "paid" ? "Marcado como pago." : "Marcado como não pago.");
       } catch (err) {
         toast.error(formatUserFacingApiError(err, "Não foi possível atualizar pagamento."));
       }
@@ -590,10 +629,10 @@ export default function AgendaPage() {
   }, [selectedDate, workingWeekdays]);
 
   return (
-    <div className="p-8 space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Agenda</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Agenda</h1>
           <p className="text-muted-foreground">
             Visualização em estilo calendário: mês com atendimentos no próprio grid e semana com horários
             e duração.
@@ -638,11 +677,12 @@ export default function AgendaPage() {
               <DropdownMenuItem
                 onSelect={() => {
                   setCreateKind("session");
-                  createForm.reset(emptyAppointmentForm(selectedDate));
+                  setCreateSessionMode("single");
+                  createForm.reset(emptyAppointmentForm(selectedDate, settings.sessionPrice));
                   setCreateOpen(true);
                 }}
               >
-                Atendimento (paciente)
+                Atendimento
               </DropdownMenuItem>
               <DropdownMenuItem
                 onSelect={() => {
@@ -660,10 +700,15 @@ export default function AgendaPage() {
                   setCreateOpen(true);
                 }}
               >
-                Evento pessoal / trabalho fixo
+                Evento pessoal
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          <RecurringBlockDialog
+            from={range.from}
+            to={range.to}
+            durationOptions={durationOptions}
+          />
 
           <Dialog
             open={createOpen}
@@ -671,49 +716,89 @@ export default function AgendaPage() {
               setCreateOpen(open);
               if (open) {
                 if (createKind === "session") {
-                  createForm.reset(emptyAppointmentForm(selectedDate));
+                  setCreateSessionMode("single");
+                  createForm.reset(emptyAppointmentForm(selectedDate, settings.sessionPrice));
                 } else {
                   createExtraForm.reset(emptyCalendarExtraForm(selectedDate));
                 }
               }
             }}
           >
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className={createKind === "session" && createSessionMode === "package" ? "sm:max-w-lg max-h-[90vh] overflow-y-auto" : "sm:max-w-[425px]"}>
               <DialogHeader>
                 <DialogTitle>
                   {createKind === "session"
                     ? "Novo atendimento"
                     : createKind === "block"
                       ? "Bloquear horário"
-                      : "Evento pessoal ou trabalho"}
+                      : "Evento pessoal"}
                 </DialogTitle>
                 <DialogDescription>
                   {createKind === "session"
-                    ? "Agende uma sessão para um paciente."
+                    ? "Escolha sessão avulsa ou pacote com várias sessões recorrentes."
                     : createKind === "block"
                       ? "Reserve o intervalo na agenda (não aparece como atendimento na lista do dia)."
-                      : "Marque compromissos pessoais ou trabalho fixo (cor roxa na grade)."}
+                      : "Marque compromissos pessoais (cor roxa na grade)."}
                 </DialogDescription>
               </DialogHeader>
               {createKind === "session" ? (
-                <form
-                  onSubmit={createForm.handleSubmit(onCreateSessionSubmit)}
-                  className="space-y-0"
-                >
-                  <AppointmentFormFields
-                    control={createForm.control}
-                    errors={createForm.formState.errors}
-                    patients={patientOptions}
-                    durationOptions={durationOptions}
-                    typeOptions={typeOptions}
-                    idPrefix="create-"
-                  />
-                  <DialogFooter className="gap-2 sm:gap-0">
-                    <Button type="submit" disabled={isMutatingAgenda}>
-                      {createAppointment.isPending ? "Criando…" : "Criar"}
+                <>
+                  <div className="inline-flex w-full rounded-lg border bg-muted/40 p-1">
+                    <Button
+                      type="button"
+                      variant={createSessionMode === "single" ? "default" : "ghost"}
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => setCreateSessionMode("single")}
+                    >
+                      Sessão avulsa
                     </Button>
-                  </DialogFooter>
-                </form>
+                    <Button
+                      type="button"
+                      variant={createSessionMode === "package" ? "default" : "ghost"}
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => setCreateSessionMode("package")}
+                    >
+                      Pacote de sessões
+                    </Button>
+                  </div>
+                  {createSessionMode === "single" ? (
+                    <form
+                      onSubmit={createForm.handleSubmit(onCreateSessionSubmit)}
+                      className="space-y-0"
+                    >
+                      <AppointmentFormFields
+                        control={createForm.control}
+                        errors={createForm.formState.errors}
+                        patients={patientOptions}
+                        durationOptions={durationOptions}
+                        typeOptions={typeOptions}
+                        idPrefix="create-"
+                        defaultSessionPrice={settings.sessionPrice}
+                      />
+                      <DialogFooter className="gap-2 sm:gap-0">
+                        <Button type="submit" disabled={isMutatingAgenda}>
+                          {createAppointment.isPending ? "Criando…" : "Criar sessão"}
+                        </Button>
+                      </DialogFooter>
+                    </form>
+                  ) : (
+                    <RecurringSessionForm
+                      from={range.from}
+                      to={range.to}
+                      patients={patientOptions}
+                      durationOptions={durationOptions}
+                      typeOptions={typeOptions}
+                      defaultStartDate={selectedDate}
+                      defaultSessionPrice={settings.sessionPrice}
+                      onSuccess={() => {
+                        setCreateOpen(false);
+                        setCreateSessionMode("single");
+                      }}
+                    />
+                  )}
+                </>
               ) : (
                 <form
                   onSubmit={createExtraForm.handleSubmit(onCreateExtraSubmit)}
@@ -780,6 +865,8 @@ export default function AgendaPage() {
           onSearchTermChange={setSearchTerm}
           statusFilter={statusFilter}
           onStatusFilterChange={setStatusFilter}
+          paymentFilter={paymentFilter}
+          onPaymentFilterChange={setPaymentFilter}
           filteredAppointments={filteredAppointments}
           dayAppointments={dayAppointments}
           patients={patients}
@@ -787,6 +874,8 @@ export default function AgendaPage() {
           onEdit={openEditModal}
           onDeleteRequest={setAppointmentToDeleteId}
           onTogglePayment={handleTogglePayment}
+          daySortOrder={daySortOrder}
+          onDaySortOrderChange={setDaySortOrder}
         />
       </div>
 
@@ -796,7 +885,7 @@ export default function AgendaPage() {
           if (!open) setAppointmentToDeleteId(null);
         }}
         title="Excluir registro da agenda?"
-        description="Esta ação não pode ser desfeita. O registro será removido no servidor (exclusão lógica)."
+        description="Esta ação não pode ser desfeita. O agendamento será removido da sua agenda."
         confirmLabel="Excluir"
         variant="destructive"
         onConfirm={async () => {
@@ -838,7 +927,7 @@ export default function AgendaPage() {
           setIsEditDialogOpen(open);
           if (!open) {
             setEditingAppointment(null);
-            editForm.reset(emptyAppointmentForm(selectedDate));
+            editForm.reset(emptyAppointmentForm(selectedDate, settings.sessionPrice));
             editExtraForm.reset(emptyCalendarExtraForm(selectedDate));
           }
         }}
@@ -865,6 +954,7 @@ export default function AgendaPage() {
                 durationOptions={durationOptions}
                 typeOptions={typeOptions}
                 idPrefix="edit-"
+                defaultSessionPrice={settings.sessionPrice}
               />
               <DialogFooter className="flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-0">
                 {editingAppointment ? (
