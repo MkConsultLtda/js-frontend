@@ -3,6 +3,7 @@ import { BRAND_NAME } from "@/lib/brand";
 import { formatIsoDateToBR } from "@/lib/date-utils";
 import { htmlToPlainText } from "@/lib/html-to-plain";
 import { formatAddressOneLine, formatCepDisplay } from "@/lib/patient-utils";
+import { PDF_FONT_FAMILY, registerPdfFont } from "@/lib/pdf/jspdf-fonts";
 import type { Anamnese, Appointment, Evolucao, Patient } from "@/lib/types";
 import { isSessionAppointment } from "@/lib/types";
 
@@ -50,6 +51,8 @@ export type PdfBranding = {
   signatureLines: string[];
   /** Logo no canto superior direito da primeira página (foto do perfil em data URL). */
   logoDataUrl?: string;
+  /** Assinatura padrão do profissional (imagem PNG/JPEG em data URL), igual à dos PDFs COFFITO. */
+  signatureImageDataUrl?: string;
 };
 
 function fileSlugBase(name: string): string {
@@ -62,6 +65,13 @@ function fileSlugBase(name: string): string {
       .toLowerCase()
       .slice(0, 48) || "paciente"
   );
+}
+
+function imageFormatFromDataUrl(dataUrl: string | undefined): "PNG" | "JPEG" | null {
+  if (!dataUrl?.startsWith("data:image")) return null;
+  if (dataUrl.includes("image/png")) return "PNG";
+  if (dataUrl.includes("image/jpeg") || dataUrl.includes("image/jpg")) return "JPEG";
+  return null;
 }
 
 type JsPdfImageProps = { width: number; height: number };
@@ -87,11 +97,7 @@ function drawLogoTopRightFirstPage(
   maxHMm: number,
 ): void {
   if (!dataUrl?.startsWith("data:image")) return;
-  const fmt: "PNG" | "JPEG" | null = dataUrl.includes("image/png")
-    ? "PNG"
-    : dataUrl.includes("image/jpeg") || dataUrl.includes("image/jpg")
-      ? "JPEG"
-      : null;
+  const fmt = imageFormatFromDataUrl(dataUrl);
   if (!fmt) return;
   try {
     const pageW = doc.internal.pageSize.getWidth();
@@ -118,8 +124,12 @@ function drawLogoTopRightFirstPage(
 /**
  * Primeira página: faixa de cabeçalho com nome da clínica à esquerda e logo à direita.
  */
-function newDoc(sectionTitle: string, branding?: PdfBranding): { doc: jsPDF; y: number } {
+async function newDoc(
+  sectionTitle: string,
+  branding?: PdfBranding,
+): Promise<{ doc: jsPDF; y: number }> {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
+  await registerPdfFont(doc);
   const pageW = doc.internal.pageSize.getWidth();
   /** Cabeçalho minimal: faixa baixa, fundo quase branco, uma regra fina. */
   const HEADER_BAND = 34;
@@ -135,7 +145,7 @@ function newDoc(sectionTitle: string, branding?: PdfBranding): { doc: jsPDF; y: 
   const brand = branding?.clinicTitle?.trim() || BRAND_NAME;
   const titleMaxW = pageW - 2 * MARGIN - HEADER_LOGO_RESERVE_MM;
 
-  doc.setFont("helvetica", "bold");
+  doc.setFont(PDF_FONT_FAMILY, "bold");
   doc.setFontSize(15);
   doc.setTextColor(TEXT_PRIMARY.r, TEXT_PRIMARY.g, TEXT_PRIMARY.b);
   const brandLines = doc.splitTextToSize(brand, titleMaxW);
@@ -144,7 +154,7 @@ function newDoc(sectionTitle: string, branding?: PdfBranding): { doc: jsPDF; y: 
   ty += brandLines.length * 6 + 2;
 
   doc.setFontSize(10);
-  doc.setFont("helvetica", "normal");
+  doc.setFont(PDF_FONT_FAMILY, "normal");
   doc.setTextColor(TEXT_MUTED.r, TEXT_MUTED.g, TEXT_MUTED.b);
   const subLines = doc.splitTextToSize(sectionTitle, titleMaxW);
   doc.text(subLines, MARGIN, ty);
@@ -155,22 +165,48 @@ function newDoc(sectionTitle: string, branding?: PdfBranding): { doc: jsPDF; y: 
   doc.text(`Gerado em ${new Date().toLocaleString("pt-BR")}`, MARGIN, ty);
 
   doc.setTextColor(0, 0, 0);
-  doc.setFont("helvetica", "normal");
+  doc.setFont(PDF_FONT_FAMILY, "normal");
   doc.setFontSize(10);
 
   return { doc, y: HEADER_BAND + 12 };
 }
 
+/** Largura/altura máximas da imagem de assinatura dentro da caixa (mm). */
+const SIGNATURE_IMG_MAX_W_MM = 60;
+const SIGNATURE_IMG_MAX_H_MM = 26;
+
+/** Desenha a assinatura (imagem) escalada, retornando a altura ocupada em mm (0 se ausente). */
+function drawSignatureImage(doc: jsPDF, dataUrl: string | undefined, x: number, y: number): number {
+  const fmt = imageFormatFromDataUrl(dataUrl);
+  if (!fmt || !dataUrl) return 0;
+  try {
+    const dims = getImageDimensionsMm(doc, dataUrl);
+    let drawW = SIGNATURE_IMG_MAX_W_MM;
+    let drawH = SIGNATURE_IMG_MAX_H_MM;
+    if (dims) {
+      const scale = Math.min(SIGNATURE_IMG_MAX_W_MM / dims.width, SIGNATURE_IMG_MAX_H_MM / dims.height);
+      drawW = dims.width * scale;
+      drawH = dims.height * scale;
+    }
+    doc.addImage(dataUrl, fmt, x, y, drawW, drawH);
+    return drawH;
+  } catch {
+    return 0;
+  }
+}
+
 function appendSignaturePage(doc: jsPDF, branding?: PdfBranding): void {
   const lines = (branding?.signatureLines ?? []).map((s) => s.trim()).filter(Boolean);
-  if (lines.length === 0) return;
+  const sigImg = branding?.signatureImageDataUrl?.trim() || undefined;
+  const hasImg = imageFormatFromDataUrl(sigImg ?? "") !== null;
+  if (lines.length === 0 && !hasImg) return;
 
   doc.addPage();
   const pageW = doc.internal.pageSize.getWidth();
   const innerW = pageW - 2 * MARGIN;
 
   const titleY = 28;
-  doc.setFont("helvetica", "bold");
+  doc.setFont(PDF_FONT_FAMILY, "bold");
   doc.setFontSize(11);
   doc.setTextColor(TEXT_PRIMARY.r, TEXT_PRIMARY.g, TEXT_PRIMARY.b);
   doc.text("Responsável técnico", MARGIN, titleY);
@@ -181,22 +217,26 @@ function appendSignaturePage(doc: jsPDF, branding?: PdfBranding): void {
   const boxTop = titleY + 16;
   let wrappedCount = 0;
   for (let i = 0; i < lines.length; i++) {
-    doc.setFont("helvetica", i === 0 ? "bold" : "normal");
-    doc.setFontSize(11);
     const wrapped = doc.splitTextToSize(lines[i], innerW - 16);
     wrappedCount += wrapped.length;
   }
-  const boxH = Math.max(46, wrappedCount * LINE + 34);
+  const imgReserve = hasImg ? SIGNATURE_IMG_MAX_H_MM + 6 : 0;
+  const boxH = Math.max(46, wrappedCount * LINE + 34 + imgReserve);
 
   doc.setDrawColor(RULE_LIGHT.r, RULE_LIGHT.g, RULE_LIGHT.b);
   doc.setLineWidth(0.2);
   doc.rect(MARGIN, boxTop, innerW, boxH, "S");
 
   let y = boxTop + 11;
+  if (hasImg) {
+    const usedH = drawSignatureImage(doc, sigImg, MARGIN + 8, y - 4);
+    y += usedH + 4;
+  }
+
   doc.setFontSize(11);
   for (let i = 0; i < lines.length; i++) {
     const isName = i === 0;
-    doc.setFont("helvetica", isName ? "bold" : "normal");
+    doc.setFont(PDF_FONT_FAMILY, isName ? "bold" : "normal");
     doc.setTextColor(
       isName ? TEXT_PRIMARY.r : TEXT_MUTED.r,
       isName ? TEXT_PRIMARY.g : TEXT_MUTED.g,
@@ -207,7 +247,7 @@ function appendSignaturePage(doc: jsPDF, branding?: PdfBranding): void {
     y += wrapped.length * LINE + (i === lines.length - 1 ? 2 : 3);
   }
 
-  doc.setFont("helvetica", "normal");
+  doc.setFont(PDF_FONT_FAMILY, "normal");
   doc.setDrawColor(190, 192, 191);
   doc.setLineWidth(0.25);
   const lineY = Math.min(boxTop + boxH - 10, y + 8);
@@ -215,7 +255,7 @@ function appendSignaturePage(doc: jsPDF, branding?: PdfBranding): void {
 
   doc.setFontSize(7);
   doc.setTextColor(150, 153, 152);
-  doc.text("Assinatura eletrónica conforme dados cadastrados no sistema.", MARGIN + 8, lineY + 5.5);
+  doc.text("Assinatura eletrônica conforme dados cadastrados no sistema.", MARGIN + 8, lineY + 5.5);
 }
 
 function ensureRoom(doc: jsPDF, y: number, need: number): number {
@@ -239,12 +279,12 @@ function writeBlock(doc: jsPDF, y: number, label: string, body: string): number 
   doc.setFillColor(ACCENT_R, ACCENT_G, ACCENT_B);
   doc.rect(MARGIN, y - 2, 0.75, boxH + 2, "F");
 
-  doc.setFont("helvetica", "bold");
+  doc.setFont(PDF_FONT_FAMILY, "bold");
   doc.setFontSize(9.5);
   doc.setTextColor(TEXT_PRIMARY.r, TEXT_PRIMARY.g, TEXT_PRIMARY.b);
   doc.text(label, innerLeft + 2, y + 4);
 
-  doc.setFont("helvetica", "normal");
+  doc.setFont(PDF_FONT_FAMILY, "normal");
   doc.setFontSize(9.5);
   doc.setTextColor(TEXT_PRIMARY.r, TEXT_PRIMARY.g, TEXT_PRIMARY.b);
   doc.text(bodyLines, innerLeft + 2, y + 4 + labelLineH);
@@ -258,12 +298,12 @@ function writeBlock(doc: jsPDF, y: number, label: string, body: string): number 
 
 function writeTitle(doc: jsPDF, y: number, t: string): number {
   y = ensureRoom(doc, y, 16);
-  doc.setFont("helvetica", "bold");
+  doc.setFont(PDF_FONT_FAMILY, "bold");
   doc.setFontSize(10);
   doc.setTextColor(TEXT_PRIMARY.r, TEXT_PRIMARY.g, TEXT_PRIMARY.b);
   doc.text(t, MARGIN, y);
   y += 9;
-  doc.setFont("helvetica", "normal");
+  doc.setFont(PDF_FONT_FAMILY, "normal");
   doc.setFontSize(10);
   doc.setTextColor(TEXT_PRIMARY.r, TEXT_PRIMARY.g, TEXT_PRIMARY.b);
   return y;
@@ -342,14 +382,14 @@ function appointmentLine(a: Appointment): string {
   return `${a.date} ${a.time} · ${a.type} · ${st} · Pagto: ${pay}${a.notes ? ` · Obs.: ${a.notes}` : ""}`;
 }
 
-export function downloadProntuarioPdf(
+export async function downloadProntuarioPdf(
   patient: Patient,
   anamneses: Anamnese[],
   evolucoes: Evolucao[],
   appointments: Appointment[],
   branding?: PdfBranding,
-): void {
-  const { doc, y: y0 } = newDoc("Prontuário (resumo)", branding);
+): Promise<void> {
+  const { doc, y: y0 } = await newDoc("Prontuário (resumo)", branding);
   let y = y0;
   y = writeTitle(doc, y, "Identificação");
   y = writeBlock(doc, y, "Paciente", patientHeaderLines(patient));
@@ -397,12 +437,12 @@ export function downloadProntuarioPdf(
   doc.save(`prontuario-${fileSlugBase(patient.name)}.pdf`);
 }
 
-export function downloadEvolucaoPdf(
+export async function downloadEvolucaoPdf(
   patient: Patient,
   evolucoes: Evolucao[],
   branding?: PdfBranding,
-): void {
-  const { doc, y: y0 } = newDoc("Relatório de evolução", branding);
+): Promise<void> {
+  const { doc, y: y0 } = await newDoc("Relatório de evolução", branding);
   let y = y0;
   y = writeBlock(doc, y, "Paciente", patientHeaderLines(patient));
   const ordered = [...evolucoes].sort((a, b) => b.dataSessao.localeCompare(a.dataSessao));
@@ -421,12 +461,12 @@ export function downloadEvolucaoPdf(
   doc.save(`evolucao-${fileSlugBase(patient.name)}.pdf`);
 }
 
-export function downloadAtendimentosPdf(
+export async function downloadAtendimentosPdf(
   patient: Patient,
   appointments: Appointment[],
   branding?: PdfBranding,
-): void {
-  const { doc, y: y0 } = newDoc("Histórico de atendimentos", branding);
+): Promise<void> {
+  const { doc, y: y0 } = await newDoc("Histórico de atendimentos", branding);
   let y = y0;
   y = writeBlock(doc, y, "Paciente", patientHeaderLines(patient));
   const sessoes = appointments
