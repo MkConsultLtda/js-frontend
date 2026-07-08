@@ -23,6 +23,16 @@ import {
   buildWhatsAppLink,
   toWhatsAppDigits,
 } from "@/lib/session-messages";
+import { money } from "@/lib/dashboard-metrics";
+import {
+  paymentViewBadgeClass,
+  paymentViewLabel,
+  resolveAppointmentPaymentView,
+  sessionAmountValue,
+} from "@/lib/appointment-payment";
+import type { AgendaDaySortOrder } from "@/lib/list-sort";
+import { ListSortSelect } from "@/components/ui/list-sort-select";
+import { sessionStatusLabel } from "@/lib/session-status";
 import {
   Activity,
   Banknote,
@@ -52,13 +62,17 @@ type Props = {
   onSearchTermChange: (value: string) => void;
   statusFilter: string;
   onStatusFilterChange: (value: string) => void;
+  paymentFilter: "all" | "pending" | "paid";
+  onPaymentFilterChange: (value: "all" | "pending" | "paid") => void;
   filteredAppointments: Appointment[];
   dayAppointments: Appointment[];
   patients: Patient[];
-  settings: Pick<ClinicSettings, "therapistName" | "clinicName" | "maxSessionsPerDay">;
+  settings: Pick<ClinicSettings, "therapistName" | "clinicName" | "maxSessionsPerDay" | "sessionPrice">;
   onEdit: (appointment: Appointment) => void;
   onDeleteRequest: (id: number) => void;
   onTogglePayment: (appointment: Appointment) => void;
+  daySortOrder: AgendaDaySortOrder;
+  onDaySortOrderChange: (order: AgendaDaySortOrder) => void;
 };
 
 export function AgendaAppointmentList({
@@ -67,6 +81,8 @@ export function AgendaAppointmentList({
   onSearchTermChange,
   statusFilter,
   onStatusFilterChange,
+  paymentFilter,
+  onPaymentFilterChange,
   filteredAppointments,
   dayAppointments,
   patients,
@@ -74,13 +90,16 @@ export function AgendaAppointmentList({
   onEdit,
   onDeleteRequest,
   onTogglePayment,
+  daySortOrder,
+  onDaySortOrderChange,
 }: Props) {
   const dateLabel = parseLocalDate(selectedDate).toLocaleDateString("pt-BR", {
     day: "2-digit",
     month: "long",
     year: "numeric",
   });
-  const hasActiveFilters = searchTerm.trim().length > 0 || statusFilter !== "all";
+  const hasActiveFilters =
+    searchTerm.trim().length > 0 || statusFilter !== "all" || paymentFilter !== "all";
   const now = new Date();
   const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(
     now.getDate()
@@ -105,6 +124,7 @@ export function AgendaAppointmentList({
         confirmed: 0,
         completed: 0,
         cancelled: 0,
+        no_show: 0,
         paid: 0,
         pendingPayment: 0,
       }
@@ -156,6 +176,33 @@ export function AgendaAppointmentList({
                 <SelectItem value="confirmed">Confirmados</SelectItem>
                 <SelectItem value="completed">Concluídos</SelectItem>
                 <SelectItem value="cancelled">Cancelados</SelectItem>
+                <SelectItem value="no_show">Faltas</SelectItem>
+              </SelectContent>
+            </Select>
+            <ListSortSelect
+              id="agenda-day-sort"
+              label="Ordenar atendimentos"
+              value={daySortOrder}
+              onChange={(v) => onDaySortOrderChange(v as AgendaDaySortOrder)}
+              options={[
+                { value: "time", label: "Horário" },
+                { value: "name-asc", label: "Paciente A–Z" },
+                { value: "name-desc", label: "Paciente Z–A" },
+              ]}
+            />
+            <Select
+              value={paymentFilter}
+              onValueChange={(v) =>
+                onPaymentFilterChange(v as "all" | "pending" | "paid")
+              }
+            >
+              <SelectTrigger className="w-full sm:w-44">
+                <SelectValue placeholder="Pagamento" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos pagamentos</SelectItem>
+                <SelectItem value="pending">Só pendentes</SelectItem>
+                <SelectItem value="paid">Só pagos</SelectItem>
               </SelectContent>
             </Select>
             {hasActiveFilters ? (
@@ -166,6 +213,7 @@ export function AgendaAppointmentList({
                 onClick={() => {
                   onSearchTermChange("");
                   onStatusFilterChange("all");
+                  onPaymentFilterChange("all");
                 }}
               >
                 Limpar filtros
@@ -193,7 +241,8 @@ export function AgendaAppointmentList({
             <div className="rounded-lg border border-emerald-200/70 bg-emerald-50/60 px-3 py-2 dark:border-emerald-500/40 dark:bg-emerald-500/10">
               <p className="text-muted-foreground">Finalização</p>
               <p className="font-semibold">
-                {statusCounts.completed} concluída(s) · {statusCounts.cancelled} cancelada(s)
+                {statusCounts.completed} concluída(s) · {statusCounts.no_show} falta(s) ·{" "}
+                {statusCounts.cancelled} cancelada(s)
               </p>
             </div>
             <div className="rounded-lg border border-amber-200/70 bg-amber-50/60 px-3 py-2 dark:border-amber-500/40 dark:bg-amber-500/10">
@@ -209,18 +258,17 @@ export function AgendaAppointmentList({
               <CalendarIcon className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="text-lg font-medium">Nenhum agendamento encontrado</h3>
               <p className="text-muted-foreground">
-                {searchTerm || statusFilter !== "all"
+                {searchTerm || statusFilter !== "all" || paymentFilter !== "all"
                   ? "Tente ajustar os filtros de busca."
                   : "Não há agendamentos para esta data."}
               </p>
             </div>
           ) : (
             <div className="space-y-4">
-              {filteredAppointments
-                .slice()
-                .sort((a, b) => a.time.localeCompare(b.time))
-                .map((appointment) => {
+              {filteredAppointments.map((appointment) => {
                   const patient = patients.find((p) => p.id === appointment.patientId);
+                  const paymentView = resolveAppointmentPaymentView(appointment, todayKey);
+                  const amount = sessionAmountValue(appointment, settings.sessionPrice ?? 150);
                   const mapsUrl = patient
                     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(formatAddressOneLine(patient.address))}`
                     : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(appointment.patientName)}`;
@@ -236,6 +284,11 @@ export function AgendaAppointmentList({
                       key={appointment.id}
                       className={`flex flex-col gap-4 rounded-lg border p-4 transition hover:bg-muted/50 sm:flex-row sm:items-start sm:justify-between ${
                         appointment.id === nextAppointmentId ? "border-primary bg-primary/5" : ""
+                      } ${
+                        appointment.paymentStatus === "pending" &&
+                        appointment.status !== "cancelled"
+                          ? "border-orange-400/70 bg-orange-50/40 dark:border-orange-600/50 dark:bg-orange-950/20"
+                          : ""
                       }`}
                     >
                       <div className="space-y-2 min-w-0 flex-1">
@@ -266,6 +319,11 @@ export function AgendaAppointmentList({
                             <Activity className="h-4 w-4 shrink-0" />
                             {appointment.type}
                           </span>
+                          {appointment.seriesId ? (
+                            <span className="rounded-full bg-violet-100 px-2 py-1 text-xs font-medium text-violet-900 dark:bg-violet-950/40 dark:text-violet-200">
+                              Pacote
+                            </span>
+                          ) : null}
                           <span
                             className={`rounded-full px-2 py-1 text-xs ${
                               appointment.status === "confirmed"
@@ -274,29 +332,23 @@ export function AgendaAppointmentList({
                                   ? "bg-amber-100 text-amber-900"
                                   : appointment.status === "completed"
                                     ? "bg-emerald-100 text-emerald-900"
-                                    : "bg-red-100 text-red-800 line-through"
+                                    : appointment.status === "no_show"
+                                      ? "bg-orange-100 text-orange-900"
+                                      : appointment.status === "cancelled"
+                                        ? "bg-red-100 text-red-800 line-through"
+                                        : "bg-muted text-muted-foreground"
                             }`}
                           >
-                            {appointment.status === "confirmed"
-                              ? "Confirmado"
-                              : appointment.status === "scheduled"
-                                ? "Agendado"
-                                : appointment.status === "completed"
-                                  ? "Concluído"
-                                  : "Cancelado"}
+                            {sessionStatusLabel(appointment.status)}
                           </span>
                           <span
-                            className={`rounded-full px-2 py-1 text-xs ${
-                              appointment.paymentStatus === "paid"
-                                ? "bg-emerald-100 text-emerald-900"
-                                : "bg-slate-100 text-slate-700"
-                            }`}
+                            className={`rounded-full px-2 py-1 text-xs font-medium ${paymentViewBadgeClass(paymentView)}`}
                           >
-                            {appointment.paymentStatus === "paid" ? "Pago" : "Pag. pendente"}
+                            {paymentViewLabel(paymentView, amount)}
                           </span>
                         </div>
                       </div>
-                      <div className="flex flex-wrap items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-2 overflow-x-auto pb-1 shrink-0 [&>*]:shrink-0 sm:flex-wrap sm:overflow-x-visible sm:pb-0">
                         <Button variant="outline" size="sm" asChild className="gap-1">
                           <a href={mapsUrl} target="_blank" rel="noopener noreferrer">
                             <ExternalLink className="h-4 w-4" />
@@ -340,7 +392,7 @@ export function AgendaAppointmentList({
                           onClick={() => onTogglePayment(appointment)}
                         >
                           <Banknote className="h-4 w-4" />
-                          {appointment.paymentStatus === "paid" ? "Desmarcar pago" : "Pago"}
+                          {appointment.paymentStatus === "paid" ? "Desmarcar pago" : "Marcar pago"}
                         </Button>
                         <Button
                           variant="outline"

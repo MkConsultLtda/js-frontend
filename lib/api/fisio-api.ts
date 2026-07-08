@@ -26,7 +26,18 @@ export type SpringPageDto<T> = {
   size: number;
 };
 
-/** Feriados: sem API no MVP — grade sem bloqueios nacionais. */
+/** Feriados via API */
+export async function fetchHolidays(year: number): Promise<Holiday[]> {
+  type HolidayDto = { id: number; date: string; name: string };
+  const raw = await backendJson<HolidayDto[]>(backendApiHref("holidays", { year }));
+  return raw.map((h, i) => ({
+    id: h.id > 0 ? h.id : -(i + 1),
+    date: h.date,
+    name: h.name,
+  }));
+}
+
+/** @deprecated use fetchHolidays */
 export function emptyHolidayList(): Holiday[] {
   return [];
 }
@@ -85,8 +96,17 @@ export function mapPatientFromApi(raw: PatientDto): Patient {
           uf: "",
         },
     lastSession: lastIso ? formatIsoDateToBR(lastIso) : "",
-    status: raw.status === "inactive" ? "inactive" : "active",
+    status:
+      raw.status === "inactive"
+        ? "inactive"
+        : raw.status === "discharged"
+          ? "discharged"
+          : "active",
     registeredAt: regIso ? formatIsoDateToBR(regIso) : "",
+    totalSessionsPlanned: Math.max(0, Number(raw.totalSessionsPlanned ?? 0)),
+    dischargedAt: patientDtoDate(raw, "dischargedAt", "discharged_at") || undefined,
+    dischargeSummary:
+      raw.dischargeSummary != null ? String(raw.dischargeSummary) : undefined,
   };
 }
 
@@ -109,11 +129,25 @@ export function mapAppointmentFromApi(raw: AppointmentDto): Appointment {
       status === "confirmed" ||
       status === "completed" ||
       status === "cancelled" ||
-      status === "scheduled"
+      status === "scheduled" ||
+      status === "no_show"
         ? status
         : "scheduled",
     notes: raw.notes != null ? String(raw.notes) : undefined,
-    paymentStatus: raw.paymentStatus === "paid" ? "paid" : "pending",
+    paymentStatus:
+      raw.paymentStatus === "paid" || raw.pay === "paid" ? "paid" : "pending",
+    sessionAmount:
+      raw.sessionAmount != null ? Number(raw.sessionAmount) : undefined,
+    paymentPlan:
+      raw.paymentPlan === "upfront" || raw.paymentPlan === "installments"
+        ? raw.paymentPlan
+        : raw.paymentPlan === "per_session"
+          ? "per_session"
+          : undefined,
+    packageAmount: raw.packageAmount != null ? Number(raw.packageAmount) : undefined,
+    installmentCount:
+      raw.installmentCount != null ? Number(raw.installmentCount) : undefined,
+    seriesId: raw.seriesId != null ? String(raw.seriesId) : undefined,
   };
 }
 
@@ -213,6 +247,7 @@ export async function fetchPatientPage(opts: {
     q: opts.q,
     page: opts.page ?? 0,
     size: opts.size ?? 50,
+    sort: "name,asc",
   });
   const page = await backendJson<SpringPageDto<PatientDto>>(href);
   return {
@@ -333,6 +368,39 @@ export async function fetchDashboardMetricsBundle(from: string, to: string): Pro
   }
 }
 
+export type FinancialReport = {
+  totalSessions: number;
+  paidSessions: number;
+  pendingSessions: number;
+  cancelledSessions: number;
+  estimatedRevenue: number;
+  receivedRevenue: number;
+  defaultRate: number;
+};
+
+export async function fetchFinancialReport(
+  from: string,
+  to: string,
+  sessionPrice: number,
+): Promise<FinancialReport> {
+  const raw = await backendJson<Record<string, unknown>>(
+    backendApiHref("reports/financial", {
+      from,
+      to,
+      sessionPrice: String(sessionPrice),
+    }),
+  );
+  return {
+    totalSessions: Number(raw.totalSessions ?? 0),
+    paidSessions: Number(raw.paidSessions ?? 0),
+    pendingSessions: Number(raw.pendingSessions ?? 0),
+    cancelledSessions: Number(raw.cancelledSessions ?? 0),
+    estimatedRevenue: Number(raw.estimatedRevenue ?? 0),
+    receivedRevenue: Number(raw.receivedRevenue ?? 0),
+    defaultRate: Number(raw.defaultRate ?? 0),
+  };
+}
+
 export async function fetchAggregatedAnamneses(patients: { id: number }[]) {
   if (patients.length === 0) return [];
   const chunks = await Promise.all(patients.map((p) => fetchAnamnesesForPatient(p.id)));
@@ -377,6 +445,45 @@ export async function apiPatchPatient(id: number, body: Record<string, unknown>)
 
 export async function apiDeletePatient(id: number): Promise<void> {
   await backendJson<void>(backendApiHref(`patients/${id}`), { method: "DELETE" });
+}
+
+export async function apiDischargePatient(
+  id: number,
+  dischargeSummary?: string,
+): Promise<Patient> {
+  const raw = await backendJson<PatientDto>(backendApiHref(`patients/${id}/discharge`), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ dischargeSummary: dischargeSummary?.trim() ?? "" }),
+  });
+  return mapPatientFromApi(raw);
+}
+
+export async function apiCreateRecurringBlocks(body: {
+  dayOfWeek: number;
+  time: string;
+  duration: number;
+  notes?: string;
+  fromDate: string;
+  untilDate: string;
+  allowOverlap?: boolean;
+}): Promise<Appointment[]> {
+  const raw = await backendJson<AppointmentDto[]>(
+    backendApiHref("appointments/recurring-block", body.allowOverlap ? { allowOverlap: "true" } : undefined),
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        dayOfWeek: body.dayOfWeek,
+        time: body.time,
+        duration: body.duration,
+        notes: body.notes ?? null,
+        fromDate: body.fromDate,
+        untilDate: body.untilDate,
+      }),
+    },
+  );
+  return raw.map(mapAppointmentFromApi);
 }
 
 export async function apiCreateAppointment(
@@ -506,6 +613,7 @@ export function dtoPatientCreateFromFormValues(data: PatientCreateFormValues): R
     lastSession: null,
     status: "active",
     registeredAt: today,
+    totalSessionsPlanned: 0,
   };
 }
 
@@ -589,6 +697,9 @@ export function patientToReplaceBodyFromDomain(p: Patient): Record<string, unkno
     lastSession: lastIso,
     status: p.status,
     registeredAt: registeredIso,
+    totalSessionsPlanned: p.totalSessionsPlanned,
+    dischargedAt: p.dischargedAt ?? null,
+    dischargeSummary: p.dischargeSummary ?? "",
   };
 }
 
@@ -603,10 +714,14 @@ export function dtoAgendaPayloadSession(input: {
   status: string;
   notes?: string;
   paymentStatus: string;
+  sessionAmount?: number;
+  paymentPlan?: string;
+  packageAmount?: number;
+  installmentCount?: number;
 }): Record<string, unknown> {
   const kind =
     input.kind ?? (input.patientId > 0 ? "session" : "personal");
-  return {
+  const payload: Record<string, unknown> = {
     kind,
     patientId: input.patientId || null,
     patientName: input.patientName,
@@ -618,4 +733,15 @@ export function dtoAgendaPayloadSession(input: {
     notes: input.notes ?? null,
     paymentStatus: input.paymentStatus,
   };
+  if (input.sessionAmount != null && input.sessionAmount > 0) {
+    payload.sessionAmount = input.sessionAmount;
+  }
+  if (input.paymentPlan) payload.paymentPlan = input.paymentPlan;
+  if (input.packageAmount != null && input.packageAmount > 0) {
+    payload.packageAmount = input.packageAmount;
+  }
+  if (input.installmentCount != null && input.installmentCount > 0) {
+    payload.installmentCount = input.installmentCount;
+  }
+  return payload;
 }

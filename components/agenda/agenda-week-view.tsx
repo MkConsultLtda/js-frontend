@@ -147,11 +147,11 @@ export function AgendaWeekView({
                         {d.getDate()}
                       </div>
                       {dayHolidays.length > 0 ? (
-                        <div className="mt-1 space-y-0.5">
+                        <div className="mt-1 w-full rounded border border-[var(--holiday)]/30 bg-[var(--holiday-bg)] px-1 py-0.5">
                           {dayHolidays.map((h) => (
                             <div
                               key={h.id}
-                              className="truncate text-[9px] font-semibold leading-tight text-amber-600 dark:text-amber-400"
+                              className="truncate text-[9px] font-semibold leading-tight text-[var(--holiday)]"
                               title={h.name}
                             >
                               {h.name}
@@ -249,7 +249,10 @@ export function AgendaWeekView({
                             onClick={() => onAppointmentClick(apt)}
                             className={cn(
                               "absolute overflow-hidden rounded-md px-1 py-0.5 text-left text-[10px] leading-tight hover:brightness-95",
-                              calendarEntryClassName(apt)
+                              calendarEntryClassName(apt),
+                              apt.paymentStatus === "pending" &&
+                                apt.status !== "cancelled" &&
+                                "ring-2 ring-orange-500/80 ring-offset-1",
                             )}
                             style={{
                               top: `${top}px`,

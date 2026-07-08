@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { SessionKeepAlive } from "@/components/session-keep-alive";
 import { SidebarNav } from "@/components/sidebar-nav";
+import { BRAND_NAME } from "@/lib/brand";
 import { cn } from "@/lib/utils";
 
 const SIDEBAR_COLLAPSED_KEY = "fisio:sidebar-collapsed";
@@ -80,7 +81,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           >
             <Menu className="h-5 w-5" />
           </Button>
-          <span className="min-w-0 truncate font-semibold">FisioSystem</span>
+          <span className="min-w-0 truncate font-semibold">{BRAND_NAME}</span>
         </header>
 
         <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden pb-[max(0.75rem,env(safe-area-inset-bottom))] [-webkit-overflow-scrolling:touch]">

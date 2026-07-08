@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 72" width="300" height="72" role="img" aria-label="JS Fisioterapia">
+  <defs>
+    <linearGradient id="jsLogoDark" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8A9B7D"/>
+      <stop offset="1" stop-color="#6C7D61"/>
+    </linearGradient>
+  </defs>
+  <rect x="6" y="10" width="52" height="52" rx="14" fill="url(#jsLogoDark)"/>
+  <text x="32" y="44" text-anchor="middle" font-family="Plus Jakarta Sans, system-ui, sans-serif" font-size="26" font-weight="700" fill="#FAF9F6" letter-spacing="-0.5">JS</text>
+  <text x="72" y="36" font-family="Plus Jakarta Sans, system-ui, sans-serif" font-size="22" font-weight="600" letter-spacing="-0.3" fill="#F0EEF8">JS Fisioterapia</text>
+  <text x="73" y="54" font-family="Plus Jakarta Sans, system-ui, sans-serif" font-size="11" font-weight="500" letter-spacing="0.12em" fill="#BEB7DF">JULLI SEVERINA</text>
+</svg>

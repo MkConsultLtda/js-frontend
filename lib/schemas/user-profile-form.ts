@@ -15,6 +15,9 @@ export const userProfileFormSchema = z.object({
   professionalTitle: text(120).min(1, "O título ou função profissional é obrigatório."),
   notes: z.string().trim().max(500, "As observações não podem ultrapassar 500 caracteres."),
   photoDataUrl: z.string().max(600_000, "A imagem excede o tamanho máximo permitido para armazenamento."),
+  signatureImageDataUrl: z
+    .string()
+    .max(600_000, "A assinatura excede o tamanho máximo permitido para armazenamento."),
 });
 
 export type UserProfileFormValues = z.infer<typeof userProfileFormSchema>;
@@ -28,5 +31,6 @@ export function emptyUserProfileForm(): UserProfileFormValues {
     professionalTitle: "",
     notes: "",
     photoDataUrl: "",
+    signatureImageDataUrl: "",
   };
 }

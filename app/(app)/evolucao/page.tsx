@@ -46,6 +46,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ListSortSelect } from "@/components/ui/list-sort-select";
+import { sortEvolucoes, type DateSortOrder, type NameSortOrder } from "@/lib/list-sort";
 import { TrendingUp, Save, Calendar, User, Trash2, Eye } from "lucide-react";
 
 function toDateInputValue(dateStr: string): string {
@@ -95,6 +97,7 @@ export default function EvolucaoPage() {
   const [patientNameFilter, setPatientNameFilter] = React.useState("");
   const [evolucaoToDeleteId, setEvolucaoToDeleteId] = React.useState<number | null>(null);
   const [viewingEvolucao, setViewingEvolucao] = React.useState<Evolucao | null>(null);
+  const [listSortOrder, setListSortOrder] = React.useState<NameSortOrder | DateSortOrder>("name-asc");
   const agendaPrefillDone = React.useRef(false);
 
   const form = useForm<EvolucaoFormValues>({
@@ -138,9 +141,11 @@ export default function EvolucaoPage() {
 
   const filteredEvolucoes = React.useMemo(() => {
     const query = patientNameFilter.trim().toLowerCase();
-    if (!query) return evolucoes;
-    return evolucoes.filter((e) => e.patientName.toLowerCase().includes(query));
-  }, [evolucoes, patientNameFilter]);
+    const base = query
+      ? evolucoes.filter((e) => e.patientName.toLowerCase().includes(query))
+      : evolucoes;
+    return sortEvolucoes(base, listSortOrder);
+  }, [evolucoes, patientNameFilter, listSortOrder]);
 
   React.useEffect(() => {
     if (editingEvolucao || !isCreating) return;
@@ -182,7 +187,6 @@ export default function EvolucaoPage() {
       atividadesRealizadas: evolucao.atividadesRealizadas,
       respostaPaciente: evolucao.respostaPaciente,
       observacoes: evolucao.observacoes,
-      planoProximaSessao: evolucao.planoProximaSessao,
     });
     setIsCreating(true);
   };
@@ -206,10 +210,10 @@ export default function EvolucaoPage() {
   const fieldClass = (hasError: boolean) => cn(hasError && "border-destructive");
 
   return (
-    <div className="p-8 space-y-8">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Evolução</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Evolução</h1>
           <p className="text-muted-foreground">Registro do progresso dos pacientes</p>
           <div className="mt-3 max-w-md space-y-1">
             <Label htmlFor="evo-filter-name" className="text-xs text-muted-foreground">
@@ -220,6 +224,19 @@ export default function EvolucaoPage() {
               value={patientNameFilter}
               onChange={(e) => setPatientNameFilter(e.target.value)}
               placeholder="Digite o nome do paciente..."
+            />
+            <ListSortSelect
+              id="evo-sort"
+              label="Ordenar evoluções"
+              value={listSortOrder}
+              onChange={(v) => setListSortOrder(v as NameSortOrder | DateSortOrder)}
+              options={[
+                { value: "name-asc", label: "Paciente A–Z" },
+                { value: "name-desc", label: "Paciente Z–A" },
+                { value: "date-desc", label: "Data mais recente" },
+                { value: "date-asc", label: "Data mais antiga" },
+              ]}
+              className="pt-2"
             />
           </div>
           {pacienteIdParam && (
@@ -248,7 +265,7 @@ export default function EvolucaoPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="space-y-1">
                   <Label htmlFor="evo-patient">Paciente</Label>
                   <Controller
@@ -417,16 +434,6 @@ export default function EvolucaoPage() {
                 <FormFieldError message={errors.observacoes?.message} />
               </div>
 
-              <div className="space-y-1">
-                <Label htmlFor="evo-plano">Plano para próxima sessão</Label>
-                <Textarea spellCheck
-                  id="evo-plano"
-                  placeholder="Planejamento para a próxima sessão"
-                  {...register("planoProximaSessao")}
-                />
-                <FormFieldError message={errors.planoProximaSessao?.message} />
-              </div>
-
               <div className="flex flex-wrap gap-2">
                 <Button
                   type="submit"
@@ -582,12 +589,6 @@ export default function EvolucaoPage() {
                     {viewingEvolucao.observacoes || "—"}
                   </p>
                 </div>
-                <div className="space-y-1">
-                  <div className="font-medium text-foreground">Plano para a próxima sessão</div>
-                  <p className="whitespace-pre-wrap rounded-md border bg-muted/30 p-3">
-                    {viewingEvolucao.planoProximaSessao || "—"}
-                  </p>
-                </div>
                 <div className="flex flex-wrap gap-2 pt-2">
                   <Button
                     type="button"
@@ -614,7 +615,7 @@ export default function EvolucaoPage() {
           if (!open) setEvolucaoToDeleteId(null);
         }}
         title="Excluir evolução?"
-        description="A exclusão é lógica no servidor. Atendimentos da agenda não são revertidos automaticamente."
+        description="O registro deixará de aparecer nas listagens. Os atendimentos da agenda não são alterados automaticamente."
         confirmLabel="Excluir"
         variant="destructive"
         onConfirm={async () => {

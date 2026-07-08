@@ -77,6 +77,7 @@ describe("patchAuthProfile", () => {
       professionalEmail: "p@x.com",
       notes: "",
       photoDataUrl: "",
+      signatureImage: "",
     };
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
@@ -111,6 +112,7 @@ describe("patchAuthProfile", () => {
         professionalEmail: "bad",
         notes: "",
         photoDataUrl: "",
+        signatureImage: "",
       }),
     ).rejects.toMatchObject({ message: "validação", status: 400 });
   });
@@ -135,6 +137,7 @@ describe("patchAuthProfile", () => {
         professionalEmail: "p@x.com",
         notes: "",
         photoDataUrl: "",
+        signatureImage: "",
       }),
     ).rejects.toMatchObject({
       message: "Não foi possível gravar as alterações do perfil. Tente novamente em instantes.",

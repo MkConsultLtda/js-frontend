@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { clearAuthSession } from "@/lib/auth-session";
 import { useAuthMe } from "@/lib/api/hooks/use-fisio";
 import { useClinicSettings } from "@/lib/clinic-settings";
-import { APP_NAV, Activity } from "@/lib/navigation";
+import { APP_NAV } from "@/lib/navigation";
+import { BRAND_ICON, BRAND_NAME } from "@/lib/brand";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -53,11 +54,18 @@ export function SidebarNav({
           compact && "justify-center px-2",
         )}
       >
-        <Activity className="h-6 w-6 shrink-0 text-primary" />
+        <Image
+          src={BRAND_ICON}
+          alt=""
+          width={28}
+          height={28}
+          unoptimized
+          className="h-7 w-7 shrink-0 rounded-lg"
+        />
         {!compact && (
-          <span className="min-w-0 flex-1 truncate text-lg font-bold">FisioSystem</span>
+          <span className="min-w-0 flex-1 truncate text-lg font-bold">{BRAND_NAME}</span>
         )}
-        {compact && <span className="sr-only">FisioSystem</span>}
+        {compact && <span className="sr-only">{BRAND_NAME}</span>}
         {onToggleCompact && (
           <Button
             type="button"

@@ -2,6 +2,10 @@
   "name": "js-frontend",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "npm@10.9.8",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "next dev --webpack",
     "dev:turbo": "next dev --turbopack",
@@ -17,6 +21,7 @@
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-dropdown-menu": "^2.1.16",
     "@radix-ui/react-slot": "^1.2.4",
+    "@sparticuz/chromium": "^149.0.0",
     "@tanstack/react-query": "^5.100.9",
     "@tiptap/extension-placeholder": "^3.22.5",
     "@tiptap/extension-text-style": "^3.22.5",
@@ -30,6 +35,7 @@
     "jspdf": "^4.2.1",
     "lucide-react": "^1.14.0",
     "next": "^16.2.4",
+    "puppeteer-core": "^25.1.0",
     "radix-ui": "^1.4.3",
     "react": "19.2.6",
     "react-dom": "19.2.6",

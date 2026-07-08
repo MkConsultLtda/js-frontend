@@ -1,4 +1,5 @@
 import { jsPDF } from "jspdf";
+import { BRAND_NAME } from "@/lib/brand";
 import { formatIsoDateToBR } from "@/lib/date-utils";
 import { htmlToPlainText } from "@/lib/html-to-plain";
 import { formatAddressOneLine, formatCepDisplay } from "@/lib/patient-utils";
@@ -131,7 +132,7 @@ function newDoc(sectionTitle: string, branding?: PdfBranding): { doc: jsPDF; y: 
 
   drawLogoTopRightFirstPage(doc, branding?.logoDataUrl, 0, LOGO_MAX_W_MM, LOGO_MAX_H_MM);
 
-  const brand = branding?.clinicTitle?.trim() || "FisioSystem";
+  const brand = branding?.clinicTitle?.trim() || BRAND_NAME;
   const titleMaxW = pageW - 2 * MARGIN - HEADER_LOGO_RESERVE_MM;
 
   doc.setFont("helvetica", "bold");
@@ -322,7 +323,6 @@ function evolucaoBlock(e: Evolucao): string {
     `Atividades: ${e.atividadesRealizadas}`,
     `Resposta do paciente: ${e.respostaPaciente}`,
     `Observações: ${e.observacoes || "—"}`,
-    `Plano próxima sessão: ${e.planoProximaSessao || "—"}`,
   ]
     .filter(Boolean)
     .join("\n");

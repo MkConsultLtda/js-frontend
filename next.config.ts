@@ -17,6 +17,7 @@ const buildCsp = (scriptDirectives: string[]) =>
 
 /** Headers de segurança para produção e operação em Vercel/Node */
 const nextConfig: NextConfig = {
+  serverExternalPackages: ["@sparticuz/chromium", "puppeteer-core"],
   async headers() {
     // Em páginas HTML o Next.js/React injetam scripts inline (bootstrap, Flight/RSC).
     // script-src só com 'self' quebra hidratação em produção (login sem JS → reload).
