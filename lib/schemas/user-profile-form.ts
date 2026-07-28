@@ -3,6 +3,22 @@ import { z } from "zod";
 const text = (max: number) =>
   z.string().trim().max(max, `O campo não pode ultrapassar ${max} caracteres.`);
 
+/** Empty string, data:image/*;base64,... or https URL (presigned S3). */
+const DATA_IMAGE_BASE64 =
+  /^data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/]+=*$/;
+
+const HTTPS_IMAGE_URL = /^https:\/\/.+/i;
+
+const optionalImageUrl = (maxMessage: string) =>
+  z
+    .string()
+    .max(600_000, maxMessage)
+    .refine(
+      (value) =>
+        value === "" || DATA_IMAGE_BASE64.test(value) || HTTPS_IMAGE_URL.test(value),
+      "A imagem deve estar no formato data:image/...;base64 ou URL https.",
+    );
+
 export const userProfileFormSchema = z.object({
   fullName: text(120).min(1, "O nome completo é obrigatório."),
   crefitoNumber: text(32).min(1, "O registro no CREFITO é obrigatório."),
@@ -14,10 +30,12 @@ export const userProfileFormSchema = z.object({
   phone: text(32).min(1, "O telefone profissional é obrigatório."),
   professionalTitle: text(120).min(1, "O título ou função profissional é obrigatório."),
   notes: z.string().trim().max(500, "As observações não podem ultrapassar 500 caracteres."),
-  photoDataUrl: z.string().max(600_000, "A imagem excede o tamanho máximo permitido para armazenamento."),
-  signatureImageDataUrl: z
-    .string()
-    .max(600_000, "A assinatura excede o tamanho máximo permitido para armazenamento."),
+  photoDataUrl: optionalImageUrl(
+    "A imagem excede o tamanho máximo permitido para armazenamento.",
+  ),
+  signatureImageDataUrl: optionalImageUrl(
+    "A assinatura excede o tamanho máximo permitido para armazenamento.",
+  ),
 });
 
 export type UserProfileFormValues = z.infer<typeof userProfileFormSchema>;
