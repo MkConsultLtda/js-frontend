@@ -21,6 +21,8 @@ export const config = {
     "/pacientes/:path*",
     "/anamnese/:path*",
     "/evolucao/:path*",
+    "/financeiro",
+    "/financeiro/:path*",
     "/configuracoes/:path*",
     "/perfil/:path*",
   ],

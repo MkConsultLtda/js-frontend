@@ -10,10 +10,55 @@ import { toast } from "sonner";
 import { formatUserFacingApiError, type ApiErrorBody } from "@/lib/api/backend-client";
 import { BRAND_LOGO, BRAND_NAME } from "@/lib/brand";
 
+const ALLOWED_APP_PATH_PREFIXES = [
+  "/dashboard",
+  "/agenda",
+  "/pacientes",
+  "/anamnese",
+  "/evolucao",
+  "/financeiro",
+  "/configuracoes",
+  "/perfil",
+] as const;
+
 function safeRedirectFromQuery(): string {
   if (typeof window === "undefined") return "/dashboard";
   const from = new URLSearchParams(window.location.search).get("from");
-  return from && from.startsWith("/") && !from.startsWith("//") ? from : "/dashboard";
+  if (!from) return "/dashboard";
+
+  // Reject encoded / backslash tricks before decoding.
+  if (
+    from.includes("\\") ||
+    from.includes("%5c") ||
+    from.includes("%5C") ||
+    /%2[fF]%2[fF]/.test(from) ||
+    /%00|%0[dD]|%0[aA]/.test(from)
+  ) {
+    return "/dashboard";
+  }
+
+  let path: string;
+  try {
+    path = decodeURIComponent(from);
+  } catch {
+    return "/dashboard";
+  }
+
+  if (
+    !path.startsWith("/") ||
+    path.startsWith("//") ||
+    path.includes("\\") ||
+    path.includes("\0") ||
+    /[\r\n]/.test(path) ||
+    path.includes("://")
+  ) {
+    return "/dashboard";
+  }
+
+  const allowed = ALLOWED_APP_PATH_PREFIXES.some(
+    (prefix) => path === prefix || path.startsWith(`${prefix}/`),
+  );
+  return allowed ? path : "/dashboard";
 }
 
 function LoginForm() {

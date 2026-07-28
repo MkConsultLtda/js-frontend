@@ -29,16 +29,25 @@ function esc(value: unknown): string {
     .replace(/"/g, "&quot;");
 }
 
+function safeImageSrc(url: string | undefined | null): string | null {
+  const trimmed = url?.trim() ?? "";
+  if (!trimmed) return null;
+  if (trimmed.startsWith("data:image/") || trimmed.startsWith("https:")) {
+    return esc(trimmed);
+  }
+  return null;
+}
+
 export function buildAltaHtml(data: AltaPdfData): string {
   const { patient, appointments, professional } = data;
   const completed = countCompletedSessions(appointments, patient.id);
   const attendance = attendanceRatePercent(appointments, patient.id);
-  const sigImg = professional.signatureImage?.trim()
-    ? `<img src="${professional.signatureImage}" alt="Assinatura" class="sig-img" />`
+  const sigSrc = safeImageSrc(professional.signatureImage);
+  const logoSrc = safeImageSrc(professional.logoDataUrl);
+  const sigImg = sigSrc
+    ? `<img src="${sigSrc}" alt="Assinatura" class="sig-img" />`
     : "";
-  const logo = professional.logoDataUrl?.trim()
-    ? `<img src="${professional.logoDataUrl}" alt="Logo" class="logo" />`
-    : "";
+  const logo = logoSrc ? `<img src="${logoSrc}" alt="Logo" class="logo" />` : "";
 
   return `<!DOCTYPE html>
 <html lang="pt-BR">
