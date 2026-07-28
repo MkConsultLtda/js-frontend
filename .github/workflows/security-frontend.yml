@@ -55,9 +55,28 @@ jobs:
       - name: npm audit (prod deps)
         run: npm audit --omit=dev --audit-level=high
 
+      # Pin + install com retry: @master/setup flaky (curl exit 35 / SSL) e risco de supply-chain.
+      - name: Install Trivy
+        env:
+          TRIVY_VERSION: v0.70.0
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3 4 5; do
+            if curl -fsSL "https://raw.githubusercontent.com/aquasecurity/trivy/${TRIVY_VERSION}/contrib/install.sh" \
+              | sh -s -- -b /usr/local/bin "${TRIVY_VERSION}"; then
+              trivy --version
+              exit 0
+            fi
+            echo "Trivy install attempt ${attempt} failed; retrying..."
+            sleep $((attempt * 3))
+          done
+          echo "Failed to install Trivy after retries"
+          exit 1
+
       - name: Trivy filesystem scan
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
+          skip-setup-trivy: true
           scan-type: fs
           scanners: vuln,secret,misconfig
           format: table
@@ -83,9 +102,27 @@ jobs:
       - name: npm audit (prod deps strict)
         run: npm audit --omit=dev --audit-level=moderate
 
+      - name: Install Trivy
+        env:
+          TRIVY_VERSION: v0.70.0
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3 4 5; do
+            if curl -fsSL "https://raw.githubusercontent.com/aquasecurity/trivy/${TRIVY_VERSION}/contrib/install.sh" \
+              | sh -s -- -b /usr/local/bin "${TRIVY_VERSION}"; then
+              trivy --version
+              exit 0
+            fi
+            echo "Trivy install attempt ${attempt} failed; retrying..."
+            sleep $((attempt * 3))
+          done
+          echo "Failed to install Trivy after retries"
+          exit 1
+
       - name: Trivy filesystem scan (strict)
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
+          skip-setup-trivy: true
           scan-type: fs
           scanners: vuln,secret,misconfig
           format: table
