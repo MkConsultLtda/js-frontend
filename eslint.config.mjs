@@ -13,6 +13,8 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
     "coverage/**",
+    // Python venv de auditoria (JS do matplotlib) — não é código do app.
+    "docs/security-audit/.venv/**",
   ]),
   {
     rules: {
