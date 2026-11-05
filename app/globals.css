@@ -49,6 +49,7 @@
 /*
  * Paleta da marca (pt-BR): Olivine #6C7D61, Periwinkle #BEB7DF, Feldgrau #445552,
  * Burnt Sienna #D7816A, Field Drab #585123 — aplicada a tokens semânticos e charts.
+ * Primary, chart-2 e chart-4 são versões ajustadas para atingir WCAG AA (ver globals.contrast.test.ts).
  */
 :root {
   --radius: 0.625rem;
@@ -58,7 +59,7 @@
   --card-foreground: #445552;
   --popover: #fffcfa;
   --popover-foreground: #445552;
-  --primary: #6c7d61;
+  --primary: #5a6851;
   --primary-foreground: #faf9f6;
   --secondary: #e8e4f4;
   --secondary-foreground: #445552;
@@ -66,24 +67,24 @@
   --muted-foreground: #585123;
   --accent: #d7816a;
   --accent-foreground: #2c221c;
-  --destructive: #b54a3c;
+  --destructive: #ad4739;
   --border: #d4cfc4;
-  --input: #d4cfc4;
-  --ring: #6c7d61;
-  --chart-1: #6c7d61;
-  --chart-2: #beb7df;
+  --input: #9a8e75;
+  --ring: #5a6851;
+  --chart-1: #5a6851;
+  --chart-2: #6b5cb6;
   --chart-3: #445552;
-  --chart-4: #d7816a;
+  --chart-4: #af4a2f;
   --chart-5: #585123;
   --sidebar: #f0eef8;
   --sidebar-foreground: #445552;
-  --sidebar-primary: #6c7d61;
+  --sidebar-primary: #5a6851;
   --sidebar-primary-foreground: #faf9f6;
   --sidebar-accent: #e4e0f0;
   --sidebar-accent-foreground: #445552;
   --sidebar-border: #d4cfc4;
-  --sidebar-ring: #6c7d61;
-  --holiday: #c45c5c;
+  --sidebar-ring: #5a6851;
+  --holiday: #ba4343;
   --holiday-bg: #fde8e8;
 }
 
@@ -94,7 +95,7 @@
   --card-foreground: #f2f0e8;
   --popover: #354240;
   --popover-foreground: #f2f0e8;
-  --primary: #8a9b7f;
+  --primary: #adb9a5;
   --primary-foreground: #1a1e1d;
   --secondary: #3d4a48;
   --secondary-foreground: #f2f0e8;
@@ -102,23 +103,23 @@
   --muted-foreground: #c9c4b8;
   --accent: #e09a86;
   --accent-foreground: #1a1e1d;
-  --destructive: #e07060;
+  --destructive: #eba398;
   --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 14%);
-  --ring: #8a9b7f;
-  --chart-1: #8a9b7f;
+  --input: oklch(1 0 0 / 40%);
+  --ring: #adb9a5;
+  --chart-1: #adb9a5;
   --chart-2: #c4bde8;
-  --chart-3: #9eb0ad;
-  --chart-4: #e09a86;
-  --chart-5: #a89b6a;
+  --chart-3: #a1b3b0;
+  --chart-4: #e2a08d;
+  --chart-5: #bab089;
   --sidebar: #323c3a;
   --sidebar-foreground: #f2f0e8;
-  --sidebar-primary: #8a9b7f;
+  --sidebar-primary: #adb9a5;
   --sidebar-primary-foreground: #1a1e1d;
   --sidebar-accent: #3d4a48;
   --sidebar-accent-foreground: #f2f0e8;
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: #8a9b7f;
+  --sidebar-ring: #adb9a5;
 }
 
 @layer base {
