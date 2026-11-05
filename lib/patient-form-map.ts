@@ -47,6 +47,7 @@ export function patientFromCreateForm(data: PatientCreateFormValues): Omit<Patie
     status: "active",
     lastSession: new Date().toLocaleDateString("pt-BR"),
     registeredAt: toLocalDateString(new Date()),
+    totalSessionsPlanned: 0,
   };
 }
 
@@ -74,6 +75,7 @@ export function patientFromEditForm(editing: Patient, data: PatientEditFormValue
       uf: data.addressUf,
     },
     status: data.status,
+    totalSessionsPlanned: data.totalSessionsPlanned,
   };
 }
 
@@ -97,5 +99,6 @@ export function patientToEditFormValues(p: Patient): PatientEditFormValues {
     addressCidade: p.address.cidade,
     addressUf: p.address.uf,
     status: p.status,
+    totalSessionsPlanned: p.totalSessionsPlanned,
   };
 }

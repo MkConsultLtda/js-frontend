@@ -1,5 +1,10 @@
 /** Fluxo do atendimento na agenda (cores na grade). */
-export type SessionStatus = "scheduled" | "confirmed" | "completed" | "cancelled";
+export type SessionStatus =
+  | "scheduled"
+  | "confirmed"
+  | "completed"
+  | "cancelled"
+  | "no_show";
 
 /** @deprecated use SessionStatus — mantido para migração de dados */
 export type AppointmentStatus = SessionStatus | "pending";
@@ -16,7 +21,7 @@ export interface Holiday {
   name: string;
 }
 
-export type PatientStatus = "active" | "inactive";
+export type PatientStatus = "active" | "inactive" | "discharged";
 
 /** Endereço para atendimento domiciliar e correspondência */
 export interface PatientAddress {
@@ -48,6 +53,11 @@ export interface Patient {
   status: PatientStatus;
   /** Data de cadastro — exibição em dd/mm/aaaa (origem yyyy-mm-dd na API) */
   registeredAt: string;
+  /** Meta de sessões do plano terapêutico (0 = não definido). */
+  totalSessionsPlanned: number;
+  /** Data de alta — yyyy-mm-dd quando registrada. */
+  dischargedAt?: string;
+  dischargeSummary?: string;
 }
 
 export interface Appointment {
@@ -68,6 +78,14 @@ export interface Appointment {
   notes?: string;
   /** Pagamento da sessão (controle financeiro leve) */
   paymentStatus: AppointmentPaymentStatus;
+  /** Valor da sessão (R$) definido no cadastro */
+  sessionAmount?: number;
+  /** Plano de pagamento do pacote */
+  paymentPlan?: "per_session" | "upfront" | "installments";
+  packageAmount?: number;
+  installmentCount?: number;
+  /** UUID do pacote recorrente, quando aplicável */
+  seriesId?: string;
 }
 
 export function isSessionAppointment(a: Pick<Appointment, "kind">): boolean {

@@ -5,12 +5,14 @@ import type { Appointment, Evolucao, Patient } from "@/lib/types";
 import {
   apiCreateAppointment,
   apiCreatePatient,
+  apiCreateRecurringBlocks,
   apiCreateAnamnese,
   apiCreateEvolution,
   apiDeleteAnamnese,
   apiDeleteAppointment,
   apiDeleteEvolution,
   apiDeletePatient,
+  apiDischargePatient,
   apiReplaceAnamnese,
   apiReplaceAppointment,
   apiReplaceEvolution,
@@ -19,10 +21,17 @@ import {
   fetchAggregatedEvolutions,
   fetchAppointmentsRange,
   fetchDashboardMetricsBundle,
+  fetchHolidays,
   fetchPatientDetailBundle,
   fetchPatientPage,
 } from "@/lib/api/fisio-api";
+import { apiCreateRecurringSessions } from "@/lib/api/finance-api";
 import { fetchAuthMe } from "@/lib/auth-me-api";
+import {
+  fetchClinicProfile,
+  updateClinicProfile,
+  type ClinicProfile,
+} from "@/lib/clinic-profile-api";
 
 export type DashboardBundle = {
   patients: Patient[];
@@ -30,12 +39,13 @@ export type DashboardBundle = {
   evolucoes: Evolucao[];
 };
 
+import { toLocalDateString } from "@/lib/date-utils";
+
 async function fetchDashboardBundle(): Promise<DashboardBundle> {
   const anchor = new Date();
-  const y = anchor.getFullYear();
-  const from = `${y}-01-01`;
-  const to = `${y}-12-31`;
-  return fetchDashboardMetricsBundle(from, to);
+  const start = new Date(anchor.getFullYear(), anchor.getMonth() - 1, 1);
+  const end = new Date(anchor.getFullYear(), anchor.getMonth() + 2, 0);
+  return fetchDashboardMetricsBundle(toLocalDateString(start), toLocalDateString(end));
 }
 
 async function fetchDashboardBundleWithSessionRecovery(): Promise<DashboardBundle> {
@@ -64,11 +74,13 @@ function scheduleInvalidate(qc: QueryClient, tasks: Array<() => ReturnType<Query
 export const fisioKeys = {
   patients: (q: string) => ["patients", "list", q] as const,
   dashboard: ["dashboard"] as const,
+  holidays: (year: number) => ["holidays", year] as const,
   agenda: (from: string, to: string) => ["appointments", from, to] as const,
   evolutionsAgg: (from: string, to: string) => ["evolutions", from, to] as const,
   anamnesesAgg: ["anamneses", "aggregate"] as const,
   patient: (id: number) => ["patient", id] as const,
   authMe: ["auth-me"] as const,
+  clinicProfile: ["clinic-profile"] as const,
 };
 
 /** Perfil profissional persistido na API (nome, Crefito, título, telefone). */
@@ -104,10 +116,22 @@ export function usePatientsSearch(q: string) {
   });
 }
 
+export function useHolidays(year: number) {
+  return useQuery({
+    queryKey: fisioKeys.holidays(year),
+    queryFn: () => fetchHolidays(year),
+    staleTime: 24 * 60 * 60 * 1000,
+  });
+}
+
 /** Bundle para dashboard/métricas: agenda + lista pacientes + evoluções em janela ampla. */
 export function useDashboardBundle() {
+  const periodKey = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${d.getMonth()}`;
+  })();
   return useQuery({
-    queryKey: fisioKeys.dashboard,
+    queryKey: [...fisioKeys.dashboard, periodKey],
     queryFn: fetchDashboardBundleWithSessionRecovery,
     staleTime: 30_000,
     retry: (failureCount, error) => {
@@ -177,8 +201,18 @@ export function usePatientMutations() {
     mutationFn: apiDeletePatient,
     onSuccess: invalidate,
   });
+  const dischargePatient = useMutation({
+    mutationFn: ({
+      id,
+      dischargeSummary,
+    }: {
+      id: number;
+      dischargeSummary?: string;
+    }) => apiDischargePatient(id, dischargeSummary),
+    onSuccess: invalidate,
+  });
 
-  return { createPatient, replacePatient, deletePatient };
+  return { createPatient, replacePatient, deletePatient, dischargePatient };
 }
 
 export function useAgendaMutations(from: string, to: string) {
@@ -189,6 +223,9 @@ export function useAgendaMutations(from: string, to: string) {
       () => qc.invalidateQueries({ queryKey: ["patient-bundle"] }),
       () => qc.invalidateQueries({ queryKey: fisioKeys.dashboard }),
       () => qc.invalidateQueries({ queryKey: fisioKeys.evolutionsAgg(from, to) }),
+      () => qc.invalidateQueries({ queryKey: ["finance-summary"] }),
+      () => qc.invalidateQueries({ queryKey: ["finance-transactions"] }),
+      () => qc.invalidateQueries({ queryKey: ["finance-delinquency"] }),
     ]);
 
   const createAppointment = useMutation({
@@ -205,8 +242,22 @@ export function useAgendaMutations(from: string, to: string) {
     mutationFn: apiDeleteAppointment,
     onSuccess: invalidate,
   });
+  const createRecurringBlocks = useMutation({
+    mutationFn: apiCreateRecurringBlocks,
+    onSuccess: invalidate,
+  });
+  const createRecurringSessions = useMutation({
+    mutationFn: apiCreateRecurringSessions,
+    onSuccess: invalidate,
+  });
 
-  return { createAppointment, replaceAppointment, deleteAppointment };
+  return {
+    createAppointment,
+    replaceAppointment,
+    deleteAppointment,
+    createRecurringBlocks,
+    createRecurringSessions,
+  };
 }
 
 export function useAnamneseMutations() {
@@ -245,4 +296,29 @@ export function useEvolucoMutations(evFrom: string, evTo: string) {
   });
   const deleteEvo = useMutation({ mutationFn: apiDeleteEvolution, onSuccess: invalidate });
   return { createEvo, replaceEvo, deleteEvo };
+}
+
+/** Dados institucionais da clínica (CNPJ, contato, DPO) persistidos na API. */
+export function useClinicProfile(enabled = true) {
+  return useQuery({
+    queryKey: fisioKeys.clinicProfile,
+    queryFn: fetchClinicProfile,
+    enabled,
+    staleTime: 60_000,
+    retry: (failureCount, error) => {
+      const status = (error as Error & { status?: number }).status;
+      if (status === 401) return false;
+      return failureCount < 2;
+    },
+  });
+}
+
+export function useUpdateClinicProfile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: updateClinicProfile,
+    onSuccess: (data: ClinicProfile) => {
+      qc.setQueryData(fisioKeys.clinicProfile, data);
+    },
+  });
 }

@@ -15,18 +15,29 @@ export const appointmentFormSchema = z.object({
     .min(1, "Selecione a duração")
     .refine((v) => Number.isInteger(Number(v)) && Number(v) > 0, "Duração inválida"),
   type: z.string().min(1, "Selecione o tipo de sessão"),
-  status: z.enum(["scheduled", "confirmed", "completed", "cancelled"], {
-    error: "Status inválido",
-  }),
+  status: z.enum(
+    ["scheduled", "confirmed", "completed", "cancelled", "no_show"],
+    { error: "Status inválido" },
+  ),
   paymentStatus: z.enum(["pending", "paid"], {
     error: "Status de pagamento inválido",
   }),
+  sessionAmount: z
+    .string()
+    .min(1, "Informe o valor do atendimento")
+    .refine((v) => {
+      const n = Number(v.replace(",", "."));
+      return Number.isFinite(n) && n > 0;
+    }, "Valor inválido"),
   notes: z.string(),
 });
 
 export type AppointmentFormValues = z.infer<typeof appointmentFormSchema>;
 
-export function emptyAppointmentForm(selectedDate: string): AppointmentFormValues {
+export function emptyAppointmentForm(
+  selectedDate: string,
+  sessionPrice = 150,
+): AppointmentFormValues {
   return {
     patientId: "",
     date: selectedDate,
@@ -35,6 +46,7 @@ export function emptyAppointmentForm(selectedDate: string): AppointmentFormValue
     type: "",
     status: "confirmed",
     paymentStatus: "pending",
+    sessionAmount: String(sessionPrice),
     notes: "",
   };
 }

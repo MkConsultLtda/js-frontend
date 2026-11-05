@@ -2,14 +2,17 @@
 
 import * as React from "react";
 import Link from "next/link";
+import DOMPurify from "isomorphic-dompurify";
+import { FileText, Save, User, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { ConfirmDialog } from "@/components/confirm-dialog";
-import { useClientSearchParams } from "@/lib/hooks/use-client-search-params";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { FormFieldError } from "@/components/form-field-error";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { ListSortSelect } from "@/components/ui/list-sort-select";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import {
   Select,
@@ -18,7 +21,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { FormFieldError } from "@/components/form-field-error";
 import { formatUserFacingApiError } from "@/lib/api/backend-client";
 import { anamneseRequestBody } from "@/lib/api/fisio-api";
 import {
@@ -26,21 +28,32 @@ import {
   useAnamneseMutations,
   usePatientsSearch,
 } from "@/lib/api/hooks/use-fisio";
+import { useClientSearchParams } from "@/lib/hooks/use-client-search-params";
+import { sortAnamneses, type DateSortOrder, type NameSortOrder } from "@/lib/list-sort";
 import {
   anamneseFormSchema,
   emptyAnamneseForm,
   type AnamneseFormValues,
 } from "@/lib/schemas/anamnese-form";
 import type { Anamnese } from "@/lib/types";
-import { FileText, Save, User, Trash2 } from "lucide-react";
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
 
 function normalizeAnamneseHtml(raw: string): string {
   if (!raw.trim()) return "";
-  return raw;
+  return DOMPurify.sanitize(raw, { USE_PROFILES: { html: true } });
 }
 
 function legacyAnamneseToHtml(anamnese: Anamnese): string {
-  if (anamnese.anamneseTexto?.trim()) return anamnese.anamneseTexto;
+  if (anamnese.anamneseTexto?.trim()) {
+    return normalizeAnamneseHtml(anamnese.anamneseTexto);
+  }
   const sections = [
     { title: "Queixa principal", body: anamnese.queixaPrincipal },
     { title: "História da doença atual", body: anamnese.historiaDoenca },
@@ -52,10 +65,14 @@ function legacyAnamneseToHtml(anamnese: Anamnese): string {
     { title: "Diagnóstico fisioterapêutico", body: anamnese.diagnosticoFisioterapico },
     { title: "Objetivos do tratamento", body: anamnese.objetivosTratamento },
   ];
-  return sections
+  const html = sections
     .filter((section) => section.body?.trim())
-    .map((section) => `<h3>${section.title}</h3><p>${section.body}</p>`)
+    .map(
+      (section) =>
+        `<h3>${escapeHtml(section.title)}</h3><p>${escapeHtml(section.body ?? "")}</p>`,
+    )
     .join("");
+  return normalizeAnamneseHtml(html);
 }
 
 export default function AnamnesePage() {
@@ -78,6 +95,7 @@ export default function AnamnesePage() {
   const [isCreating, setIsCreating] = React.useState(false);
   const [editingAnamnese, setEditingAnamnese] = React.useState<Anamnese | null>(null);
   const [anamneseToDeleteId, setAnamneseToDeleteId] = React.useState<number | null>(null);
+  const [listSortOrder, setListSortOrder] = React.useState<NameSortOrder | DateSortOrder>("name-asc");
 
   const form = useForm<AnamneseFormValues>({
     resolver: zodResolver(anamneseFormSchema),
@@ -98,10 +116,11 @@ export default function AnamnesePage() {
   }, [pacienteIdParam, editingAnamnese, isCreating, setValue]);
 
   const filteredAnamneses = React.useMemo(() => {
-    if (!pacienteIdParam) return anamneses;
-    const pid = Number(pacienteIdParam);
-    return anamneses.filter((a) => a.patientId === pid);
-  }, [anamneses, pacienteIdParam]);
+    const base = !pacienteIdParam
+      ? anamneses
+      : anamneses.filter((a) => a.patientId === Number(pacienteIdParam));
+    return sortAnamneses(base, listSortOrder);
+  }, [anamneses, pacienteIdParam, listSortOrder]);
 
   const onSubmit = async (values: AnamneseFormValues) => {
     const patient = patients.find((p) => p.id.toString() === values.patientId);
@@ -167,10 +186,10 @@ export default function AnamnesePage() {
   };
 
   return (
-    <div className="p-8 space-y-8">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Anamnese</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Anamnese</h1>
           <p className="text-muted-foreground">Avaliação inicial dos pacientes</p>
           {pacienteIdParam && (
             <p className="text-sm text-muted-foreground mt-2">
@@ -186,6 +205,20 @@ export default function AnamnesePage() {
           {isCreating ? "Cancelar" : "Nova anamnese"}
         </Button>
       </div>
+
+      <ListSortSelect
+        id="anam-sort"
+        label="Ordenar anamneses"
+        value={listSortOrder}
+        onChange={(v) => setListSortOrder(v as NameSortOrder | DateSortOrder)}
+        options={[
+          { value: "name-asc", label: "Paciente A–Z" },
+          { value: "name-desc", label: "Paciente Z–A" },
+          { value: "date-desc", label: "Data mais recente" },
+          { value: "date-asc", label: "Data mais antiga" },
+        ]}
+        className="max-w-xs"
+      />
 
       {isCreating && (
         <Card>
@@ -290,7 +323,7 @@ export default function AnamnesePage() {
                 </div>
               </div>
               <div
-                className="prose prose-sm mt-4 max-w-none dark:prose-invert"
+                className="prose prose-sm mt-4 max-w-none overflow-x-auto dark:prose-invert"
                 dangerouslySetInnerHTML={{ __html: legacyAnamneseToHtml(anamnese) }}
               />
               <div className="mt-4 flex flex-wrap gap-2">
@@ -318,7 +351,7 @@ export default function AnamnesePage() {
           if (!open) setAnamneseToDeleteId(null);
         }}
         title="Excluir anamnese?"
-        description="A exclusão é lógica no servidor."
+        description="O registro deixará de aparecer nas listagens. Esta ação não pode ser desfeita."
         confirmLabel="Excluir"
         variant="destructive"
         onConfirm={async () => {

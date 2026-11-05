@@ -44,6 +44,11 @@ export function calendarEntryClassName(entry: Appointment): string {
         baseBlock,
         "border-red-400/50 bg-red-100/50 text-red-900 line-through decoration-red-600/70 dark:border-red-800/70 dark:bg-red-950/40 dark:text-red-100"
       );
+    case "no_show":
+      return cn(
+        baseBlock,
+        "border-orange-400/55 bg-orange-100/55 text-orange-950 dark:border-orange-600/45 dark:bg-orange-950/35 dark:text-orange-50"
+      );
     default:
       return cn(baseBlock, "border-border bg-muted/80");
   }

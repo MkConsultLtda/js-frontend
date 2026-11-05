@@ -44,8 +44,8 @@ export function PatientFormRows({ form: formProp, idPrefix }: PatientFormProps) 
   return (
     <>
       <SectionTitle>Dados pessoais</SectionTitle>
-      <div className="grid grid-cols-4 items-start gap-4">
-        <Label htmlFor={`${idPrefix}-name`} className="text-right pt-2">
+      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-4 sm:items-start sm:gap-4">
+        <Label htmlFor={`${idPrefix}-name`} className="sm:text-right sm:pt-2">
           Nome
         </Label>
         <div className="col-span-3 space-y-1">
@@ -59,8 +59,8 @@ export function PatientFormRows({ form: formProp, idPrefix }: PatientFormProps) 
           <FormFieldError message={err.name?.message} id={`${idPrefix}-name-error`} />
         </div>
       </div>
-      <div className="grid grid-cols-4 items-start gap-4">
-        <Label htmlFor={`${idPrefix}-birth`} className="text-right pt-2">
+      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-4 sm:items-start sm:gap-4">
+        <Label htmlFor={`${idPrefix}-birth`} className="sm:text-right sm:pt-2">
           Nascimento
         </Label>
         <div className="col-span-3 space-y-1">
@@ -75,8 +75,8 @@ export function PatientFormRows({ form: formProp, idPrefix }: PatientFormProps) 
           <FormFieldError message={err.birthDate?.message} id={`${idPrefix}-birth-error`} />
         </div>
       </div>
-      <div className="grid grid-cols-4 items-start gap-4">
-        <Label htmlFor={`${idPrefix}-cpf`} className="text-right pt-2">
+      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-4 sm:items-start sm:gap-4">
+        <Label htmlFor={`${idPrefix}-cpf`} className="sm:text-right sm:pt-2">
           CPF
         </Label>
         <div className="col-span-3 space-y-1">
@@ -93,8 +93,8 @@ export function PatientFormRows({ form: formProp, idPrefix }: PatientFormProps) 
       </div>
 
       <SectionTitle>Contato</SectionTitle>
-      <div className="grid grid-cols-4 items-start gap-4">
-        <Label htmlFor={`${idPrefix}-email`} className="text-right pt-2">
+      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-4 sm:items-start sm:gap-4">
+        <Label htmlFor={`${idPrefix}-email`} className="sm:text-right sm:pt-2">
           E-mail
         </Label>
         <div className="col-span-3 space-y-1">
@@ -111,8 +111,8 @@ export function PatientFormRows({ form: formProp, idPrefix }: PatientFormProps) 
           <FormFieldError message={err.email?.message} id={`${idPrefix}-email-error`} />
         </div>
       </div>
-      <div className="grid grid-cols-4 items-start gap-4">
-        <Label htmlFor={`${idPrefix}-phone`} className="text-right pt-2">
+      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-4 sm:items-start sm:gap-4">
+        <Label htmlFor={`${idPrefix}-phone`} className="sm:text-right sm:pt-2">
           Telefone
         </Label>
         <div className="col-span-3 space-y-1">
@@ -126,8 +126,8 @@ export function PatientFormRows({ form: formProp, idPrefix }: PatientFormProps) 
           <FormFieldError message={err.phone?.message} id={`${idPrefix}-phone-error`} />
         </div>
       </div>
-      <div className="grid grid-cols-4 items-start gap-4">
-        <Label htmlFor={`${idPrefix}-responsible-phone`} className="text-right pt-2">
+      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-4 sm:items-start sm:gap-4">
+        <Label htmlFor={`${idPrefix}-responsible-phone`} className="sm:text-right sm:pt-2">
           Telefone responsável
         </Label>
         <div className="col-span-3 space-y-1">
@@ -145,8 +145,8 @@ export function PatientFormRows({ form: formProp, idPrefix }: PatientFormProps) 
           />
         </div>
       </div>
-      <div className="grid grid-cols-4 items-start gap-4">
-        <Label htmlFor={`${idPrefix}-dx`} className="text-right pt-2">
+      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-4 sm:items-start sm:gap-4">
+        <Label htmlFor={`${idPrefix}-dx`} className="sm:text-right sm:pt-2">
           Diagnóstico clínico
         </Label>
         <div className="col-span-3 space-y-1">
@@ -160,8 +160,8 @@ export function PatientFormRows({ form: formProp, idPrefix }: PatientFormProps) 
           <FormFieldError message={err.diagnosis?.message} id={`${idPrefix}-dx-error`} />
         </div>
       </div>
-      <div className="grid grid-cols-4 items-start gap-4">
-        <Label htmlFor={`${idPrefix}-profession`} className="text-right pt-2">
+      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-4 sm:items-start sm:gap-4">
+        <Label htmlFor={`${idPrefix}-profession`} className="sm:text-right sm:pt-2">
           Profissão
         </Label>
         <div className="col-span-3 space-y-1">
@@ -175,8 +175,8 @@ export function PatientFormRows({ form: formProp, idPrefix }: PatientFormProps) 
           <FormFieldError message={err.profession?.message} id={`${idPrefix}-profession-error`} />
         </div>
       </div>
-      <div className="grid grid-cols-4 items-start gap-4">
-        <Label htmlFor={`${idPrefix}-education`} className="text-right pt-2">
+      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-4 sm:items-start sm:gap-4">
+        <Label htmlFor={`${idPrefix}-education`} className="sm:text-right sm:pt-2">
           Escolaridade
         </Label>
         <div className="col-span-3 space-y-1">
@@ -206,8 +206,8 @@ export function PatientFormRows({ form: formProp, idPrefix }: PatientFormProps) 
           <FormFieldError message={err.educationLevel?.message} id={`${idPrefix}-education-error`} />
         </div>
       </div>
-      <div className="grid grid-cols-4 items-start gap-4">
-        <Label htmlFor={`${idPrefix}-referral`} className="text-right pt-2">
+      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-4 sm:items-start sm:gap-4">
+        <Label htmlFor={`${idPrefix}-referral`} className="sm:text-right sm:pt-2">
           Indicação
         </Label>
         <div className="col-span-3 space-y-1">
@@ -239,8 +239,8 @@ export function PatientFormRows({ form: formProp, idPrefix }: PatientFormProps) 
       </div>
 
       <SectionTitle>Endereço (domicílio)</SectionTitle>
-      <div className="grid grid-cols-4 items-start gap-4">
-        <Label htmlFor={`${idPrefix}-cep`} className="text-right pt-2">
+      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-4 sm:items-start sm:gap-4">
+        <Label htmlFor={`${idPrefix}-cep`} className="sm:text-right sm:pt-2">
           CEP
         </Label>
         <div className="col-span-3 space-y-1">
@@ -275,8 +275,8 @@ export function PatientFormRows({ form: formProp, idPrefix }: PatientFormProps) 
           <FormFieldError message={err.addressCep?.message} id={`${idPrefix}-cep-error`} />
         </div>
       </div>
-      <div className="grid grid-cols-4 items-start gap-4">
-        <Label htmlFor={`${idPrefix}-log`} className="text-right pt-2">
+      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-4 sm:items-start sm:gap-4">
+        <Label htmlFor={`${idPrefix}-log`} className="sm:text-right sm:pt-2">
           Logradouro
         </Label>
         <div className="col-span-3 space-y-1">
@@ -290,8 +290,8 @@ export function PatientFormRows({ form: formProp, idPrefix }: PatientFormProps) 
           <FormFieldError message={err.addressLogradouro?.message} id={`${idPrefix}-log-error`} />
         </div>
       </div>
-      <div className="grid grid-cols-4 items-start gap-4">
-        <Label htmlFor={`${idPrefix}-num`} className="text-right pt-2">
+      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-4 sm:items-start sm:gap-4">
+        <Label htmlFor={`${idPrefix}-num`} className="sm:text-right sm:pt-2">
           Número
         </Label>
         <div className="col-span-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -314,8 +314,8 @@ export function PatientFormRows({ form: formProp, idPrefix }: PatientFormProps) 
           </div>
         </div>
       </div>
-      <div className="grid grid-cols-4 items-start gap-4">
-        <Label htmlFor={`${idPrefix}-bairro`} className="text-right pt-2">
+      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-4 sm:items-start sm:gap-4">
+        <Label htmlFor={`${idPrefix}-bairro`} className="sm:text-right sm:pt-2">
           Bairro
         </Label>
         <div className="col-span-3 space-y-1">
@@ -329,8 +329,8 @@ export function PatientFormRows({ form: formProp, idPrefix }: PatientFormProps) 
           <FormFieldError message={err.addressBairro?.message} id={`${idPrefix}-bairro-error`} />
         </div>
       </div>
-      <div className="grid grid-cols-4 items-start gap-4">
-        <Label className="text-right pt-2">Cidade / UF</Label>
+      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-4 sm:items-start sm:gap-4">
+        <Label className="sm:text-right sm:pt-2">Cidade / UF</Label>
         <div className="col-span-3 grid grid-cols-1 gap-4 sm:grid-cols-5">
           <div className="sm:col-span-4 space-y-1">
             <Input

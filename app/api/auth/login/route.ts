@@ -52,13 +52,13 @@ export async function POST(req: Request) {
     const message =
       cause instanceof Error
         ? cause.message
-        : "Falha de rede ao contactar o servidor da API.";
+        : "Falha de rede ao contatar o servidor.";
     console.error("[auth/login] upstream unreachable:", loginUrl, cause);
     return NextResponse.json(
       {
         code: "SERVICE_UNAVAILABLE",
         message:
-          "Não foi possível contactar o backend. Confirme que a API está a correr e que BACKEND_API_URL no Next aponta para o Spring (ex.: http://localhost:8080/v1).",
+          "Não foi possível conectar ao sistema. Tente novamente em instantes ou contate o suporte.",
         details: [{ message }],
       },
       { status: 503 },

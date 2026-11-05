@@ -26,6 +26,7 @@ import {
 import { MAX_PATIENT_ATTACHMENT_BYTES } from "@/lib/patient-attachment-utils";
 import { fisioKeys, useAuthMe } from "@/lib/api/hooks/use-fisio";
 import { patchAuthProfile, type AuthMeResponse } from "@/lib/auth-me-api";
+import { SignaturePad } from "@/components/perfil/signature-pad";
 
 const MAX_PHOTO_BYTES = Math.min(MAX_PATIENT_ATTACHMENT_BYTES, 400 * 1024);
 
@@ -38,6 +39,7 @@ function valuesFromMe(me: AuthMeResponse): UserProfileFormValues {
     professionalTitle: me.professionalTitle ?? "",
     notes: me.notes ?? "",
     photoDataUrl: me.photoDataUrl ?? "",
+    signatureImageDataUrl: me.signatureImage ?? "",
   };
 }
 
@@ -71,6 +73,7 @@ export default function PerfilPage() {
         professionalEmail: values.professionalEmail.trim(),
         notes: values.notes.trim(),
         photoDataUrl: values.photoDataUrl?.trim() || "",
+        signatureImage: values.signatureImageDataUrl?.trim() || "",
       });
       await queryClient.invalidateQueries({ queryKey: fisioKeys.authMe });
     } catch (e) {
@@ -157,6 +160,10 @@ export default function PerfilPage() {
     control: form.control,
     name: "photoDataUrl",
   });
+  const signatureUrl = useWatch({
+    control: form.control,
+    name: "signatureImageDataUrl",
+  });
   const passwordState = passwordForm.formState;
 
   if (meLoading) {
@@ -179,7 +186,7 @@ export default function PerfilPage() {
   return (
     <div className="p-8 space-y-8 max-w-2xl">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
           <UserCircle className="h-8 w-8 text-primary" />
           Meu perfil
         </h1>
@@ -282,6 +289,26 @@ export default function PerfilPage() {
               <FormFieldError message={errors.notes?.message} />
             </div>
             <input type="hidden" {...register("photoDataUrl")} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Assinatura (documentos PDF)</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Usada no rodapé do prontuário em PDF, junto do seu nome e registro CREFITO.
+              Desenhe abaixo e grave o perfil para salvar.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <SignaturePad
+              value={signatureUrl ?? ""}
+              onChange={(dataUrl) =>
+                form.setValue("signatureImageDataUrl", dataUrl, { shouldDirty: true })
+              }
+              disabled={isSubmitting}
+            />
+            <input type="hidden" {...register("signatureImageDataUrl")} />
           </CardContent>
         </Card>
 

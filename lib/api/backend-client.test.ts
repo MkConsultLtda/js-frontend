@@ -56,7 +56,7 @@ describe("backendJson", () => {
         text: async () => "<html></html>",
       }),
     );
-    await expect(backendJson("/api/backend/x")).rejects.toThrow("Resposta inválida da API");
+    await expect(backendJson("/api/backend/x")).rejects.toThrow("Resposta inválida do servidor.");
   });
 
   it("4xx devolve mensagem do JSON de erro", async () => {

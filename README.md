@@ -1,8 +1,8 @@
-# FisioSystem — repositório `js-frontend`
+# JS Fisioterapia — repositório `js-frontend`
 
 Aplicação **Next.js** na raiz deste repositório (antes existia a subpasta `fisio-web/`; foi unificada para simplificar *deploy* e documentação).
 
-Frontend web para gestão de clínica de fisioterapia: agenda, pacientes, anamnese, evolução e dashboard. **Estado atual:** interface funcional com dados de domínio ainda mockados em memória, mas com autenticação via **cookies HttpOnly** já preparada para backend.
+Frontend web para gestão de clínica de fisioterapia: agenda, pacientes, anamnese, evolução e dashboard. **Estado atual:** interface funcional integrada à API Spring Boot via *proxy* (`/api/backend/*`), com cache via TanStack Query e autenticação por **cookies HttpOnly**.
 
 ## Stack
 

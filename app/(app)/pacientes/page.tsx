@@ -58,7 +58,17 @@ import {
   dtoPatientCreateFromFormValues,
   patientToReplaceBodyFromDomain,
 } from "@/lib/api/fisio-api";
-import { usePatientMutations, usePatientsSearch } from "@/lib/api/hooks/use-fisio";
+import {
+  useAppointmentRange,
+  usePatientMutations,
+  usePatientsSearch,
+} from "@/lib/api/hooks/use-fisio";
+import { ListSortSelect } from "@/components/ui/list-sort-select";
+import { sortByName, type NameSortOrder } from "@/lib/list-sort";
+import {
+  countCompletedSessions,
+  sessionProgressPercent,
+} from "@/lib/patient-treatment";
 import {
   emptyPatientCreateFormValues,
   patientFromEditForm,
@@ -72,6 +82,7 @@ import {
   type PatientEditFormValues,
 } from "@/lib/schemas/patient-form";
 import type { Patient } from "@/lib/types";
+import { patientStatusBadgeClass, patientStatusLabel } from "@/lib/patient-labels";
 import { cn } from "@/lib/utils";
 
 export default function PacientesPage() {
@@ -79,14 +90,20 @@ export default function PacientesPage() {
   const { data: patientPage, isLoading, error } = usePatientsSearch(searchTerm);
   const { createPatient, replacePatient, deletePatient } = usePatientMutations();
   const patients = patientPage?.content ?? [];
-
-  const [statusFilter, setStatusFilter] = React.useState<"all" | "active" | "inactive">(
-    "all"
+  const year = new Date().getFullYear();
+  const { data: yearAppointments = [] } = useAppointmentRange(
+    `${year}-01-01`,
+    `${year}-12-31`,
   );
+
+  const [statusFilter, setStatusFilter] = React.useState<
+    "all" | "active" | "inactive" | "discharged"
+  >("all");
   const [isAddModalOpen, setIsAddModalOpen] = React.useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
   const [editingPatient, setEditingPatient] = React.useState<Patient | null>(null);
   const [patientToDeleteId, setPatientToDeleteId] = React.useState<number | null>(null);
+  const [nameSortOrder, setNameSortOrder] = React.useState<NameSortOrder>("name-asc");
 
   const addForm = useForm<PatientCreateFormValues>({
     resolver: zodResolver(patientCreateFormSchema),
@@ -98,6 +115,7 @@ export default function PacientesPage() {
     defaultValues: {
       ...emptyPatientCreateFormValues,
       status: "active",
+      totalSessionsPlanned: 0,
     },
   });
 
@@ -107,10 +125,8 @@ export default function PacientesPage() {
         statusFilter === "all" || patient.status === statusFilter;
       return matchesStatus;
     });
-    return [...list].sort((a, b) =>
-      a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }),
-    );
-  }, [patients, statusFilter]);
+    return sortByName(list, nameSortOrder);
+  }, [patients, statusFilter, nameSortOrder]);
 
   const onCreateSubmit = async (data: PatientCreateFormValues) => {
     if (createPatient.isPending) return;
@@ -155,10 +171,10 @@ export default function PacientesPage() {
     "max-h-[min(92dvh,calc(100dvh-2rem))] overflow-y-auto overscroll-y-contain w-[95vw] sm:max-w-2xl gap-0 py-6";
 
   return (
-    <div className="p-8 space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Pacientes</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Pacientes</h1>
           <p className="text-muted-foreground">
             Cadastro completo para atendimento domiciliar: endereço, contato e dados clínicos.
           </p>
@@ -222,13 +238,24 @@ export default function PacientesPage() {
             <SelectItem value="all">Todos os status</SelectItem>
             <SelectItem value="active">Ativos</SelectItem>
             <SelectItem value="inactive">Inativos</SelectItem>
+            <SelectItem value="discharged">Alta</SelectItem>
           </SelectContent>
         </Select>
+        <ListSortSelect
+          id="patients-sort"
+          label="Ordenar pacientes"
+          value={nameSortOrder}
+          onChange={(v) => setNameSortOrder(v as NameSortOrder)}
+          options={[
+            { value: "name-asc", label: "Nome A–Z" },
+            { value: "name-desc", label: "Nome Z–A" },
+          ]}
+        />
       </div>
 
       {error && (
         <p className="text-sm text-destructive">
-          Não foi possível carregar os pacientes. Verifique sessão ou conexão com a API.
+          Não foi possível carregar os pacientes. Verifique sua sessão ou a conexão com a internet.
         </p>
       )}
       {isLoading && patients.length === 0 && (
@@ -239,6 +266,11 @@ export default function PacientesPage() {
         {filteredPatients.map((patient) => {
           const age = ageFromBirthDateIso(patient.birthDate);
           const cidadeUf = `${patient.address.cidade} – ${patient.address.uf}`;
+          const completed = countCompletedSessions(yearAppointments, patient.id);
+          const planPct = sessionProgressPercent(
+            patient.totalSessionsPlanned,
+            completed,
+          );
           return (
             <Card
               key={patient.id}
@@ -340,17 +372,23 @@ export default function PacientesPage() {
                     <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
                     <span>Última sessão: {patient.lastSession}</span>
                   </div>
+                  {patient.totalSessionsPlanned > 0 ? (
+                    <p className="text-xs text-muted-foreground">
+                      Plano terapêutico: {completed} de {patient.totalSessionsPlanned}{" "}
+                      sessões
+                      {planPct != null ? ` (${planPct}%)` : ""}
+                    </p>
+                  ) : null}
                 </div>
 
                 <div className="flex items-center justify-between pt-2 gap-2 flex-wrap">
                   <span
-                    className={`text-[10px] font-bold px-2 py-1 rounded-full uppercase ${
-                      patient.status === "active"
-                        ? "bg-green-100 text-green-700"
-                        : "bg-gray-100 text-gray-700"
-                    }`}
+                    className={cn(
+                      "text-[10px] font-bold px-2 py-1 rounded-full uppercase",
+                      patientStatusBadgeClass(patient.status),
+                    )}
                   >
-                    {patient.status === "active" ? "Ativo" : "Inativo"}
+                    {patientStatusLabel(patient.status)}
                   </span>
                   <div className="flex gap-2">
                     <Button variant="outline" size="sm" className="h-8 gap-1" asChild>
@@ -414,11 +452,31 @@ export default function PacientesPage() {
                         <SelectContent>
                           <SelectItem value="active">Ativo</SelectItem>
                           <SelectItem value="inactive">Inativo</SelectItem>
+                          <SelectItem value="discharged">Alta</SelectItem>
                         </SelectContent>
                       </Select>
                     )}
                   />
                   <FormFieldError message={editForm.formState.errors.status?.message} />
+                </div>
+              </div>
+              <div className="grid grid-cols-4 items-start gap-4 w-full">
+                <Label htmlFor="edit-sessions" className="text-right pt-2">
+                  Sessões planejadas
+                </Label>
+                <div className="col-span-3 space-y-1">
+                  <Input
+                    id="edit-sessions"
+                    type="number"
+                    min={0}
+                    {...editForm.register("totalSessionsPlanned", { valueAsNumber: true })}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Meta do plano terapêutico (0 = não exibir barra de progresso).
+                  </p>
+                  <FormFieldError
+                    message={editForm.formState.errors.totalSessionsPlanned?.message}
+                  />
                 </div>
               </div>
               <DialogFooter className="flex justify-end pt-2 sm:justify-end">
@@ -444,7 +502,7 @@ export default function PacientesPage() {
           if (!open) setPatientToDeleteId(null);
         }}
         title="Excluir paciente?"
-        description="A exclusão é lógica no servidor — agendamentos e prontuário vinculados seguem as regras do backend."
+        description="O paciente deixará de aparecer nas listagens. Agendamentos e dados do prontuário permanecem arquivados conforme as regras da clínica."
         confirmLabel="Excluir paciente"
         variant="destructive"
         onConfirm={async () => {

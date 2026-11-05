@@ -158,11 +158,11 @@ export function AgendaMonthView({
                   {isActive ? dayNumber : ""}
                 </span>
                 {dayHolidays.length > 0 ? (
-                  <div className="mb-1 space-y-0.5">
+                  <div className="mb-1 w-full rounded-md border border-[var(--holiday)]/30 bg-[var(--holiday-bg)] px-1 py-0.5">
                     {dayHolidays.map((h) => (
                       <div
                         key={h.id}
-                        className="truncate text-[9px] font-semibold leading-tight text-amber-600 dark:text-amber-400"
+                        className="truncate text-[9px] font-semibold leading-tight text-[var(--holiday)]"
                         title={h.name}
                       >
                         {h.name}

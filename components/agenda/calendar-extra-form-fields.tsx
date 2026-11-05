@@ -47,8 +47,8 @@ export function CalendarExtraFormFields({
 
   return (
     <div className="grid gap-2 py-4">
-      <div className="grid grid-cols-4 items-start gap-4">
-        <Label htmlFor={`${idPrefix}title`} className={cn("text-right pt-2", errors.title && "text-destructive")}>
+      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-4 sm:items-start sm:gap-4">
+        <Label htmlFor={`${idPrefix}title`} className={cn("sm:text-right sm:pt-2", errors.title && "text-destructive")}>
           {titleLabel}
         </Label>
         <div className="col-span-3 space-y-1">
@@ -70,8 +70,8 @@ export function CalendarExtraFormFields({
         </div>
       </div>
 
-      <div className="grid grid-cols-4 items-start gap-4">
-        <Label htmlFor={`${idPrefix}date`} className={cn("text-right pt-2", errors.date && "text-destructive")}>
+      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-4 sm:items-start sm:gap-4">
+        <Label htmlFor={`${idPrefix}date`} className={cn("sm:text-right sm:pt-2", errors.date && "text-destructive")}>
           Data
         </Label>
         <div className="col-span-3 space-y-1">
@@ -93,8 +93,8 @@ export function CalendarExtraFormFields({
         </div>
       </div>
 
-      <div className="grid grid-cols-4 items-start gap-4">
-        <Label htmlFor={`${idPrefix}time`} className={cn("text-right pt-2", errors.time && "text-destructive")}>
+      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-4 sm:items-start sm:gap-4">
+        <Label htmlFor={`${idPrefix}time`} className={cn("sm:text-right sm:pt-2", errors.time && "text-destructive")}>
           Início
         </Label>
         <div className="col-span-3 space-y-1">
@@ -123,8 +123,8 @@ export function CalendarExtraFormFields({
         </div>
       </div>
 
-      <div className="grid grid-cols-4 items-start gap-4">
-        <Label htmlFor={`${idPrefix}end-time`} className={cn("text-right pt-2", errors.endTime && "text-destructive")}>
+      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-4 sm:items-start sm:gap-4">
+        <Label htmlFor={`${idPrefix}end-time`} className={cn("sm:text-right sm:pt-2", errors.endTime && "text-destructive")}>
           Fim
         </Label>
         <div className="col-span-3 space-y-1">
@@ -161,8 +161,8 @@ export function CalendarExtraFormFields({
         </div>
       </div>
 
-      <div className="grid grid-cols-4 items-start gap-4">
-        <Label htmlFor={`${idPrefix}all-day`} className="text-right pt-2">
+      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-4 sm:items-start sm:gap-4">
+        <Label htmlFor={`${idPrefix}all-day`} className="sm:text-right sm:pt-2">
           Dia inteiro
         </Label>
         <div className="col-span-3">
@@ -185,8 +185,8 @@ export function CalendarExtraFormFields({
         </div>
       </div>
 
-      <div className="grid grid-cols-4 items-start gap-4">
-        <Label htmlFor={`${idPrefix}repeat`} className="text-right pt-2">
+      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-4 sm:items-start sm:gap-4">
+        <Label htmlFor={`${idPrefix}repeat`} className="sm:text-right sm:pt-2">
           Repetição
         </Label>
         <div className="col-span-3 space-y-2">
@@ -285,8 +285,8 @@ export function CalendarExtraFormFields({
         </div>
       </div>
 
-      <div className="grid grid-cols-4 items-start gap-4">
-        <Label htmlFor={`${idPrefix}notes`} className="text-right pt-2">
+      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-4 sm:items-start sm:gap-4">
+        <Label htmlFor={`${idPrefix}notes`} className="sm:text-right sm:pt-2">
           Observações
         </Label>
         <div className="col-span-3">

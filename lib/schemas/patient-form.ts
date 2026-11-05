@@ -62,7 +62,8 @@ export const patientCreateFormSchema = z.object({
 export type PatientCreateFormValues = z.infer<typeof patientCreateFormSchema>;
 
 export const patientEditFormSchema = patientCreateFormSchema.extend({
-  status: z.enum(["active", "inactive"]),
+  status: z.enum(["active", "inactive", "discharged"]),
+  totalSessionsPlanned: z.number().int().min(0),
 });
 
 export type PatientEditFormValues = z.infer<typeof patientEditFormSchema>;
