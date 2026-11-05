@@ -8,6 +8,7 @@ import {
   type TokenResponse,
 } from "@/lib/server/backend-access";
 import { filterUpstreamProxyHeaders } from "@/lib/server/upstream-proxy-headers";
+import { forwardedForHeaders } from "@/lib/server/forward-client-ip";
 import { backendApiUrl } from "@/lib/server-auth";
 
 function buildTargetUrl(pathSegments: string[], search: string): string {
@@ -25,6 +26,9 @@ function forwardHeaders(req: NextRequest, accessToken: string): Headers {
   if (contentType) out.set("Content-Type", contentType);
   const acceptLanguage = req.headers.get("accept-language");
   if (acceptLanguage) out.set("Accept-Language", acceptLanguage);
+  for (const [key, value] of Object.entries(forwardedForHeaders(req) as Record<string, string>)) {
+    out.set(key, value);
+  }
   return out;
 }
 

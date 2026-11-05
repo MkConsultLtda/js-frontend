@@ -278,7 +278,7 @@ export default function PacientesPage() {
             >
               <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="h-10 w-10 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold uppercase">
+                  <div className="h-10 w-10 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-primary dark:text-foreground font-bold uppercase">
                     {patient.name
                       .split(" ")
                       .map((n) => n[0])
