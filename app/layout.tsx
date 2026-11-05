@@ -39,6 +39,9 @@ export const viewport: Viewport = {
   themeColor: "#6C7D61",
 };
 
+/** Nonce de CSP é por requisição (proxy.ts): páginas precisam ser renderizadas no servidor a cada request. */
+export const dynamic = "force-dynamic";
+
 export default function RootLayout({
   children,
 }: {

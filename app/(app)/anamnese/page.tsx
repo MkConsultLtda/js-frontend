@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import Link from "next/link";
-import DOMPurify from "isomorphic-dompurify";
 import { FileText, Save, User, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useForm, Controller } from "react-hook-form";
@@ -29,6 +28,7 @@ import {
   usePatientsSearch,
 } from "@/lib/api/hooks/use-fisio";
 import { useClientSearchParams } from "@/lib/hooks/use-client-search-params";
+import { anamneseToHtml, normalizeAnamneseHtml } from "@/lib/anamnese-html";
 import { sortAnamneses, type DateSortOrder, type NameSortOrder } from "@/lib/list-sort";
 import {
   anamneseFormSchema,
@@ -37,43 +37,6 @@ import {
 } from "@/lib/schemas/anamnese-form";
 import type { Anamnese } from "@/lib/types";
 
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
-function normalizeAnamneseHtml(raw: string): string {
-  if (!raw.trim()) return "";
-  return DOMPurify.sanitize(raw, { USE_PROFILES: { html: true } });
-}
-
-function legacyAnamneseToHtml(anamnese: Anamnese): string {
-  if (anamnese.anamneseTexto?.trim()) {
-    return normalizeAnamneseHtml(anamnese.anamneseTexto);
-  }
-  const sections = [
-    { title: "Queixa principal", body: anamnese.queixaPrincipal },
-    { title: "História da doença atual", body: anamnese.historiaDoenca },
-    { title: "Antecedentes familiares", body: anamnese.antecedentesFamiliares },
-    { title: "Medicamentos", body: anamnese.medicamentos },
-    { title: "Alergias", body: anamnese.alergias },
-    { title: "Hábitos de vida", body: anamnese.habitosVida },
-    { title: "Exame físico", body: anamnese.exameFisico },
-    { title: "Diagnóstico fisioterapêutico", body: anamnese.diagnosticoFisioterapico },
-    { title: "Objetivos do tratamento", body: anamnese.objetivosTratamento },
-  ];
-  const html = sections
-    .filter((section) => section.body?.trim())
-    .map(
-      (section) =>
-        `<h3>${escapeHtml(section.title)}</h3><p>${escapeHtml(section.body ?? "")}</p>`,
-    )
-    .join("");
-  return normalizeAnamneseHtml(html);
-}
 
 export default function AnamnesePage() {
   const searchParams = useClientSearchParams();
@@ -164,7 +127,7 @@ export default function AnamnesePage() {
     setEditingAnamnese(anamnese);
     reset({
       patientId: anamnese.patientId.toString(),
-      anamneseTexto: legacyAnamneseToHtml(anamnese),
+      anamneseTexto: anamneseToHtml(anamnese),
     });
     setIsCreating(true);
   };
@@ -324,7 +287,7 @@ export default function AnamnesePage() {
               </div>
               <div
                 className="prose prose-sm mt-4 max-w-none overflow-x-auto dark:prose-invert"
-                dangerouslySetInnerHTML={{ __html: legacyAnamneseToHtml(anamnese) }}
+                dangerouslySetInnerHTML={{ __html: anamneseToHtml(anamnese) }}
               />
               <div className="mt-4 flex flex-wrap gap-2">
                 <Button variant="outline" size="sm" onClick={() => handleEdit(anamnese)}>

@@ -125,7 +125,7 @@ export function RichTextEditor({
   }, [editor, value]);
 
   const btnClass = "h-8 px-2";
-  const btnActive = "bg-primary/15 text-primary";
+  const btnActive = "bg-primary/15 text-primary dark:text-foreground";
 
   return (
     <div className={cn("rounded-md border bg-background", className)}>

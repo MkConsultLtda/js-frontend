@@ -213,15 +213,15 @@ export function sessionStatusBadge(status: Appointment["status"]): {
 } {
   switch (status) {
     case "confirmed":
-      return { label: "Confirmado", className: "bg-chart-2/25 text-chart-3" };
+      return { label: "Confirmado", className: "bg-chart-2/25 text-foreground" };
     case "scheduled":
-      return { label: "Agendado", className: "bg-chart-5/20 text-chart-5" };
+      return { label: "Agendado", className: "bg-chart-5/20 text-foreground" };
     case "completed":
-      return { label: "Concluído", className: "bg-chart-1/20 text-chart-1" };
+      return { label: "Concluído", className: "bg-chart-1/20 text-foreground" };
     case "no_show":
       return { label: "Falta", className: "bg-orange-200/80 text-orange-900 dark:bg-orange-900/40 dark:text-orange-100" };
     case "cancelled":
-      return { label: "Cancelado", className: "bg-destructive/15 text-destructive line-through" };
+      return { label: "Cancelado", className: "bg-destructive/15 text-foreground line-through" };
     default:
       return { label: status, className: "bg-muted text-muted-foreground" };
   }

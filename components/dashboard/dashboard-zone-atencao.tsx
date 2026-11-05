@@ -40,7 +40,7 @@ export function DashboardZoneAtencao({ metrics, birthdays, noShowAlerts }: Props
                       </Link>
                       <span className="text-muted-foreground"> · {b.dayMonthLabel}</span>
                     </div>
-                    <span className="shrink-0 rounded-full bg-chart-4/15 px-2 py-1 text-xs font-medium text-chart-4">
+                    <span className="shrink-0 rounded-full bg-chart-4/15 px-2 py-1 text-xs font-medium text-foreground">
                       {birthdayWhenLabel(b.daysUntil)}
                     </span>
                   </li>

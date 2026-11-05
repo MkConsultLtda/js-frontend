@@ -138,7 +138,7 @@ export function SidebarNav({
               className="h-8 w-8 shrink-0 rounded-full object-cover"
             />
           ) : (
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary dark:text-foreground">
               {initials(displayName)}
             </div>
           )}

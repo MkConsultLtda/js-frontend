@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
-const CSP_BASE = [
+/** CSP de páginas é definido no proxy.ts, com nonce por requisição. Aqui fica só a da API. */
+const API_CSP = [
   "default-src 'self'",
   "base-uri 'self'",
   "frame-ancestors 'self'",
@@ -10,33 +11,13 @@ const CSP_BASE = [
   "style-src 'self' 'unsafe-inline' https:",
   "connect-src 'self' https:",
   "form-action 'self'",
-];
-
-const buildCsp = (scriptDirectives: string[]) =>
-  [...CSP_BASE, `script-src ${scriptDirectives.join(" ")}`].join("; ");
+  "script-src 'self'",
+].join("; ");
 
 /** Headers de segurança para produção e operação em Vercel/Node */
 const nextConfig: NextConfig = {
   serverExternalPackages: ["@sparticuz/chromium", "puppeteer-core"],
   async headers() {
-    // Em páginas HTML o Next.js/React injetam scripts inline (bootstrap, Flight/RSC).
-    // script-src só com 'self' quebra hidratação em produção (login sem JS → reload).
-    const baselineScriptSrc =
-      process.env.NODE_ENV === "production"
-        ? ["'self'", "'unsafe-inline'"]
-        : ["'self'", "'unsafe-inline'", "'unsafe-eval'"];
-
-    const cspBySource: { source: string; csp: string }[] = [
-      {
-        source: "/api/:path*",
-        csp: buildCsp(["'self'"]),
-      },
-      {
-        source: "/:path*",
-        csp: buildCsp(baselineScriptSrc),
-      },
-    ];
-
     const securityHeaders: { key: string; value: string }[] = [
       { key: "X-Frame-Options", value: "SAMEORIGIN" },
       { key: "X-Content-Type-Options", value: "nosniff" },
@@ -54,10 +35,10 @@ const nextConfig: NextConfig = {
     }
 
     return [
-      ...cspBySource.map(({ source, csp }) => ({
-        source,
-        headers: [...securityHeaders, { key: "Content-Security-Policy", value: csp }],
-      })),
+      {
+        source: "/api/:path*",
+        headers: [...securityHeaders, { key: "Content-Security-Policy", value: API_CSP }],
+      },
     ];
   },
 };
