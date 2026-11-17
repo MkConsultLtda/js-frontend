@@ -261,17 +261,230 @@ export async function fetchPatientById(id: number): Promise<Patient> {
   return mapPatientFromApi(raw);
 }
 
-export async function fetchPatientDetailBundle(pid: number) {
-  const y = new Date().getFullYear();
-  const from = `${y}-01-01`;
-  const to = `${y}-12-31`;
-  const patient = await fetchPatientById(pid);
-  const [anamneses, evolucoes, appointments] = await Promise.all([
-    fetchAnamnesesForPatient(pid),
-    fetchEvolutionsForPatient(pid, from, to),
-    fetchAppointmentsRange(from, to, pid),
+/** Máximo de chamadas simultâneas nas janelas anuais (evolução + agenda). */
+export const HISTORY_WINDOW_CONCURRENCY = 6;
+
+/**
+ * Executa `fn` sobre `items` com no máximo `limit` chamadas simultâneas.
+ * Mesma semântica de `Promise.allSettled` (nunca rejeita; preserva a ordem).
+ */
+export async function mapSettledWithConcurrency<T, R>(
+  items: readonly T[],
+  limit: number,
+  fn: (item: T, index: number) => Promise<R>,
+): Promise<PromiseSettledResult<R>[]> {
+  const results: PromiseSettledResult<R>[] = new Array(items.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const i = next;
+      next += 1;
+      try {
+        results[i] = { status: "fulfilled", value: await fn(items[i], i) };
+      } catch (reason) {
+        results[i] = { status: "rejected", reason };
+      }
+    }
+  };
+  const size = Math.max(1, Math.min(limit, items.length));
+  await Promise.all(Array.from({ length: size }, worker));
+  return results;
+}
+
+/** Ano de uma data dd/mm/aaaa ou aaaa-mm-dd (com validação de calendário); NaN se inválida. */
+function yearOfRegistration(value: string | undefined): number {
+  const s = value?.trim();
+  if (!s) return NaN;
+  let y: number;
+  let mo: number;
+  let d: number;
+  const br = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})(?:$|[T\s])/);
+  if (br) {
+    [d, mo, y] = [Number(br[1]), Number(br[2]), Number(br[3])];
+  } else if (iso) {
+    [y, mo, d] = [Number(iso[1]), Number(iso[2]), Number(iso[3])];
+  } else {
+    return NaN;
+  }
+  const dt = new Date(y, mo - 1, d);
+  if (dt.getFullYear() !== y || dt.getMonth() !== mo - 1 || dt.getDate() !== d) return NaN;
+  return y;
+}
+
+/**
+ * Janelas anuais (<= 366 dias, limite do backend em produção) cobrindo todo o histórico:
+ * começa no menor entre (ano do cadastro - 1) e (ano atual - 10), para não cortar sessões
+ * retroativas/importadas (COFFITO), e vai até o ano seguinte (agenda futura).
+ * Cadastro ausente, inválido ou no futuro é ignorado.
+ */
+/** Piso de ano e teto de janelas do fallback legado (temporário). */
+export const HISTORY_YEAR_FLOOR = 2000;
+export const HISTORY_MAX_WINDOWS = 30;
+
+export function patientHistoryWindows(
+  registeredAt: string | undefined,
+  now: Date = new Date(),
+): { from: string; to: string }[] {
+  const currentYear = now.getFullYear();
+  const regYear = yearOfRegistration(registeredAt);
+  const floor = currentYear - 10;
+  const startYear = Math.max(
+    HISTORY_YEAR_FLOOR,
+    Number.isFinite(regYear) && regYear >= 1900 && regYear <= currentYear
+      ? Math.min(regYear - 1, floor)
+      : floor,
+  );
+  const windows: { from: string; to: string }[] = [];
+  for (let y = startYear; y <= currentYear + 1; y += 1) {
+    windows.push({ from: `${y}-01-01`, to: `${y}-12-31` });
+  }
+  // Teto: mantém as janelas mais recentes.
+  return windows.slice(-HISTORY_MAX_WINDOWS);
+}
+
+export type PatientHistoryTruncated = {
+  anamneses: boolean;
+  evolucoes: boolean;
+  appointments: boolean;
+};
+
+export type PatientHistory = {
+  anamneses: Anamnese[];
+  evolucoes: Evolucao[];
+  appointments: Appointment[];
+  truncated: PatientHistoryTruncated;
+  limit: number;
+};
+
+/** Ano (4 primeiros dígitos) de uma data ISO; 0 se ausente. */
+function isoYear(iso: string): number {
+  return Number.parseInt(iso.slice(0, 4), 10) || 0;
+}
+
+/**
+ * Ordem canônica do histórico (a mesma que o fluxo por janelas anuais produzia):
+ * anamneses como vêm do backend (mais recentes primeiro); evoluções por ano crescente e,
+ * dentro do ano, mais recentes primeiro; agenda crescente por data/hora/id.
+ * Mantém o contentHash do PDF estável para os mesmos dados.
+ */
+export function canonicalHistoryOrder(h: {
+  anamneses: Anamnese[];
+  evolucoes: Evolucao[];
+  appointments: Appointment[];
+}) {
+  return {
+    anamneses: h.anamneses,
+    evolucoes: [...h.evolucoes].sort(
+      (a, b) =>
+        isoYear(a.dataSessao) - isoYear(b.dataSessao) ||
+        b.dataSessao.localeCompare(a.dataSessao) ||
+        b.id - a.id,
+    ),
+    appointments: [...h.appointments].sort(
+      (a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time) || a.id - b.id,
+    ),
+  };
+}
+
+/** Mapeia a resposta de `GET /v1/patients/{id}/history`; `null` se o formato for inválido. */
+export function mapPatientHistoryFromApi(raw: unknown): PatientHistory | null {
+  const r = raw as Record<string, unknown> | null;
+  const t = r?.truncated as Record<string, unknown> | undefined;
+  if (
+    !r ||
+    !Array.isArray(r.anamneses) ||
+    !Array.isArray(r.evolucoes) ||
+    !Array.isArray(r.appointments) ||
+    !t ||
+    typeof t.anamneses !== "boolean" ||
+    typeof t.evolucoes !== "boolean" ||
+    typeof t.appointments !== "boolean"
+  ) {
+    return null;
+  }
+  const ordered = canonicalHistoryOrder({
+    anamneses: (r.anamneses as AnamneseDto[]).map(mapAnamneseFromApi),
+    evolucoes: (r.evolucoes as EvolucaoDto[]).map(mapEvolucaoFromApi),
+    appointments: (r.appointments as AppointmentDto[]).map(mapAppointmentFromApi),
+  });
+  return {
+    ...ordered,
+    truncated: {
+      anamneses: t.anamneses,
+      evolucoes: t.evolucoes,
+      appointments: t.appointments,
+    },
+    limit: Number(r.limit ?? 0),
+  };
+}
+
+export async function fetchPatientHistory(pid: number): Promise<PatientHistory> {
+  const raw = await backendJson<unknown>(backendApiHref(`patients/${pid}/history`));
+  const mapped = mapPatientHistoryFromApi(raw);
+  if (!mapped) {
+    const e = new Error("Resposta inválida do servidor.") as Error & { status?: number };
+    e.status = 502;
+    throw e;
+  }
+  return mapped;
+}
+
+/**
+ * TEMPORÁRIO: fluxo anterior (janelas anuais) usado só enquanto o backend em produção
+ * não tiver `GET /v1/patients/{id}/history`. Remover depois de estabilizar o deploy.
+ */
+async function fetchPatientHistoryLegacy(
+  pid: number,
+  registeredAt: string | undefined,
+): Promise<PatientHistory> {
+  const windows = patientHistoryWindows(registeredAt);
+  // Evolução e agenda compartilham um único pool para respeitar o limite global.
+  const tasks = windows.flatMap((w): (() => Promise<unknown>)[] => [
+    () => fetchEvolutionsForPatient(pid, w.from, w.to),
+    () => fetchAppointmentsRange(w.from, w.to, pid),
   ]);
-  return { patient, anamneses, evolucoes, appointments };
+  const [anamneses, settled] = await Promise.all([
+    fetchAnamnesesForPatient(pid),
+    mapSettledWithConcurrency(tasks, HISTORY_WINDOW_CONCURRENCY, (t) => t()),
+  ]);
+  const evolucoes: Evolucao[] = [];
+  const appointments: Appointment[] = [];
+  settled.forEach((r, i) => {
+    if (r.status === "rejected") throw r.reason;
+    if (i % 2 === 0) evolucoes.push(...(r.value as Evolucao[]));
+    else appointments.push(...(r.value as Appointment[]));
+  });
+  return {
+    ...canonicalHistoryOrder({ anamneses, evolucoes, appointments }),
+    // Lista legada sem sinal de truncamento: no teto, assume que pode haver mais.
+    truncated: {
+      anamneses: anamneses.length >= CLINIC_ANAMNESES_LIMIT,
+      evolucoes: false,
+      appointments: false,
+    },
+    limit: 0,
+  };
+}
+
+/** Paciente + histórico completo (2 chamadas; fallback legado se `/history` não existir). */
+export async function fetchPatientDetailBundle(pid: number) {
+  const [patientRes, historyRes] = await Promise.allSettled([
+    fetchPatientById(pid),
+    fetchPatientHistory(pid),
+  ]);
+  // Paciente inexistente/outra clínica (404) ou qualquer falha: nunca cai no fallback.
+  if (patientRes.status === "rejected") throw patientRes.reason;
+  const patient = patientRes.value;
+  if (historyRes.status === "fulfilled") return { patient, ...historyRes.value };
+  const status = (historyRes.reason as { status?: number } | null)?.status;
+  // Paciente existe e /history deu 404: rota ainda não publicada no backend.
+  // Só 404 aciona o fallback: o backend antigo pode responder 500 em rota inexistente,
+  // então o backend novo deve ser publicado ANTES do front.
+  if (status === 404) {
+    return { patient, ...(await fetchPatientHistoryLegacy(pid, patient.registeredAt)) };
+  }
+  throw historyRes.reason;
 }
 
 /** --- Agenda --- */
@@ -302,28 +515,145 @@ export async function fetchEvolutionsForPatient(
   return list.map(mapEvolucaoFromApi);
 }
 
-const EVOLUTION_AGG_CONCURRENCY = 8;
+export const EVOLUTION_AGG_CONCURRENCY = 6;
+const RETRY_AFTER_DEFAULT_MS = 2000;
+const RETRY_AFTER_MAX_MS = 10_000;
 
-export async function fetchAggregatedEvolutions(patients: { id: number }[], from: string, to: string) {
-  if (patients.length === 0) return [];
-  const out: Evolucao[] = [];
-  let rejectedCount = 0;
-  for (let i = 0; i < patients.length; i += EVOLUTION_AGG_CONCURRENCY) {
-    const slice = patients.slice(i, i + EVOLUTION_AGG_CONCURRENCY);
-    const chunks = await Promise.allSettled(
-      slice.map((p) => fetchEvolutionsForPatient(p.id, from, to)),
-    );
-    for (const c of chunks) {
-      if (c.status === "fulfilled") out.push(...c.value);
-      else rejectedCount += 1;
-    }
-  }
-  if (rejectedCount > 0) {
-    console.warn(
-      `[dashboard] ${rejectedCount} chamada(s) de evoluções falharam; mantendo métricas parciais.`,
-    );
+export type AggregatedEvolutions = {
+  items: Evolucao[];
+  /** Pacientes cuja consulta falhou (só no fallback por paciente; 0 no endpoint agregado). */
+  failed: number;
+  /** Pacientes consultados (só no fallback por paciente; 0 no endpoint agregado). */
+  total: number;
+  /** Alguma janela atingiu o teto do backend: há evoluções mais antigas não carregadas. */
+  truncated: boolean;
+  /** Teto por janela informado pelo backend (0 quando desconhecido/fallback). */
+  limit: number;
+};
+
+/** Teto pedido ao backend por janela (`GET /v1/evolutions`). */
+export const CLINIC_EVOLUTIONS_LIMIT = 2000;
+/** Máximo de dias (inclusivo) aceito pelo backend por requisição. */
+const CLINIC_EVOLUTIONS_MAX_DAYS = 366;
+const CLINIC_EVOLUTIONS_CONCURRENCY = 2;
+const DAY_MS = 86_400_000;
+
+function isoToUtcMs(iso: string): number {
+  const [y, m, d] = iso.split("-").map(Number);
+  return Date.UTC(y, m - 1, d);
+}
+
+function utcMsToIso(ms: number): string {
+  return new Date(ms).toISOString().slice(0, 10);
+}
+
+/** Divide [from, to] (yyyy-MM-dd) em janelas contíguas de no máximo 366 dias inclusivos. */
+export function splitEvolutionRange(from: string, to: string): { from: string; to: string }[] {
+  const start = isoToUtcMs(from);
+  const end = isoToUtcMs(to);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) return [{ from, to }];
+  const out: { from: string; to: string }[] = [];
+  for (let s = start; s <= end; s += CLINIC_EVOLUTIONS_MAX_DAYS * DAY_MS) {
+    const e = Math.min(s + (CLINIC_EVOLUTIONS_MAX_DAYS - 1) * DAY_MS, end);
+    out.push({ from: utcMsToIso(s), to: utcMsToIso(e) });
   }
   return out;
+}
+
+type ClinicEvolutionsDto = { items?: unknown; truncated?: unknown; limit?: unknown };
+
+/** UMA chamada `GET /v1/evolutions` por janela (<= 366 dias), nunca por paciente. */
+export async function fetchClinicEvolutions(
+  from: string,
+  to: string,
+): Promise<{ items: Evolucao[]; truncated: boolean; limit: number }> {
+  const windows = splitEvolutionRange(from, to);
+  const settled = await mapSettledWithConcurrency(
+    windows,
+    CLINIC_EVOLUTIONS_CONCURRENCY,
+    (w) =>
+      backendJson<ClinicEvolutionsDto>(
+        backendApiHref("evolutions", { from: w.from, to: w.to, limit: CLINIC_EVOLUTIONS_LIMIT }),
+      ),
+  );
+  const items: Evolucao[] = [];
+  let truncated = false;
+  let limit = 0;
+  for (const r of settled) {
+    if (r.status === "rejected") throw r.reason;
+    if (!Array.isArray(r.value?.items)) {
+      const e = new Error("Resposta inválida do servidor.") as Error & { status?: number };
+      e.status = 502;
+      throw e;
+    }
+    items.push(...(r.value.items as EvolucaoDto[]).map(mapEvolucaoFromApi));
+    if (r.value.truncated === true) truncated = true;
+    limit = Math.max(limit, Number(r.value.limit ?? 0) || 0);
+  }
+  // Mesma ordem do backend (dataSessao desc, id desc), também entre janelas.
+  items.sort((a, b) => b.dataSessao.localeCompare(a.dataSessao) || b.id - a.id);
+  return { items, truncated, limit };
+}
+
+/** 1 requisição por paciente; em 429 repete UMA vez após Retry-After (só neste agregado). */
+async function fetchEvolutionsWith429Retry(patientId: number, from: string, to: string) {
+  try {
+    return await fetchEvolutionsForPatient(patientId, from, to);
+  } catch (e) {
+    const err = e as { status?: number; retryAfterSeconds?: number };
+    if (err?.status !== 429) throw e;
+    const waitMs = Math.min(
+      err.retryAfterSeconds ? err.retryAfterSeconds * 1000 : RETRY_AFTER_DEFAULT_MS,
+      RETRY_AFTER_MAX_MS,
+    );
+    await new Promise((resolve) => setTimeout(resolve, waitMs));
+    return fetchEvolutionsForPatient(patientId, from, to);
+  }
+}
+
+/**
+ * Evoluções da clínica no período: usa `GET /v1/evolutions` (1 chamada por janela).
+ * Só 404 (backend ainda não publicado) aciona o fluxo antigo por paciente; qualquer
+ * outro erro (500, 429...) propaga e a tela mostra "Tentar novamente".
+ * `loadPatients` só é chamado no fallback.
+ */
+export async function fetchAggregatedEvolutionsDetailed(
+  from: string,
+  to: string,
+  loadPatients: () => Promise<{ id: number }[]>,
+): Promise<AggregatedEvolutions> {
+  try {
+    const res = await fetchClinicEvolutions(from, to);
+    return { ...res, failed: 0, total: 0 };
+  } catch (e) {
+    if ((e as { status?: number } | null)?.status !== 404) throw e;
+  }
+  return fetchEvolutionsPerPatientLegacy(await loadPatients(), from, to);
+}
+
+/**
+ * TEMPORÁRIO: fluxo antigo (1 requisição por paciente, concorrência limitada) usado só
+ * enquanto `GET /v1/evolutions` não estiver publicado no backend. Remover depois.
+ * Nunca rejeita: devolve quantos pacientes falharam, para a tela avisar sobre dados parciais.
+ */
+async function fetchEvolutionsPerPatientLegacy(
+  patients: { id: number }[],
+  from: string,
+  to: string,
+): Promise<AggregatedEvolutions> {
+  const settled = await mapSettledWithConcurrency(patients, EVOLUTION_AGG_CONCURRENCY, (p) =>
+    fetchEvolutionsWith429Retry(p.id, from, to),
+  );
+  const items: Evolucao[] = [];
+  let failed = 0;
+  for (const c of settled) {
+    if (c.status === "fulfilled") items.push(...c.value);
+    else failed += 1;
+  }
+  if (failed > 0) {
+    console.warn(`[evolucoes] ${failed} chamada(s) de evoluções falharam; dados parciais.`);
+  }
+  return { items, failed, total: patients.length, truncated: false, limit: 0 };
 }
 
 /** Compatível com APIs Spring sem `GET /v1/metrics/dashboard`. */
@@ -336,7 +666,11 @@ async function fetchDashboardBundleLegacy(
     fetchAppointmentsRange(from, to),
   ]);
   const patients = patientPage.content;
-  const evolucoes = await fetchAggregatedEvolutions(patients, from, to);
+  const { items: evolucoes } = await fetchAggregatedEvolutionsDetailed(
+    from,
+    to,
+    async () => patients,
+  );
   return { patients, appointments, evolucoes };
 }
 
@@ -401,10 +735,35 @@ export async function fetchFinancialReport(
   };
 }
 
-export async function fetchAggregatedAnamneses(patients: { id: number }[]) {
-  if (patients.length === 0) return [];
-  const chunks = await Promise.all(patients.map((p) => fetchAnamnesesForPatient(p.id)));
-  return chunks.flat();
+export type ClinicAnamneses = {
+  /** Resumo (sem texto clínico): id, paciente e data da coleta. */
+  anamneses: Anamnese[];
+  truncated: boolean;
+  limit: number;
+};
+
+export const CLINIC_ANAMNESES_LIMIT = 500;
+
+/** `GET /v1/anamneses?limit=` — lista da clínica em 1 chamada, mais recentes primeiro. */
+export async function fetchClinicAnamneses(
+  limit: number = CLINIC_ANAMNESES_LIMIT,
+): Promise<ClinicAnamneses> {
+  const raw = await backendJson<{
+    items?: AnamneseDto[];
+    truncated?: boolean;
+    limit?: number;
+  }>(backendApiHref("anamneses", { limit }));
+  return {
+    anamneses: (raw.items ?? []).map(mapAnamneseFromApi),
+    truncated: raw.truncated === true,
+    limit: Number(raw.limit ?? limit),
+  };
+}
+
+/** `GET /v1/anamneses/{id}` — texto completo, usado ao editar. */
+export async function fetchAnamneseById(id: number): Promise<Anamnese> {
+  const raw = await backendJson<AnamneseDto>(backendApiHref(`anamneses/${id}`));
+  return mapAnamneseFromApi(raw);
 }
 
 /** --- escritas (corpos alinhados ao Spring) --- */

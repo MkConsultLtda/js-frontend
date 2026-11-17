@@ -17,8 +17,8 @@ import {
   apiReplaceAppointment,
   apiReplaceEvolution,
   apiReplacePatient,
-  fetchAggregatedAnamneses,
-  fetchAggregatedEvolutions,
+  fetchClinicAnamneses,
+  fetchAggregatedEvolutionsDetailed,
   fetchAppointmentsRange,
   fetchDashboardMetricsBundle,
   fetchHolidays,
@@ -105,6 +105,11 @@ export function usePatientDetailBundle(pid: number | undefined) {
     enabled: typeof pid === "number" && Number.isFinite(pid) && pid > 0,
     queryFn: () => fetchPatientDetailBundle(pid as number),
     staleTime: 15_000,
+    retry: (failureCount, error) => {
+      const status = (error as Error & { status?: number }).status;
+      if (status === 401 || status === 403 || status === 404 || status === 429) return false;
+      return failureCount < 2;
+    },
   });
 }
 
@@ -157,10 +162,7 @@ export function useAggregateAnamneses(enabled: boolean) {
   return useQuery({
     queryKey: fisioKeys.anamnesesAgg,
     enabled,
-    queryFn: async () => {
-      const page = await fetchPatientPage({ size: 500 });
-      return fetchAggregatedAnamneses(page.content);
-    },
+    queryFn: () => fetchClinicAnamneses(),
     staleTime: 20_000,
   });
 }
@@ -170,9 +172,17 @@ export function useAggregateEvoluco(from: string, to: string, enabled: boolean) 
     queryKey: fisioKeys.evolutionsAgg(from, to),
     enabled,
     queryFn: async () => {
-      const page = await fetchPatientPage({ size: 500 });
-      return fetchAggregatedEvolutions(page.content, from, to);
+      // Pacientes só são carregados no fallback temporário (endpoint agregado ausente).
+      const res = await fetchAggregatedEvolutionsDetailed(from, to, async () =>
+        (await fetchPatientPage({ size: 500 })).content,
+      );
+      // Falha total vira erro (tela mostra "Tentar novamente"); parcial segue com aviso.
+      if (res.total > 0 && res.failed === res.total) {
+        throw new Error("Não foi possível carregar as evoluções.");
+      }
+      return res;
     },
+    retry: false,
     staleTime: 20_000,
   });
 }

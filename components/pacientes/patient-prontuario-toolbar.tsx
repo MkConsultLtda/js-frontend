@@ -7,6 +7,7 @@ import { FileDown, FileText, Paperclip, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { usePwa } from "@/lib/hooks/use-pwa";
 import { formatUserFacingApiError } from "@/lib/api/backend-client";
 import {
   apiDeleteAttachment,
@@ -49,6 +50,7 @@ export function PatientProntuarioToolbar({
   const queryClient = useQueryClient();
   const { settings } = useClinicSettings();
   const { data: me } = useAuthMe();
+  const { pdfDisabled } = usePwa();
 
   const pdfBranding = React.useMemo<PdfBranding>(() => {
     const sig =
@@ -163,6 +165,7 @@ export function PatientProntuarioToolbar({
             ref={fileRef}
             type="file"
             className="sr-only"
+            aria-label="Selecionar arquivo para anexar (PDF ou imagem)"
             accept="application/pdf,image/*"
             onChange={onFile}
           />
@@ -215,6 +218,7 @@ export function PatientProntuarioToolbar({
                       variant="ghost"
                       size="sm"
                       className="text-destructive"
+                      aria-label={`Excluir anexo ${a.fileName}`}
                       onClick={() => setAttachmentToDeleteId(a.id)}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -228,6 +232,14 @@ export function PatientProntuarioToolbar({
           <p className="text-sm text-muted-foreground">Nenhum anexo ainda. Use o botão acima.</p>
         )}
 
+        {pdfDisabled ? (
+          <div className="border-t pt-4 space-y-1">
+            <p className="text-sm font-medium">Gerar PDF</p>
+            <p className="text-sm text-muted-foreground">
+              A geração de PDF está disponível apenas no navegador do computador.
+            </p>
+          </div>
+        ) : (
         <div className="border-t pt-4 space-y-2">
           <p className="text-sm font-medium">Gerar PDF</p>
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
@@ -306,6 +318,7 @@ export function PatientProntuarioToolbar({
             </Button>
           </div>
         </div>
+        )}
       </CardContent>
       <ConfirmDialog
         open={attachmentToDeleteId !== null}

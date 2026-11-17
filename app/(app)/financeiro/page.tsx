@@ -12,6 +12,7 @@ import { FinanceSummaryCards } from "@/components/finance/finance-summary-cards"
 import { FinanceTransactionDialog } from "@/components/finance/finance-transaction-dialog";
 import { FinanceTransactionsTable } from "@/components/finance/finance-transactions-table";
 import { formatUserFacingApiError } from "@/lib/api/backend-client";
+import { formatMonthYearPtBR } from "@/lib/date-utils";
 import {
   createFinanceTransaction,
   createFinanceCategory,
@@ -34,7 +35,7 @@ function currentMonthRange(offset = 0) {
 
 function monthLabel(from: string) {
   const [y, m] = from.split("-").map(Number);
-  return new Date(y, m - 1, 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+  return formatMonthYearPtBR(new Date(y, m - 1, 1));
 }
 
 export default function FinanceiroPage() {
@@ -48,7 +49,13 @@ export default function FinanceiroPage() {
   const range = useMemo(() => currentMonthRange(monthOffset), [monthOffset]);
   const queryScope = scope === "all" ? undefined : (scope as FinancialScope);
 
-  const { data: summary, isLoading: summaryLoading } = useQuery({
+  const {
+    data: summary,
+    isLoading: summaryLoading,
+    isError: summaryError,
+    refetch: refetchSummary,
+    isFetching: summaryFetching,
+  } = useQuery({
     queryKey: ["finance-summary", range.from, range.to],
     queryFn: () => fetchFinanceSummary(range.from, range.to),
     staleTime: 30_000,
@@ -116,10 +123,16 @@ export default function FinanceiroPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Financeiro</h1>
-          <p className="text-muted-foreground capitalize">{monthLabel(range.from)}</p>
+          <p className="text-muted-foreground">{monthLabel(range.from)}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button type="button" variant="outline" size="icon" onClick={() => setMonthOffset((o) => o - 1)}>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            aria-label="Mês anterior"
+            onClick={() => setMonthOffset((o) => o - 1)}
+          >
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <Button
@@ -131,7 +144,13 @@ export default function FinanceiroPage() {
           >
             Mês atual
           </Button>
-          <Button type="button" variant="outline" size="icon" onClick={() => setMonthOffset((o) => o + 1)}>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            aria-label="Próximo mês"
+            onClick={() => setMonthOffset((o) => o + 1)}
+          >
             <ChevronRight className="h-4 w-4" />
           </Button>
           <Button type="button" variant="outline" onClick={() => setCategoryDialogOpen(true)}>
@@ -146,13 +165,31 @@ export default function FinanceiroPage() {
 
       <FinanceScopeToggle value={scope} onChange={setScope} />
 
-      <FinanceSummaryCards
-        scope={scope}
-        summary={summary}
-        delinquencyTotal={delinquencyTotal}
-        receivableTotal={receivableTotal}
-        loading={summaryLoading}
-      />
+      {summaryError && !summary ? (
+        <div
+          role="alert"
+          className="flex flex-wrap items-center gap-3 rounded-lg border border-destructive/40 p-4 text-sm text-destructive"
+        >
+          <p>Não foi possível carregar o resumo financeiro deste mês.</p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => void refetchSummary()}
+            disabled={summaryFetching}
+          >
+            Tentar novamente
+          </Button>
+        </div>
+      ) : (
+        <FinanceSummaryCards
+          scope={scope}
+          summary={summary}
+          delinquencyTotal={delinquencyTotal}
+          receivableTotal={receivableTotal}
+          loading={summaryLoading}
+        />
+      )}
 
       <FinanceTransactionsTable
         transactions={transactions}

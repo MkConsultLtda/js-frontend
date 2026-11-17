@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { useRestoreFocus } from "@/components/use-restore-focus";
 import { useClientSearchParams } from "@/lib/hooks/use-client-search-params";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -86,10 +87,14 @@ export default function EvolucaoPage() {
     [y],
   );
   const {
-    data: evolucoes = [],
+    data: evolucoesAgg,
     isLoading: isEvolucoesLoading,
     error: evolucoesError,
+    refetch: refetchEvolucoes,
+    isFetching: isEvolucoesFetching,
   } = useAggregateEvoluco(evWindow.from, evWindow.to, true);
+  const evolucoes = React.useMemo(() => evolucoesAgg?.items ?? [], [evolucoesAgg]);
+  const evolucoesFailed = evolucoesAgg?.failed ?? 0;
   const { createEvo, replaceEvo, deleteEvo } = useEvolucoMutations(evWindow.from, evWindow.to);
 
   const [isCreating, setIsCreating] = React.useState(false);
@@ -97,6 +102,7 @@ export default function EvolucaoPage() {
   const [patientNameFilter, setPatientNameFilter] = React.useState("");
   const [evolucaoToDeleteId, setEvolucaoToDeleteId] = React.useState<number | null>(null);
   const [viewingEvolucao, setViewingEvolucao] = React.useState<Evolucao | null>(null);
+  const restoreViewFocus = useRestoreFocus(viewingEvolucao !== null);
   const [listSortOrder, setListSortOrder] = React.useState<NameSortOrder | DateSortOrder>("name-asc");
   const agendaPrefillDone = React.useRef(false);
 
@@ -464,6 +470,48 @@ export default function EvolucaoPage() {
             Não foi possível carregar os dados de evolução. Verifique conexão e sessão.
           </p>
         )}
+        {evolucoesError && (
+          <div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={isEvolucoesFetching}
+              onClick={() => void refetchEvolucoes()}
+            >
+              Tentar novamente
+            </Button>
+          </div>
+        )}
+        {!evolucoesError && evolucoesFailed > 0 && (
+          <div
+            role="alert"
+            className="flex flex-wrap items-center gap-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900"
+          >
+            <span>
+              Lista incompleta: as evoluções de {evolucoesFailed} paciente(s) não foram carregadas
+              (limite de requisições do servidor).
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={isEvolucoesFetching}
+              onClick={() => void refetchEvolucoes()}
+            >
+              Tentar novamente
+            </Button>
+          </div>
+        )}
+        {!evolucoesError && evolucoesAgg?.truncated && (
+          <div
+            role="alert"
+            className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900"
+          >
+            Lista incompleta: mostrando as {evolucoes.length} evoluções mais recentes; refine o
+            período para ver as mais antigas.
+          </div>
+        )}
         {filteredEvolucoes.map((evolucao) => (
           <Card key={evolucao.id}>
             <CardHeader>
@@ -521,6 +569,7 @@ export default function EvolucaoPage() {
                   variant="outline"
                   size="sm"
                   className="text-destructive"
+                  aria-label={`Excluir evolução de ${evolucao.patientName}`}
                   onClick={() => setEvolucaoToDeleteId(evolucao.id)}
                 >
                   <Trash2 className="h-4 w-4" />
@@ -537,7 +586,10 @@ export default function EvolucaoPage() {
           if (!open) setViewingEvolucao(null);
         }}
       >
-        <DialogContent className="max-w-2xl max-h-[min(90dvh,calc(100dvh-2rem))] overflow-y-auto">
+        <DialogContent
+          className="max-w-2xl max-h-[min(90dvh,calc(100dvh-2rem))] overflow-y-auto"
+          onCloseAutoFocus={restoreViewFocus}
+        >
           {viewingEvolucao ? (
             <>
               <DialogHeader>
@@ -630,7 +682,11 @@ export default function EvolucaoPage() {
         }}
       />
 
-      {filteredEvolucoes.length === 0 && (
+      {filteredEvolucoes.length === 0 &&
+        !isPatientsLoading &&
+        !isEvolucoesLoading &&
+        !patientsError &&
+        !evolucoesError && (
         <p className="text-sm text-muted-foreground text-center py-8">
           Nenhuma evolução para exibir com os filtros atuais.
         </p>

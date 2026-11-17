@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { useRestoreFocus } from "@/components/use-restore-focus";
 
 type Props = {
   open: boolean;
@@ -39,6 +40,7 @@ export function ConfirmDialog({
   onConfirm,
 }: Props) {
   const [pending, setPending] = React.useState(false);
+  const restoreFocus = useRestoreFocus(open);
 
   const handleConfirm = async () => {
     setPending(true);
@@ -58,6 +60,7 @@ export function ConfirmDialog({
         onEscapeKeyDown={() => {
           if (!pending) onOpenChange(false);
         }}
+        onCloseAutoFocus={restoreFocus}
         role="alertdialog"
         aria-modal="true"
       >
