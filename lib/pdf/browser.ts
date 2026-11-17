@@ -75,7 +75,7 @@ export async function renderHtmlToPdf(
       footerTemplate: `
         <div style="width:100%;font-size:8px;color:#888;padding:0 14mm;display:flex;justify-content:space-between;">
           <span>${footerText}</span>
-          <span>Pagina <span class="pageNumber"></span> de <span class="totalPages"></span></span>
+          <span>Página<span class="pageNumber"></span> de <span class="totalPages"></span></span>
         </div>`,
       margin: { top: "14mm", bottom: "18mm", left: "14mm", right: "14mm" },
     });

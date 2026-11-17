@@ -1,4 +1,4 @@
-import { formatIsoDateToBR } from "@/lib/date-utils";
+import { formatIsoDateToBR, parseBRDate } from "@/lib/date-utils";
 import { htmlToPlainText } from "@/lib/html-to-plain";
 import { formatAddressOneLine, formatCepDisplay } from "@/lib/patient-utils";
 import { patientStatusLabel } from "@/lib/patient-labels";
@@ -87,7 +87,12 @@ function anamneseBody(a: Anamnese): string {
 }
 
 function anamneseSection(items: Anamnese[]): string {
-  const ordered = [...items].sort((a, b) => b.dataColeta.localeCompare(a.dataColeta));
+  // dataColeta vem em dd/mm/aaaa: comparar como data, não como texto.
+  const time = (s: string) => {
+    const t = parseBRDate(s).getTime();
+    return Number.isNaN(t) ? 0 : t;
+  };
+  const ordered = [...items].sort((a, b) => time(b.dataColeta) - time(a.dataColeta));
   const body =
     ordered.length === 0
       ? block("Registros", "Nenhuma anamnese cadastrada para este paciente.")
@@ -135,7 +140,7 @@ function appointmentRow(a: Appointment): string {
         : a.status === "completed"
           ? "Concluído"
           : "Cancelado";
-  return `<tr><td>${esc(a.date)}</td><td>${esc(a.time)}</td><td>${esc(a.type)}</td><td>${esc(st)}</td><td>${esc(pay)}</td></tr>`;
+  return `<tr><td>${esc(formatIsoDateToBR(a.date))}</td><td>${esc(a.time)}</td><td>${esc(a.type)}</td><td>${esc(st)}</td><td>${esc(pay)}</td></tr>`;
 }
 
 function appointmentsSection(items: Appointment[], patientId: number): string {

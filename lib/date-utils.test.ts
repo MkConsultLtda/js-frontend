@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { formatIsoDateToBR, isoDateFromJsonField, toLocalDateString } from "@/lib/date-utils";
+import {
+  formatIsoDateToBR,
+  formatMonthYearPtBR,
+  isoDateFromJsonField,
+  toLocalDateString,
+} from "@/lib/date-utils";
+
+describe("formatMonthYearPtBR", () => {
+  it("mantém a preposição em minúscula", () => {
+    expect(formatMonthYearPtBR(new Date(2026, 10, 1))).toBe("Novembro de 2026");
+  });
+});
 
 describe("formatIsoDateToBR", () => {
   it("converte yyyy-mm-dd", () => {

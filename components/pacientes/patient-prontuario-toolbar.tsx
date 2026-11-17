@@ -163,6 +163,7 @@ export function PatientProntuarioToolbar({
             ref={fileRef}
             type="file"
             className="sr-only"
+            aria-label="Selecionar arquivo para anexar (PDF ou imagem)"
             accept="application/pdf,image/*"
             onChange={onFile}
           />
@@ -215,6 +216,7 @@ export function PatientProntuarioToolbar({
                       variant="ghost"
                       size="sm"
                       className="text-destructive"
+                      aria-label={`Excluir anexo ${a.fileName}`}
                       onClick={() => setAttachmentToDeleteId(a.id)}
                     >
                       <Trash2 className="h-4 w-4" />

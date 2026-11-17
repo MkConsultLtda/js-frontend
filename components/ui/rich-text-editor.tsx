@@ -4,7 +4,6 @@ import * as React from "react";
 import { Extension } from "@tiptap/core";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import Underline from "@tiptap/extension-underline";
 import { TextStyle } from "@tiptap/extension-text-style";
 import Placeholder from "@tiptap/extension-placeholder";
 import {
@@ -86,7 +85,7 @@ export function RichTextEditor({
         bulletList: { keepMarks: true },
         orderedList: { keepMarks: true },
       }),
-      Underline,
+      // Underline já vem no StarterKit (Tiptap 3); registrá-lo de novo duplica a extensão.
       TextStyle,
       FontSize,
       Placeholder.configure({

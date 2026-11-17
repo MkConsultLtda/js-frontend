@@ -87,7 +87,13 @@ import { cn } from "@/lib/utils";
 
 export default function PacientesPage() {
   const [searchTerm, setSearchTerm] = React.useState("");
-  const { data: patientPage, isLoading, error } = usePatientsSearch(searchTerm);
+  const {
+    data: patientPage,
+    isLoading,
+    error,
+    refetch: refetchPatients,
+    isFetching: isFetchingPatients,
+  } = usePatientsSearch(searchTerm);
   const { createPatient, replacePatient, deletePatient } = usePatientMutations();
   const patients = patientPage?.content ?? [];
   const year = new Date().getFullYear();
@@ -254,9 +260,22 @@ export default function PacientesPage() {
       </div>
 
       {error && (
-        <p className="text-sm text-destructive">
-          Não foi possível carregar os pacientes. Verifique sua sessão ou a conexão com a internet.
-        </p>
+        <div
+          role="alert"
+          className="flex flex-wrap items-center gap-3 text-sm text-destructive"
+        >
+          <p>
+            Não foi possível carregar os pacientes. Verifique sua sessão ou a conexão com a internet.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void refetchPatients()}
+            disabled={isFetchingPatients}
+          >
+            Tentar novamente
+          </Button>
+        </div>
       )}
       {isLoading && patients.length === 0 && (
         <p className="text-sm text-muted-foreground">Carregando pacientes…</p>
@@ -297,7 +316,12 @@ export default function PacientesPage() {
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 shrink-0"
+                      aria-label={`Ações para ${patient.name}`}
+                    >
                       <MoreVertical className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
@@ -489,7 +513,7 @@ export default function PacientesPage() {
         </Dialog>
       )}
 
-      {filteredPatients.length === 0 && (
+      {filteredPatients.length === 0 && !error && !isLoading && (
         <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
           <UserPlus className="h-12 w-12 mb-4 opacity-20" />
           <p>Nenhum paciente encontrado.</p>
