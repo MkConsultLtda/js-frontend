@@ -27,12 +27,13 @@ import {
   formatAddressOneLine,
   formatCepDisplay,
 } from "@/lib/patient-utils";
+import { classifyPatientLoadError, patientHistoryTruncatedMessage } from "@/lib/api/load-error";
 import { isSessionAppointment, type Evolucao } from "@/lib/types";
 
 export default function PacienteProntuarioPage() {
   const params = useParams();
   const idNum = Number(params.id);
-  const { data: bundle, isLoading, error } = usePatientDetailBundle(
+  const { data: bundle, isLoading, error, refetch } = usePatientDetailBundle(
     Number.isFinite(idNum) ? idNum : undefined,
   );
 
@@ -87,6 +88,7 @@ export default function PacienteProntuarioPage() {
   }
 
   if (error || !patient) {
+    const kind = classifyPatientLoadError(error);
     return (
       <div className="p-8 space-y-4">
         <Button variant="ghost" asChild className="gap-2 w-fit">
@@ -95,13 +97,21 @@ export default function PacienteProntuarioPage() {
             Voltar
           </Link>
         </Button>
-        <p className="text-destructive">
-          Paciente não encontrado ou sem permissão para o recurso.
+        <p className="text-destructive" role="alert">
+          {kind === "not-found"
+            ? "Paciente não encontrado ou sem permissão para o recurso."
+            : "Não foi possível carregar o prontuário agora (erro no servidor ou de conexão). Os dados do paciente não foram perdidos."}
         </p>
+        {kind === "error" && (
+          <Button variant="outline" onClick={() => void refetch()}>
+            Tentar novamente
+          </Button>
+        )}
       </div>
     );
   }
 
+  const truncatedMessage = bundle ? patientHistoryTruncatedMessage(bundle.truncated) : null;
   const anamneseCount = anamneses.filter((a) => a.patientId === idNum).length;
   const evolucaoCount = evolucoes.filter((e) => e.patientId === idNum).length;
 
@@ -138,6 +148,12 @@ export default function PacienteProntuarioPage() {
           </Button>
         </div>
       </div>
+
+      {truncatedMessage && (
+        <p role="status" className="text-sm text-amber-700 dark:text-amber-400">
+          {truncatedMessage}
+        </p>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card className="md:col-span-2 border-primary/15">
@@ -191,6 +207,7 @@ export default function PacienteProntuarioPage() {
           patient={patient}
           patientId={idNum}
           appointments={appointments}
+          historyTruncated={bundle?.truncated.appointments ?? false}
         />
         <Card>
           <CardHeader className="pb-2">

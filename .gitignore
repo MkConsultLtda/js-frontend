@@ -49,3 +49,16 @@ next-env.d.ts
 
 # internal docs and reports (not versioned)
 /docs/
+
+
+### Database dumps, backups and logs (never commit patient data) ###
+*.dump
+*.pgdump
+*.backup
+*.bak
+*.sql.gz
+dump*.sql
+*.log
+logs/
+scripts/maintenance/*.csv
+scripts/maintenance/*.out

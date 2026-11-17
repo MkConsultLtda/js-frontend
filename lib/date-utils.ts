@@ -37,6 +37,12 @@ export function formatIsoDateToBR(iso: string): string {
   return `${m[3]}/${m[2]}/${m[1]}`;
 }
 
+/** "Novembro de 2026": só a primeira letra maiúscula (CSS `capitalize` gera "De"). */
+export function formatMonthYearPtBR(date: Date): string {
+  const label = date.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+  return label.charAt(0).toLocaleUpperCase("pt-BR") + label.slice(1);
+}
+
 /** dd/mm/aaaa → Date local */
 export function parseBRDate(date: string): Date {
   const [d, m, y] = date.split("/").map(Number);

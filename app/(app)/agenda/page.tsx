@@ -134,10 +134,14 @@ export default function AgendaPage() {
   );
 
   const {
-    data: evolucoes = [],
+    data: evolucoesAgg,
     isLoading: isEvolucoesLoading,
     error: evolucoesError,
+    refetch: refetchEvolucoes,
+    isFetching: isEvolucoesFetching,
   } = useAggregateEvoluco(evWindow.from, evWindow.to, true);
+  const evolucoes = React.useMemo(() => evolucoesAgg?.items ?? [], [evolucoesAgg]);
+  const evolucoesFailed = evolucoesAgg?.failed ?? 0;
 
   const {
     createAppointment,
@@ -834,6 +838,48 @@ export default function AgendaPage() {
           <p className="text-sm text-destructive">
             Não foi possível carregar todos os dados da agenda. Verifique conexão e sessão.
           </p>
+        )}
+        {evolucoesError && (
+          <div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={isEvolucoesFetching}
+              onClick={() => void refetchEvolucoes()}
+            >
+              Tentar novamente
+            </Button>
+          </div>
+        )}
+        {!evolucoesError && evolucoesFailed > 0 && (
+          <div
+            role="alert"
+            className="flex flex-wrap items-center gap-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900"
+          >
+            <span>
+              Indicadores de evolução incompletos: {evolucoesFailed} paciente(s) não foram
+              carregados (limite de requisições do servidor).
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={isEvolucoesFetching}
+              onClick={() => void refetchEvolucoes()}
+            >
+              Tentar novamente
+            </Button>
+          </div>
+        )}
+        {!evolucoesError && evolucoesAgg?.truncated && (
+          <div
+            role="alert"
+            className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900"
+          >
+            Indicadores de evolução incompletos: mostrando as {evolucoes.length} evoluções mais
+            recentes; refine o período.
+          </div>
         )}
         {viewMode === "month" ? (
           <AgendaMonthView

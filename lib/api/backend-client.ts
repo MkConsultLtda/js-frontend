@@ -8,7 +8,12 @@ export type ApiErrorBody = {
   details?: unknown[];
 };
 
-export type ApiClientError = Error & { status?: number; body?: ApiErrorBody };
+export type ApiClientError = Error & {
+  status?: number;
+  body?: ApiErrorBody;
+  /** Valor do header Retry-After (segundos), quando presente. */
+  retryAfterSeconds?: number;
+};
 
 function firstApiValidationDetail(details: unknown[]): string | undefined {
   for (const d of details) {
@@ -123,6 +128,8 @@ async function throwIfBackendError(res: Response): Promise<void> {
   const e = new Error(message) as ApiClientError;
   e.status = res.status;
   e.body = err ?? undefined;
+  const retryAfter = Number(res.headers?.get?.("Retry-After"));
+  if (Number.isFinite(retryAfter) && retryAfter > 0) e.retryAfterSeconds = retryAfter;
   throw e;
 }
 

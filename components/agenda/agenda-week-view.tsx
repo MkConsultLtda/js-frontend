@@ -81,13 +81,23 @@ export function AgendaWeekView({
           <CardTitle className="text-lg">Semana</CardTitle>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => onNavigate("prev")}>
+          <Button
+            variant="outline"
+            size="sm"
+            aria-label="Semana anterior"
+            onClick={() => onNavigate("prev")}
+          >
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <Button variant="outline" size="sm" onClick={() => onNavigate("today")}>
             Hoje
           </Button>
-          <Button variant="outline" size="sm" onClick={() => onNavigate("next")}>
+          <Button
+            variant="outline"
+            size="sm"
+            aria-label="Próxima semana"
+            onClick={() => onNavigate("next")}
+          >
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>

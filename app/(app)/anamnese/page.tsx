@@ -21,7 +21,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatUserFacingApiError } from "@/lib/api/backend-client";
-import { anamneseRequestBody } from "@/lib/api/fisio-api";
+import { anamneseRequestBody, fetchAnamneseById } from "@/lib/api/fisio-api";
+import { anamneseTruncatedMessage, canRetryAnamneseLoad } from "@/lib/api/load-error";
 import {
   useAggregateAnamneses,
   useAnamneseMutations,
@@ -49,10 +50,18 @@ export default function AnamnesePage() {
   } = usePatientsSearch("");
   const patients = patientPage?.content ?? [];
   const {
-    data: anamneses = [],
+    data: anamneseAgg,
     isLoading: isAnamnesesLoading,
     error: anamnesesError,
+    isFetching: isAnamnesesFetching,
+    refetch: refetchAnamneses,
   } = useAggregateAnamneses(true);
+  const anamneses = React.useMemo(() => anamneseAgg?.anamneses ?? [], [anamneseAgg]);
+  const truncatedMessage = anamneseTruncatedMessage(
+    anamneseAgg?.truncated ?? false,
+    anamneseAgg?.limit ?? 0,
+  );
+  const [loadingEditId, setLoadingEditId] = React.useState<number | null>(null);
   const { createAnam, replaceAnam, deleteAnam } = useAnamneseMutations();
 
   const [isCreating, setIsCreating] = React.useState(false);
@@ -123,13 +132,23 @@ export default function AnamnesePage() {
     }
   };
 
-  const handleEdit = (anamnese: Anamnese) => {
-    setEditingAnamnese(anamnese);
-    reset({
-      patientId: anamnese.patientId.toString(),
-      anamneseTexto: anamneseToHtml(anamnese),
-    });
-    setIsCreating(true);
+  const handleEdit = async (summary: Anamnese) => {
+    if (loadingEditId !== null) return;
+    setLoadingEditId(summary.id);
+    try {
+      // A lista traz só o resumo; o texto clínico completo vem do detalhe.
+      const full = await fetchAnamneseById(summary.id);
+      setEditingAnamnese(full);
+      reset({
+        patientId: full.patientId.toString(),
+        anamneseTexto: anamneseToHtml(full),
+      });
+      setIsCreating(true);
+    } catch (err) {
+      toast.error(formatUserFacingApiError(err, "Não foi possível carregar a anamnese para edição."));
+    } finally {
+      setLoadingEditId(null);
+    }
   };
 
   const closeForm = () => {
@@ -258,9 +277,33 @@ export default function AnamnesePage() {
         {(isPatientsLoading || isAnamnesesLoading) && (
           <p className="text-sm text-muted-foreground">Carregando anamneses…</p>
         )}
-        {(patientsError || anamnesesError) && (
-          <p className="text-sm text-destructive">
-            Não foi possível carregar os dados de anamnese. Verifique conexão e sessão.
+        {patientsError && !anamnesesError && (
+          <p className="text-sm text-destructive" role="alert">
+            Não foi possível carregar a lista de pacientes. Verifique conexão e sessão.
+          </p>
+        )}
+        {canRetryAnamneseLoad(anamnesesError) && (
+          <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-destructive">
+            <p>
+              {formatUserFacingApiError(
+                anamnesesError,
+                "Não foi possível carregar as anamneses. Verifique conexão e sessão.",
+              )}
+            </p>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={isAnamnesesFetching}
+              onClick={() => void refetchAnamneses()}
+            >
+              {isAnamnesesFetching ? "Tentando…" : "Tentar novamente"}
+            </Button>
+          </div>
+        )}
+        {truncatedMessage && !anamnesesError && (
+          <p role="status" className="text-sm text-amber-700 dark:text-amber-400">
+            {truncatedMessage}
           </p>
         )}
         {filteredAnamneses.map((anamnese) => (
@@ -285,19 +328,22 @@ export default function AnamnesePage() {
                   <strong>Resumo:</strong> avaliação registrada em {anamnese.dataColeta}
                 </div>
               </div>
-              <div
-                className="prose prose-sm mt-4 max-w-none overflow-x-auto dark:prose-invert"
-                dangerouslySetInnerHTML={{ __html: anamneseToHtml(anamnese) }}
-              />
               <div className="mt-4 flex flex-wrap gap-2">
-                <Button variant="outline" size="sm" onClick={() => handleEdit(anamnese)}>
-                  Editar
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={loadingEditId !== null}
+                  onClick={() => void handleEdit(anamnese)}
+                >
+                  {loadingEditId === anamnese.id ? "Carregando…" : "Editar"}
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   className="text-destructive"
+                  aria-label={`Excluir anamnese de ${anamnese.patientName}`}
+                  title={`Excluir anamnese de ${anamnese.patientName}`}
                   onClick={() => setAnamneseToDeleteId(anamnese.id)}
                 >
                   <Trash2 className="h-4 w-4" />
@@ -329,7 +375,7 @@ export default function AnamnesePage() {
         }}
       />
 
-      {filteredAnamneses.length === 0 && (
+      {filteredAnamneses.length === 0 && !isAnamnesesLoading && !anamnesesError && (
         <p className="text-sm text-muted-foreground text-center py-8">
           Nenhuma anamnese para exibir com os filtros atuais.
         </p>

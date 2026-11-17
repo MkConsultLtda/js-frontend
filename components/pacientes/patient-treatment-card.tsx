@@ -20,17 +20,29 @@ type Props = {
   patient: Patient;
   patientId: number;
   appointments: Appointment[];
+  /** Quando true, a lista de agendamentos está incompleta: não derivar contagens dela. */
+  historyTruncated?: boolean;
 };
 
-export function PatientTreatmentCard({ patient, patientId, appointments }: Props) {
+const TRUNCATED_LABEL = "não disponível: histórico truncado";
+
+export function PatientTreatmentCard({
+  patient,
+  patientId,
+  appointments,
+  historyTruncated = false,
+}: Props) {
   const completed = countCompletedSessions(appointments, patientId);
-  const progress = sessionProgressPercent(patient.totalSessionsPlanned, completed);
-  const attendance = attendanceRatePercent(appointments, patientId);
+  const progress = historyTruncated
+    ? null
+    : sessionProgressPercent(patient.totalSessionsPlanned, completed);
+  const attendance = historyTruncated ? null : attendanceRatePercent(appointments, patientId);
   const isDischarged = patient.status === "discharged";
   const planned = patient.totalSessionsPlanned;
-  const penultimate = !isDischarged && isPenultimateSession(planned, completed);
+  const penultimate =
+    !historyTruncated && !isDischarged && isPenultimateSession(planned, completed);
   const planComplete =
-    !isDischarged && hasReachedPlannedSessions(planned, completed);
+    !historyTruncated && !isDischarged && hasReachedPlannedSessions(planned, completed);
   const remaining = sessionsRemaining(planned, completed);
 
   return (
@@ -58,10 +70,16 @@ export function PatientTreatmentCard({ patient, patientId, appointments }: Props
               Sessões concluídas
             </p>
             <p className="font-medium">
-              {completed}
-              {patient.totalSessionsPlanned > 0
-                ? ` / ${patient.totalSessionsPlanned} planejadas`
-                : " (meta não definida)"}
+              {historyTruncated ? (
+                <span className="text-xs text-muted-foreground font-normal">{TRUNCATED_LABEL}</span>
+              ) : (
+                <>
+                  {completed}
+                  {patient.totalSessionsPlanned > 0
+                    ? ` / ${patient.totalSessionsPlanned} planejadas`
+                    : " (meta não definida)"}
+                </>
+              )}
             </p>
           </div>
           <div>
@@ -70,10 +88,11 @@ export function PatientTreatmentCard({ patient, patientId, appointments }: Props
               Taxa de comparecimento
             </p>
             <p className="font-medium">
-              {attendance != null ? `${attendance}%` : "—"}
+              {attendance != null ? `${attendance}%` : historyTruncated ? "" : "—"}
               <span className="text-xs text-muted-foreground font-normal">
-                {" "}
-                (concluídas ÷ concluídas + faltas)
+                {historyTruncated
+                  ? TRUNCATED_LABEL
+                  : " (concluídas ÷ concluídas + faltas)"}
               </span>
             </p>
           </div>

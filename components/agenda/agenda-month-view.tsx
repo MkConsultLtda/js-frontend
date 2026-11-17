@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import type { Appointment, Holiday } from "@/lib/types";
-import { parseLocalDate, toLocalDateString } from "@/lib/date-utils";
+import { formatMonthYearPtBR, parseLocalDate, toLocalDateString } from "@/lib/date-utils";
 import { monthChipClassName } from "@/lib/agenda-entry-styles";
 import { holidaysForDate } from "@/lib/holiday-utils";
 import { isWorkingDate } from "@/lib/schedule-utils";
@@ -77,13 +77,23 @@ export function AgendaMonthView({
           <CardTitle className="text-lg">Mês</CardTitle>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => onNavigate("prev")}>
+          <Button
+            variant="outline"
+            size="sm"
+            aria-label="Mês anterior"
+            onClick={() => onNavigate("prev")}
+          >
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <Button variant="outline" size="sm" onClick={() => onNavigate("today")}>
             Hoje
           </Button>
-          <Button variant="outline" size="sm" onClick={() => onNavigate("next")}>
+          <Button
+            variant="outline"
+            size="sm"
+            aria-label="Próximo mês"
+            onClick={() => onNavigate("next")}
+          >
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
@@ -96,9 +106,7 @@ export function AgendaMonthView({
           </Link>
           .
         </p>
-        <div className="text-sm font-medium capitalize">
-          {currentDate.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}
-        </div>
+        <div className="text-sm font-medium">{formatMonthYearPtBR(currentDate)}</div>
         <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-semibold uppercase text-muted-foreground">
           {dayNames.map((day, index) => (
             <div key={index}>{day}</div>
@@ -124,6 +132,16 @@ export function AgendaMonthView({
                 type="button"
                 key={index}
                 disabled={!isActive}
+                aria-hidden={!isActive ? true : undefined}
+                aria-label={
+                  cellDate
+                    ? `${cellDate.toLocaleDateString("pt-BR", {
+                        weekday: "long",
+                        day: "numeric",
+                        month: "long",
+                      })}${isWorkingDayCell ? "" : " (fora dos dias de atendimento)"}`
+                    : undefined
+                }
                 aria-disabled={isActive && !isWorkingDayCell}
                 title={
                   isActive && !isWorkingDayCell
